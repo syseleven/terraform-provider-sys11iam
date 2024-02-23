@@ -1,0 +1,90 @@
+package rest
+
+import (
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
+)
+
+type Response struct {
+	*http.Response
+	byteBody    *[]byte
+	requestBody []byte
+}
+
+type DebugInfo struct {
+	Request struct {
+		Method string `json:"method"`
+		Path   string `json:"path"`
+		Query  string `json:"query,omitempty"`
+		Body   []byte `json:"body,omitempty"`
+	} `json:"request"`
+	Response struct {
+		Code int    `json:"code"`
+		Body []byte `json:"body,omitempty"`
+	} `json:"response"`
+}
+
+func newResponse(response *http.Response, requestBody []byte) *Response {
+	return &Response{
+		response,
+		nil,
+		requestBody,
+	}
+}
+
+func (resp *Response) StringBody() (string, error) {
+	byteBody, err := resp.ByteBody()
+	return string(byteBody), err
+}
+
+func (resp *Response) ByteBody() ([]byte, error) {
+	err := resp.readBody()
+	if err != nil {
+		return []byte{}, err
+	}
+	return *resp.byteBody, nil
+}
+
+func (resp *Response) JSONUnmarshall(v interface{}) error {
+	err := resp.readBody()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(*resp.byteBody, v)
+}
+
+func (resp *Response) readBody() error {
+	if resp.byteBody != nil {
+		return nil
+	}
+
+	byteBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	resp.byteBody = &byteBody
+	return resp.Body.Close()
+}
+
+func (resp *Response) DebugInfo() *DebugInfo {
+	var debugInfo DebugInfo
+
+	debugInfo.Request.Path = resp.Request.URL.Path
+	debugInfo.Request.Query = resp.Request.URL.Query().Encode()
+	debugInfo.Request.Body = resp.requestBody
+	debugInfo.Request.Method = resp.Request.Method
+	debugInfo.Response.Code = resp.StatusCode
+
+	responseBody, err := resp.ByteBody()
+	if err != nil {
+		responseBody = []byte("unable to parse body")
+	}
+	debugInfo.Response.Body = responseBody
+
+	return &debugInfo
+}
+
+func (di *DebugInfo) AsJSON() ([]byte, error) {
+	return json.Marshal(di)
+}

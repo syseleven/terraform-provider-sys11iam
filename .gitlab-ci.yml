@@ -1,0 +1,114 @@
+image: golang:1.19-buster
+
+stages:
+  - build
+  - test
+  - versioning
+  - release
+  - deploy
+
+.gitlab-netrc-access: &create_netrc
+  - echo -e "machine gitlab.syseleven.de\n\tlogin gitlab-ci-token\n\tpassword ${CI_JOB_TOKEN}" > /root/.netrc
+
+build.binary:
+  stage: build
+  before_script:
+    - *create_netrc
+  script:
+    - make terraform-provider-ncs
+  artifacts:
+    paths:
+      - terraform-provider-ncs
+
+test.unit:
+  stage: test
+  before_script:
+    - *create_netrc
+  script:
+    - go get -u golang.org/x/tools/...
+    - go install gotest.tools/gotestsum@v1.8.2
+    - make unit-test
+
+e2e-testing:
+  stage: test
+  variables:
+    PARENT_BRANCH: $CI_COMMIT_BRANCH
+  trigger:
+    project: doc/e2e-testing
+  allow_failure: true
+
+increase_patch_version:
+  image: bash:latest
+  stage: versioning
+  script:
+    - apk add --update git
+    - LATEST_VERSION=$(git tag -l 'v*' --sort -version:refname | head -n 1) && LATEST_VERSION=${LATEST_VERSION:-v0.0.1}
+    - NEW_VERSION="${LATEST_VERSION%.*}.$((${LATEST_VERSION##*.}+1))"
+    - echo "set version ${LATEST_VERSION} -> ${NEW_VERSION}"
+    - echo "NEW_VERSION=${NEW_VERSION}" > version.env
+  when: manual
+  only:
+    - main
+  artifacts:
+    reports:
+      dotenv: version.env
+
+increase_minor_version:
+  image: bash:latest
+  stage: versioning
+  script:
+    - apk add --update git
+    - LATEST_VERSION=$(git tag -l 'v*' --sort -version:refname | head -n 1) && LATEST_VERSION=${LATEST_VERSION:-v0.0.1}
+    - NEW_VERSION="${LATEST_VERSION%%.*}.$(($(cut -d'.' -f2 <<< ${LATEST_VERSION:1})+1)).0"
+    - echo "set version ${LATEST_VERSION} -> ${NEW_VERSION}"
+    - echo "NEW_VERSION=${NEW_VERSION}" > version.env
+  when: manual
+  only:
+    - main
+  artifacts:
+    reports:
+      dotenv: version.env
+
+increase_major_version:
+  image: bash:latest
+  stage: versioning
+  script:
+    - apk add --update git
+    - LATEST_VERSION=$(git tag -l 'v*' --sort -version:refname | head -n 1) && LATEST_VERSION=${LATEST_VERSION:-v0.0.1}
+    - NEW_VERSION="v$(($(cut -d'.' -f1 <<< ${LATEST_VERSION:1})+1)).0.0"
+    - echo "set version ${LATEST_VERSION} -> ${NEW_VERSION}"
+    - echo "NEW_VERSION=${NEW_VERSION}" > version.env
+  when: manual
+  only:
+    - main
+  artifacts:
+    reports:
+      dotenv: version.env
+
+specify_version:
+  stage: versioning
+  image: giantswarm/tiny-tools:3.10
+  script:
+    - test "$NEW_VERSION" != "undefined" || ( echo "Make sure you have set the variable NEW_VERSION when starting this manual job" && exit 1 )
+    - echo "NEW_VERSION=${NEW_VERSION}" > version.env
+  when: manual
+  only:
+    - main
+  artifacts:
+    reports:
+      dotenv: version.env
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  when: manual
+  allow_failure: false
+  script:
+    - echo "set version to $NEW_VERSION"
+  release:
+     name: 'Release $NEW_VERSION'
+     description: 'Created using the release-cli'
+     tag_name: '$NEW_VERSION'
+     ref: '$CI_COMMIT_SHA'
+  only:
+    - main

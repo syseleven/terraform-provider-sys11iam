@@ -1,0 +1,15 @@
+provider:
+  name: ncs
+resources:
+  organization:
+    create:
+      path: /v1/orgs
+      method: POST
+    read:
+      path: /v1/orgs/{organization_id}
+      method: GET
+data_sources:
+  organization:
+    read:
+      path: /v1/orgs/{organization_id}
+      method: GET
