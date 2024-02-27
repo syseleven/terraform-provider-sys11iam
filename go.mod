@@ -1,6 +1,6 @@
 module gitlab.syseleven.de/ncs/terraform-provider-ncs
 
-go 1.21.6
+go 1.21
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.5.0
