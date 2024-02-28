@@ -67,7 +67,7 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	response, err := r.client.CreateOrganization(data.Name.String(), data.Description.String(), elements)
+	response, err := r.client.CreateOrganization(data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -138,7 +138,7 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	response, err := r.client.UpdateOrganization(data.Id.String(), data.Description.String(), elements)
+	response, err := r.client.UpdateOrganization(data.Id.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
