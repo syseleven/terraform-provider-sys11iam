@@ -76,7 +76,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 
 	if config.OidcUsername.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("username"),
+			path.Root("oidc_username"),
 			"Unknown NCS OIDC API Username",
 			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API username. "+
 				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_USERNAME environment variable.",
@@ -85,7 +85,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 
 	if config.OidcPassword.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
-			path.Root("password"),
+			path.Root("oidc_password"),
 			"Unknown NCS OIDC API Password",
 			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API password. "+
 				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_PASSWORD environment variable.",

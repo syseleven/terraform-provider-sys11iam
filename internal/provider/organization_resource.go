@@ -76,6 +76,8 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
 	data.OrganizationId = types.StringValue(response.OrganizationId)
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
@@ -106,6 +108,8 @@ func (r *organizationResource) Read(ctx context.Context, req resource.ReadReques
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
 	data.OrganizationId = types.StringValue(response.OrganizationId)
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
@@ -143,6 +147,8 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
 	data.OrganizationId = types.StringValue(response.OrganizationId)
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
