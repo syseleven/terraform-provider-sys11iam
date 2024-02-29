@@ -62,7 +62,7 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	// Create API call logic
 	tflog.Info(ctx, "Creating Project resource.")
 	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
-	org_response, err := r.client.GetOrganization(data.Id.ValueString())
+	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
