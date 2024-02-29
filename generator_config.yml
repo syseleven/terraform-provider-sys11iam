@@ -8,8 +8,32 @@ resources:
     read:
       path: /v1/orgs/{organization_id}
       method: GET
+    update:
+      path: /v1/orgs/{organization_id}
+      method: PUT
+    delete:
+      path: /v1/orgs/{organization_id}
+      method: DELETE
+  project:
+    create:
+      path: /v1/orgs/{organization_id}/projects
+      method: POST
+    read:
+      path: /v1/orgs/{organization_id}/projects/{project_id}
+      method: GET
+    update:
+      path: /v1/orgs/{organization_id}/projects/{project_id}
+      method: PUT
+    delete:
+      path: /v1/orgs/{organization_id}/projects/{project_id}
+      method: DELETE
+
 data_sources:
   organization:
     read:
       path: /v1/orgs/{organization_id}
+      method: GET
+  project:
+    read:
+      path: /v1/orgs/{organization_id}/projects/{project_id}
       method: GET
