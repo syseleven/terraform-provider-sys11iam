@@ -88,7 +88,6 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.ProjectId = types.StringValue(response.ProjectId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
@@ -147,19 +146,14 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	response, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Description.ValueString(), elements)
+	_, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
-	data.ProjectId = types.StringValue(response.ProjectId)
-	data.Name = types.StringValue(response.Name)
-	data.Description = types.StringValue(response.Description)
-	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	// does not return updated structure-
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
