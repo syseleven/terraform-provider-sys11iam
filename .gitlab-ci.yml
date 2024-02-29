@@ -34,7 +34,7 @@ e2e-testing:
   variables:
     PARENT_BRANCH: $CI_COMMIT_BRANCH
   trigger:
-    project: doc/e2e-testing
+    project: ncs/glue-e2e-testing
   allow_failure: true
 
 increase_patch_version:
