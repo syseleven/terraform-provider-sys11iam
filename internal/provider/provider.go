@@ -202,6 +202,6 @@ func (p *ncsProvider) DataSources(ctx context.Context) []func() datasource.DataS
 
 func (p *ncsProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewOrganizationResource,
+		NewOrganizationResource, NewProjectResource,
 	}
 }
