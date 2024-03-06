@@ -43,13 +43,6 @@ func ProjectResourceSchema(ctx context.Context) schema.Schema {
 				Optional: true,
 				Computed: true,
 			},
-			"project_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[a-f0-9]{8}[a-f0-9]{4}4[a-f0-9]{3}[89ab][a-f0-9]{3}[a-f0-9]{12}$"), ""),
-				},
-			},
 			"tags": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
@@ -66,6 +59,5 @@ type ProjectModel struct {
 	Id             types.String `tfsdk:"id"`
 	Name           types.String `tfsdk:"name"`
 	OrganizationId types.String `tfsdk:"organization_id"`
-	ProjectId      types.String `tfsdk:"project_id"`
 	Tags           types.List   `tfsdk:"tags"`
 }

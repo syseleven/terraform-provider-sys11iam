@@ -206,7 +206,7 @@ func (suite *RestClientIAMTestSuite) TestGetProjectSuccess() {
 
 	id, err := client.GetProject("1", "1")
 	suite.NoError(err)
-	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", ProjectId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
+	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
 	suite.Equal(id, iamOrg)
 	mockServer.HasExpectedRequests()
 }
@@ -235,7 +235,7 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectSuccess() {
 
 	id, err := client.CreateProject("1", "sample-project", "sample-project", []string{"sample-tag"})
 	suite.NoError(err)
-	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", ProjectId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
+	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
 	suite.Equal(id, iamOrg)
 	mockServer.HasExpectedRequests()
 }
@@ -256,7 +256,7 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectError() {
 
 	id, err := client.CreateProject("1", "sample-project", "sample-project", []string{"sample-tag"})
 	suite.Error(err) //TODO: check error message
-	iamOrg := IAMProject(IAMProject{ID: "", OrganizationId: "", ProjectId: "", Name: "", Description: "", Tags: []string(nil)})
+	iamOrg := IAMProject(IAMProject{ID: "", OrganizationId: "", Name: "", Description: "", Tags: []string(nil)})
 	suite.Equal(id, iamOrg)
 	mockServer.HasExpectedRequests()
 }
@@ -285,7 +285,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectSuccess() {
 
 	id, err := client.UpdateProject("1", "1", "sample-project", []string{"sample-tag"})
 	suite.NoError(err)
-	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", ProjectId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
+	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
 	suite.Equal(id, iamOrg)
 	mockServer.HasExpectedRequests()
 }
@@ -306,7 +306,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectError() {
 
 	id, err := client.UpdateProject("1", "1", "sample-project", []string{"sample-tag"})
 	suite.Error(err) //TODO: check error message
-	iamOrg := IAMProject(IAMProject{ID: "", OrganizationId: "", ProjectId: "", Name: "", Description: "", Tags: []string(nil)})
+	iamOrg := IAMProject(IAMProject{ID: "", OrganizationId: "", Name: "", Description: "", Tags: []string(nil)})
 	suite.Equal(id, iamOrg)
 	mockServer.HasExpectedRequests()
 }

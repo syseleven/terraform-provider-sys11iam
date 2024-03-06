@@ -88,7 +88,6 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.ProjectId = types.StringValue(response.ProjectId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
@@ -116,9 +115,6 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
-	data.ProjectId = types.StringValue(response.ProjectId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)

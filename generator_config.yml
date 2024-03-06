@@ -27,13 +27,29 @@ resources:
     delete:
       path: /v1/orgs/{organization_id}/projects/{project_id}
       method: DELETE
-
-data_sources:
-  organization:
+  organization_membership:
+    create:
+      path: /v1/orgs/{organization_id}/memberships/{user_id}/permissions
+      method: PUT
     read:
-      path: /v1/orgs/{organization_id}
+      path: /v1/orgs/{organization_id}/memberships/{user_id}
       method: GET
-  project:
+    update:
+      path: /v1/orgs/{organization_id}/memberships/{user_id}/permissions
+      method: PUT
+    delete:
+      path: /v1/orgs/{organization_id}/memberships/{user_id}
+      method: DELETE
+  project_membership:
+    create:
+      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}/permissions
+      method: PUT
     read:
-      path: /v1/orgs/{organization_id}/projects/{project_id}
+      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}
       method: GET
+    update:
+      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}/permissions
+      method: PUT
+    delete:
+      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}
+      method: DELETE
