@@ -13,7 +13,7 @@ func ProjectMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"email": schema.StringAttribute{
-				Computed:            true,
+				Required: true,
 				Description:         "The email address of the user.",
 				MarkdownDescription: "The email address of the user.",
 			},
@@ -23,28 +23,18 @@ func ProjectMembershipResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The UUID of the user.",
 			},
 			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required: true,
 			},
 			"permissions": schema.ListAttribute{
+				Required: true,
 				ElementType:         types.StringType,
-				Computed:            true,
 				Description:         "The permissions of the user",
 				MarkdownDescription: "The permissions of the user",
 			},
 			"project_id": schema.StringAttribute{
-				Computed:            true,
+				Required: true,
 				Description:         "The UUID of the project",
 				MarkdownDescription: "The UUID of the project",
-			},
-			"project_name": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The name of the project",
-				MarkdownDescription: "The name of the project",
-			},
-			"user_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
 			},
 		},
 	}
@@ -56,6 +46,4 @@ type ProjectMembershipModel struct {
 	OrganizationId types.String `tfsdk:"organization_id"`
 	Permissions    types.List   `tfsdk:"permissions"`
 	ProjectId      types.String `tfsdk:"project_id"`
-	ProjectName    types.String `tfsdk:"project_name"`
-	UserId         types.String `tfsdk:"user_id"`
 }

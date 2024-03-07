@@ -15,3 +15,8 @@ const DeleteOrganizationMembershipError string = "could not delete OrganizationM
 
 const GetOrganizationInvitationError string = "could not get OrganizationInvitation: %s"
 const CreateOrganizationInvitationError string = "could not create OrganizationInvitation: %s"
+
+const GetProjectMembershipError string = "could not get ProjectMembership: %s"
+const CreateProjectMembershipError string = "could not create ProjectMembership: %s"
+const UpdateProjectMembershipError string = "could not update ProjectMembership: %s"
+const DeleteProjectMembershipError string = "could not delete ProjectMembership: %s"

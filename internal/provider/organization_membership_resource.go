@@ -85,8 +85,8 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	// Is the e-mail already a member?
 	org_membership_response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
 	if err != nil {
-		// Is the e-mail at least invited with the specified permissions?
-		_, err := r.client.GetOrganizationInvitationByEmailAndPermissions(data.OrganizationId.ValueString(), data.Email.ValueString())
+		// Is the e-mail at least invited?
+		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
 		if err != nil {
 			// Invite the e-mail
 			_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString(), elements)
@@ -95,7 +95,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 				return
 			}
 		}
-		// The email is invited with the specified permissions, but has to be activated manually
+		// The email is invited, but has to be activated manually
 		resp.Diagnostics.AddError("InvitationNotAcceptedError",
 			fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
 				data.OrganizationId.ValueString(), data.Email.ValueString()))
@@ -113,7 +113,6 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Email = types.StringValue(response.Email)
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
-	//data.NonEditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

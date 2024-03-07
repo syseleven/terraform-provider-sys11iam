@@ -21,6 +21,10 @@ const IAMOrganizationMembershipPermissionsEndpoint string = "/v1/orgs/%s/members
 const IAMOrganizationInvitationsEndpoint string = "/v1/orgs/%s/invitations"
 const IAMOrganizationInvitationEndpoint string = "/v1/orgs/%s/invitations/%s"
 
+const IAMProjectMembershipsEndpoint string = "/v1/orgs/%s/projects/%s/memberships"
+const IAMProjectMembershipEndpoint string = "/v1/orgs/%s/projects/%s/memberships/%s"
+const IAMProjectMembershipPermissionsEndpoint string = "/v1/orgs/%s/projects/%s/memberships/%s/permissions"
+
 type IAMOrganization struct {
 	// org id
 	ID string `json:"id,omitempty"`
@@ -98,6 +102,23 @@ type IAMOrganizationInvitation struct {
 	OrganizationName string `json:"org_name,omitempty"`
 
 	// OrganizationInvitation permissions
+	Permissions []string `json:"permissions,omitempty"`
+}
+
+type IAMProjectMembership struct {
+	// ProjectMembership id
+	ID string `json:"id,omitempty"`
+
+	// ProjectMembership email
+	Email string `json:"email,omitempty"`
+
+	// project id
+	ProjectId string `json:"project_id,omitempty"`
+
+	// project name
+	ProjectName string `json:"project_name,omitempty"`
+
+	// ProjectMembership permissions
 	Permissions []string `json:"permissions,omitempty"`
 }
 
@@ -492,7 +513,7 @@ func (c *Client) DeleteOrganizationMembership(org_id string, id string) error {
 	return nil
 }
 
-func (c *Client) GetOrganizationInvitationByEmailAndPermissions(org_id string, email string) (IAMOrganizationInvitation, error) {
+func (c *Client) GetOrganizationInvitationByEmail(org_id string, email string) (IAMOrganizationInvitation, error) {
 	path := fmt.Sprintf(IAMOrganizationInvitationsEndpoint, org_id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
 	if err != nil {
@@ -556,4 +577,138 @@ func (c *Client) CreateOrganizationInvitation(org_id string, email string, permi
 		return iamOrganizationInvitation, err
 	}
 	return iamOrganizationInvitations[0], nil
+}
+
+func (c *Client) GetProjectMembership(org_id string, project_id string, id string) (IAMProjectMembership, error) {
+	path := fmt.Sprintf(IAMProjectMembershipEndpoint, org_id, project_id, id)
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return IAMProjectMembership{}, errors.Trace(fmt.Errorf(GetProjectMembershipError, err.Error()))
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return IAMProjectMembership{}, errors.Trace(fmt.Errorf(GetProjectMembershipError, err.Error()))
+	}
+
+	var iamProjectMembership IAMProjectMembership
+	err = response.JSONUnmarshall(&iamProjectMembership)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return IAMProjectMembership{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+
+	return iamProjectMembership, nil
+}
+
+func (c *Client) GetProjectMembershipByEmail(org_id string, project_id string, email string) (IAMProjectMembership, error) {
+	path := fmt.Sprintf(IAMProjectMembershipsEndpoint, org_id, project_id)
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return IAMProjectMembership{}, errors.Trace(fmt.Errorf(GetProjectMembershipError, err.Error()))
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return IAMProjectMembership{}, errors.Trace(fmt.Errorf(GetProjectMembershipError, err.Error()))
+	}
+
+	var iamProjectMemberships []IAMProjectMembership
+	err = response.JSONUnmarshall(&iamProjectMemberships)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return IAMProjectMembership{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+	for _, iom := range iamProjectMemberships {
+		if iom.Email == email {
+			return iom, nil
+		}
+	}
+
+	return IAMProjectMembership{}, fmt.Errorf("membership with that e-mail address was not found: %s", email)
+}
+
+func (c *Client) CreateProjectMembership(org_id string, project_id string, user_id string, permissions []string) (IAMProjectMembership, error) {
+	var iamProjectMembership IAMProjectMembership
+	path := fmt.Sprintf(IAMProjectMembershipPermissionsEndpoint, org_id, project_id, user_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamProjectMembership, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPut, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamProjectMembership, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamProjectMembership, fmt.Errorf(CreateProjectMembershipError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamProjectMembership)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamProjectMembership, err
+	}
+	return iamProjectMembership, nil
+}
+
+func (c *Client) UpdateProjectMembership(org_id string, project_id string, user_id string, permissions []string) (IAMProjectMembership, error) {
+	var iamProjectMembership IAMProjectMembership
+	path := fmt.Sprintf(IAMProjectMembershipPermissionsEndpoint, org_id, project_id, user_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamProjectMembership, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPut, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamProjectMembership, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamProjectMembership, fmt.Errorf(UpdateProjectMembershipError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamProjectMembership)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamProjectMembership, err
+	}
+	return iamProjectMembership, nil
+}
+
+func (c *Client) DeleteProjectMembership(org_id string, project_id string, id string) error {
+	path := fmt.Sprintf(IAMProjectMembershipEndpoint, org_id, project_id, id)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteProjectMembershipError, err.Error())
+	}
+	return nil
 }
