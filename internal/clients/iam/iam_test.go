@@ -206,8 +206,8 @@ func (suite *RestClientIAMTestSuite) TestGetProjectSuccess() {
 
 	id, err := client.GetProject("1", "1")
 	suite.NoError(err)
-	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
-	suite.Equal(id, iamOrg)
+	iamProject := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
+	suite.Equal(id, iamProject)
 	mockServer.HasExpectedRequests()
 }
 
@@ -235,8 +235,8 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectSuccess() {
 
 	id, err := client.CreateProject("1", "sample-project", "sample-project", []string{"sample-tag"})
 	suite.NoError(err)
-	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
-	suite.Equal(id, iamOrg)
+	iamProject := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
+	suite.Equal(id, iamProject)
 	mockServer.HasExpectedRequests()
 }
 
@@ -256,8 +256,8 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectError() {
 
 	id, err := client.CreateProject("1", "sample-project", "sample-project", []string{"sample-tag"})
 	suite.Error(err) //TODO: check error message
-	iamOrg := IAMProject(IAMProject{ID: "", OrganizationId: "", Name: "", Description: "", Tags: []string(nil)})
-	suite.Equal(id, iamOrg)
+	iamProject := IAMProject(IAMProject{ID: "", OrganizationId: "", Name: "", Description: "", Tags: []string(nil)})
+	suite.Equal(id, iamProject)
 	mockServer.HasExpectedRequests()
 }
 
@@ -285,8 +285,8 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectSuccess() {
 
 	id, err := client.UpdateProject("1", "1", "sample-project", []string{"sample-tag"})
 	suite.NoError(err)
-	iamOrg := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
-	suite.Equal(id, iamOrg)
+	iamProject := IAMProject(IAMProject{ID: "1", OrganizationId: "1", Name: "sample-project", Description: "sample-project", Tags: []string{"sample-tag"}})
+	suite.Equal(id, iamProject)
 	mockServer.HasExpectedRequests()
 }
 
@@ -306,8 +306,8 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectError() {
 
 	id, err := client.UpdateProject("1", "1", "sample-project", []string{"sample-tag"})
 	suite.Error(err) //TODO: check error message
-	iamOrg := IAMProject(IAMProject{ID: "", OrganizationId: "", Name: "", Description: "", Tags: []string(nil)})
-	suite.Equal(id, iamOrg)
+	iamProject := IAMProject(IAMProject{ID: "", OrganizationId: "", Name: "", Description: "", Tags: []string(nil)})
+	suite.Equal(id, iamProject)
 	mockServer.HasExpectedRequests()
 }
 
@@ -343,6 +343,328 @@ func (suite *RestClientIAMTestSuite) TestDeleteProjectError() {
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
 	err := client.DeleteProject("1", "1")
+	suite.Error(err)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestGetOrganizationMembershipSuccess() {
+	sampleResponse := `{
+		"id": "1",
+		"email": "test@syseleven.net",
+		"org_id": "1",
+		"org_name": "syseleven",
+		"editable_permissions": ["can_do"]
+	  }`
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodGet, "/v1/orgs/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusOK).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.GetOrganizationMembership("1", "1")
+	suite.NoError(err)
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "1", Email: "test@syseleven.net", OrganizationId: "1", OrganizationName: "syseleven", Permissions: []string{"can_do"}})
+	suite.Equal(id, iamOrgMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipSuccess() {
+	sampleResponse := `{
+		"id": "1",
+		"email": "test@syseleven.net",
+		"org_id": "1",
+		"org_name": "syseleven",
+		"editable_permissions": ["can_do"]
+	  }`
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusCreated).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
+	suite.NoError(err)
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "1", Email: "test@syseleven.net", OrganizationId: "1", OrganizationName: "syseleven", Permissions: []string{"can_do"}})
+	suite.Equal(id, iamOrgMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipError() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusConflict).
+			ReturnWithBody([]byte(`{}`)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
+	suite.Error(err) //TODO: check error message
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "", Email: "", OrganizationId: "", OrganizationName: "", Permissions: []string(nil)})
+	suite.Equal(id, iamOrgMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
+	sampleResponse := `{
+		"id": "1",
+		"email": "test@syseleven.net",
+		"org_id": "1",
+		"org_name": "syseleven",
+		"editable_permissions": ["can_do"]
+	  }`
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusCreated).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
+	suite.NoError(err)
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "1", Email: "test@syseleven.net", OrganizationId: "1", OrganizationName: "syseleven", Permissions: []string{"can_do"}})
+	suite.Equal(id, iamOrgMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusConflict).
+			ReturnWithBody([]byte(`{}`)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
+	suite.Error(err)
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "", Email: "", OrganizationId: "", OrganizationName: "", Permissions: []string(nil)})
+	suite.Equal(id, iamOrgMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipSuccess() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodDelete, "/v1/orgs/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusNoContent).
+			ReturnWithBody([]byte(``)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	err := client.DeleteOrganizationMembership("1", "1")
+	suite.NoError(err)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipError() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodDelete, "/v1/orgs/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusBadRequest).
+			ReturnWithBody([]byte(``)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	err := client.DeleteOrganizationMembership("1", "1")
+	suite.Error(err)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestGetProjectMembershipSuccess() {
+	sampleResponse := `{
+		"id": "1",
+		"email": "test@syseleven.net",
+		"project_id": "1",
+		"project_name": "syseleven",
+		"permissions": ["can_do"]
+	  }`
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodGet, "/v1/orgs/1/projects/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusCreated).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.GetProjectMembership("1", "1", "1")
+	suite.NoError(err)
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "1", Email: "test@syseleven.net", ProjectId: "1", ProjectName: "syseleven", Permissions: []string{"can_do"}})
+	suite.Equal(id, iamProjectMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipSuccess() {
+	sampleResponse := `{
+		"id": "1",
+		"email": "test@syseleven.net",
+		"project_id": "1",
+		"project_name": "syseleven",
+		"permissions": ["can_do"]
+	  }`
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusCreated).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.CreateProjectMembership("1", "1", "1", []string{"can_do"})
+	suite.NoError(err)
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "1", Email: "test@syseleven.net", ProjectId: "1", ProjectName: "syseleven", Permissions: []string{"can_do"}})
+	suite.Equal(id, iamProjectMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipError() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusConflict).
+			ReturnWithBody([]byte(`{}`)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.CreateProjectMembership("1", "1", "1", []string{"can_do"})
+	suite.Error(err) //TODO: check error message
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "", Email: "", ProjectId: "", ProjectName: "", Permissions: []string(nil)})
+	suite.Equal(id, iamProjectMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipSuccess() {
+	sampleResponse := `{
+		"id": "1",
+		"email": "test@syseleven.net",
+		"project_id": "1",
+		"project_name": "syseleven",
+		"permissions": ["can_do"]
+	  }`
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusCreated).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.UpdateProjectMembership("1", "1", "1", []string{"can_do"})
+	suite.NoError(err)
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "1", Email: "test@syseleven.net", ProjectId: "1", ProjectName: "syseleven", Permissions: []string{"can_do"}})
+	suite.Equal(id, iamProjectMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipError() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+			WithBody([]byte(`["can_do"]`)).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusConflict).
+			ReturnWithBody([]byte(`{}`)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	id, err := client.UpdateProjectMembership("1", "1", "1", []string{"can_do"})
+	suite.Error(err) //TODO: check error message
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "", Email: "", ProjectId: "", ProjectName: "", Permissions: []string(nil)})
+	suite.Equal(id, iamProjectMembership)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestDeleteProjectMembershipSuccess() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodDelete, "/v1/orgs/1/projects/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusNoContent).
+			ReturnWithBody([]byte(``)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	err := client.DeleteProjectMembership("1", "1", "1")
+	suite.NoError(err)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestDeleteProjectMembershipError() {
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(http.MethodDelete, "/v1/orgs/1/projects/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusBadRequest).
+			ReturnWithBody([]byte(``)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	err := client.DeleteProjectMembership("1", "1", "1")
 	suite.Error(err)
 	mockServer.HasExpectedRequests()
 }
