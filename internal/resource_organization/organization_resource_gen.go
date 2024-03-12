@@ -49,10 +49,6 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
 				},
 			},
-			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
-			},
 			"tags": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
@@ -75,7 +71,6 @@ type OrganizationModel struct {
 	Id             types.String `tfsdk:"id"`
 	IsActive       types.Bool   `tfsdk:"is_active"`
 	Name           types.String `tfsdk:"name"`
-	OrganizationId types.String `tfsdk:"organization_id"`
 	Tags           types.List   `tfsdk:"tags"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
 }

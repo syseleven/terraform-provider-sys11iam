@@ -2,10 +2,12 @@ package iam
 
 const GetOrganizationsError string = "could not get organization: %s"
 const CreateOrganizationError string = "could not create organization: %s"
+const UpdateOrganizationError string = "could not update organization: %s"
 const DeleteOrganizationError string = "could not delete organization: %s"
 
 const GetProjectError string = "could not get project: %s"
 const CreateProjectError string = "could not create project: %s"
+const UpdateProjectError string = "could not update project: %s"
 const DeleteProjectError string = "could not delete project: %s"
 
 const GetOrganizationMembershipError string = "could not get OrganizationMembership: %s"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -128,6 +129,16 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
+	if data.Name.IsNull() {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("name"), &data.Name)...)
+	}
+	if data.Description.IsNull() {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("description"), &data.Description)...)
+	}
+	if data.Tags.IsNull() {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("tags"), &data.Tags)...)
+	}
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -142,7 +153,7 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	_, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Description.ValueString(), elements)
+	_, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return

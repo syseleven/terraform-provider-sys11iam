@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -151,8 +152,16 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
 
 	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	planned_email := data.Email.ValueString()
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("email"), &data.Email)...)
+	if planned_email != data.Email.ValueString() {
+		resp.Diagnostics.AddError("", "Updating the 'email' field of an organization membership is currently not implemented.")
 		return
 	}
 
@@ -175,7 +184,7 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	data.Id = types.StringValue(response.ID)
 	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Email = types.StringValue(response.Email)
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+	//data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

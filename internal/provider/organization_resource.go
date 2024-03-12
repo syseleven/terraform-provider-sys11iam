@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -75,7 +76,6 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
@@ -106,8 +106,6 @@ func (r *organizationResource) Read(ctx context.Context, req resource.ReadReques
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
@@ -124,13 +122,14 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	// Update API call logic
-	tflog.Info(ctx, "Creating organization resource.")
+	tflog.Info(ctx, "Updating organization resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
 	diags := data.Tags.ElementsAs(ctx, &elements, false)
 	resp.Diagnostics.Append(diags...)
@@ -143,10 +142,9 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+	tflog.Info(ctx, fmt.Sprintf("response.Id: %s", response.ID))
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)

@@ -27,45 +27,39 @@ const IAMProjectMembershipPermissionsEndpoint string = "/v1/orgs/%s/projects/%s/
 
 type IAMOrganization struct {
 	// org id
-	ID string `json:"id,omitempty"`
-
-	// org id
-	OrganizationId string `json:"organization_id,omitempty"`
+	ID string `json:"id"`
 
 	// org name
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// org description
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
 
 	// org tags
-	Tags []string `json:"tags,omitempty"`
+	Tags []string `json:"tags"`
 
 	// org created_at
-	CreatedAt string `json:"created_at,omitempty"`
+	CreatedAt string `json:"created_at"`
 
 	// org is_active
-	IsActive bool `json:"is_active,omitempty"`
+	IsActive bool `json:"is_active"`
 
 	// org updated_at
-	UpdatedAt string `json:"updated_at,omitempty"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type IAMProject struct {
 	// project id
-	ID string `json:"id,omitempty"`
-
-	// org id
-	OrganizationId string `json:"organization_id,omitempty"`
+	ID string `json:"id"`
 
 	// project name
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// project description
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
 
 	// project tags
-	Tags []string `json:"tags,omitempty"`
+	Tags []string `json:"tags"`
 }
 
 type IAMOrganizationMembership struct {
@@ -230,7 +224,7 @@ func (c *Client) UpdateOrganization(id string, description string, tags []string
 
 	err = c.checkResponse(response)
 	if err != nil {
-		return iamOrganization, fmt.Errorf(CreateOrganizationError, err.Error())
+		return iamOrganization, fmt.Errorf(UpdateOrganizationError, err.Error())
 	}
 
 	err = response.JSONUnmarshall(&iamOrganization)
@@ -322,18 +316,14 @@ func (c *Client) CreateProject(org_id string, name string, description string, t
 	return iamProject, nil
 }
 
-func (c *Client) UpdateProject(org_id string, id string, description string, tags []string) (IAMProject, error) {
+func (c *Client) UpdateProject(org_id string, id string, name string, description string, tags []string) (IAMProject, error) {
 	var iamProject IAMProject
 	path := fmt.Sprintf(IAMProjectEndpoint, org_id, id)
-	raw_payload := map[string]interface{}{}
-	if description != "" {
-		raw_payload["description"] = description
-	}
-	if len(tags) != 0 {
-		raw_payload["tags"] = tags
-	}
-
-	payload, err := json.Marshal(raw_payload)
+	payload, err := json.Marshal(map[string]interface{}{
+		"name":        name,
+		"description": description,
+		"tags":        tags,
+	})
 	if err != nil {
 		return iamProject, err
 	}
@@ -347,7 +337,7 @@ func (c *Client) UpdateProject(org_id string, id string, description string, tag
 
 	err = c.checkResponse(response)
 	if err != nil {
-		return iamProject, fmt.Errorf(CreateProjectError, err.Error())
+		return iamProject, fmt.Errorf(UpdateProjectError, err.Error())
 	}
 
 	err = response.JSONUnmarshall(&iamProject)
