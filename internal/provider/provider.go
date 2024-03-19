@@ -27,9 +27,9 @@ type ncsProvider struct{}
 
 type ncsProviderModel struct {
 	OidcUrl          types.String `tfsdk:"oidc_url"`
-	oidcClientId     types.String `tfsdk:"oidc_client_id"`
-	oidcClientSecret types.String `tfsdk:"oidc_client_secret"`
-	oidcClientScope  types.String `tfsdk:"oidc_client_scope"`
+	OidcClientId     types.String `tfsdk:"oidc_client_id"`
+	OidcClientSecret types.String `tfsdk:"oidc_client_secret"`
+	OidcClientScope  types.String `tfsdk:"oidc_client_scope"`
 	OidcUsername     types.String `tfsdk:"oidc_username"`
 	OidcPassword     types.String `tfsdk:"oidc_password"`
 	IamUrl           types.String `tfsdk:"iam_url"`
@@ -86,7 +86,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		)
 	}
 
-	if config.oidcClientId.IsUnknown() {
+	if config.OidcClientId.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("oidc_client_id"),
 			"Unknown NCS OIDC API client id",
@@ -95,7 +95,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		)
 	}
 
-	if config.oidcClientSecret.IsUnknown() {
+	if config.OidcClientSecret.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("oidc_client_secret"),
 			"Unknown NCS OIDC API client secret",
@@ -104,7 +104,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		)
 	}
 
-	if config.oidcClientScope.IsUnknown() {
+	if config.OidcClientScope.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("oidc_client_scope"),
 			"Unknown NCS OIDC API client scope",
@@ -158,16 +158,16 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		oidcUrl = config.OidcUrl.ValueString()
 	}
 
-	if !config.oidcClientId.IsNull() {
-		oidcClientId = config.oidcClientId.ValueString()
+	if !config.OidcClientId.IsNull() {
+		oidcClientId = config.OidcClientId.ValueString()
 	}
 
-	if !config.oidcClientSecret.IsNull() {
-		oidcClientSecret = config.oidcClientSecret.ValueString()
+	if !config.OidcClientSecret.IsNull() {
+		oidcClientSecret = config.OidcClientSecret.ValueString()
 	}
 
-	if !config.oidcClientScope.IsNull() {
-		oidcClientScope = config.oidcClientScope.ValueString()
+	if !config.OidcClientScope.IsNull() {
+		oidcClientScope = config.OidcClientScope.ValueString()
 	}
 
 	if !config.OidcUsername.IsNull() {
