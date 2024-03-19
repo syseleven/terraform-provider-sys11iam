@@ -4,11 +4,15 @@ package resource_organization
 
 import (
 	"context"
+	"regexp"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -20,6 +24,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The time the resource was created.",
 				MarkdownDescription: "The time the resource was created.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
@@ -35,11 +40,15 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The UUID of the organization",
 				MarkdownDescription: "The UUID of the organization",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"is_active": schema.BoolAttribute{
+				Optional:            true,
 				Computed:            true,
+				Default:             booldefault.StaticBool(false),
 				Description:         "Whether the organization is active or not.",
 				MarkdownDescription: "Whether the organization is active or not.",
+				PlanModifiers: []planmodifier.Bool{UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -60,6 +69,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The time the resource was last updated.",
 				MarkdownDescription: "The time the resource was last updated.",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 		},
 	}

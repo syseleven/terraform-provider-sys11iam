@@ -64,13 +64,13 @@ type IAMProject struct {
 
 type IAMOrganizationMembership struct {
 	// OrganizationMembership id
-	ID string `json:"id,omitempty"`
+	ID string `json:"id"`
 
 	// OrganizationMembership email
-	Email string `json:"email,omitempty"`
+	Email string `json:"email"`
 
 	// org id
-	OrganizationId string `json:"org_id,omitempty"`
+	OrganizationId string `json:"org_id"`
 
 	// org name
 	OrganizationName string `json:"org_name,omitempty"`

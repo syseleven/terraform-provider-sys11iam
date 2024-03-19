@@ -97,9 +97,12 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 			}
 		}
 		// The email is invited, but has to be activated manually
-		resp.Diagnostics.AddError("InvitationNotAcceptedError",
+		resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
 			fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
 				data.OrganizationId.ValueString(), data.Email.ValueString()))
+		// Save data into Terraform state
+		data.Id = types.StringValue("0")
+		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 		return
 	}
 
@@ -114,6 +117,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Email = types.StringValue(response.Email)
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+	data.IsActive = types.BoolValue(true)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -131,6 +135,17 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationMembership resource.")
+	if !data.IsActive.ValueBool() {
+		response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
+		if err != nil {
+			// The email is invited, but has to be activated manually
+			resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
+				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
+					data.OrganizationId.ValueString(), data.Email.ValueString()))
+			return
+		}
+		data.Id = types.StringValue(response.ID)
+	}
 	response, err := r.client.GetOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -142,6 +157,7 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Email = types.StringValue(response.Email)
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+	data.IsActive = types.BoolValue(true)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -184,7 +200,6 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	data.Id = types.StringValue(response.ID)
 	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Email = types.StringValue(response.Email)
-	//data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

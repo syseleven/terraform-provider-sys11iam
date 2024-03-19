@@ -83,6 +83,13 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	data.IsActive = types.BoolValue(response.IsActive)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
+	// Emit manual steps as warnings
+	if !data.IsActive.ValueBool() {
+		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
+			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact an IAM administrator.",
+				data.Id.ValueString()))
+	}
+
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -113,6 +120,13 @@ func (r *organizationResource) Read(ctx context.Context, req resource.ReadReques
 	data.IsActive = types.BoolValue(response.IsActive)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
+	// Emit manual steps as warnings
+	if !data.IsActive.ValueBool() {
+		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
+			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact an IAM administrator.",
+				data.Id.ValueString()))
+	}
+
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -123,6 +137,7 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("is_active"), &data.IsActive)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -142,7 +157,6 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
-	tflog.Info(ctx, fmt.Sprintf("response.Id: %s", response.ID))
 
 	// Data value setting
 	data.Name = types.StringValue(response.Name)

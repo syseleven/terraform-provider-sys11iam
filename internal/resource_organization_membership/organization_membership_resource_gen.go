@@ -4,9 +4,13 @@ package resource_organization_membership
 
 import (
 	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 )
 
 func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
@@ -27,10 +31,18 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The UUID of the user",
 				MarkdownDescription: "The UUID of the user",
+				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"organization_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
+			},
+			"is_active": schema.BoolAttribute{
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
+				Description:         "Whether the member is active or not.",
+				MarkdownDescription: "Whether the member is active or not.",
+				PlanModifiers: []planmodifier.Bool{UseStateForUnknown()},
 			},
 		},
 	}
@@ -41,4 +53,5 @@ type OrganizationMembershipModel struct {
 	Email                  types.String `tfsdk:"email"`
 	Id                     types.String `tfsdk:"id"`
 	OrganizationId         types.String `tfsdk:"organization_id"`
+	IsActive       		   types.Bool   `tfsdk:"is_active"`
 }
