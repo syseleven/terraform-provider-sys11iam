@@ -26,10 +26,13 @@ func New() func() provider.Provider {
 type ncsProvider struct{}
 
 type ncsProviderModel struct {
-	OidcUrl      types.String `tfsdk:"oidc_url"`
-	OidcUsername types.String `tfsdk:"oidc_username"`
-	OidcPassword types.String `tfsdk:"oidc_password"`
-	IamUrl       types.String `tfsdk:"iam_url"`
+	OidcUrl          types.String `tfsdk:"oidc_url"`
+	oidcClientId     types.String `tfsdk:"oidc_client_id"`
+	oidcClientSecret types.String `tfsdk:"oidc_client_secret"`
+	oidcClientScope  types.String `tfsdk:"oidc_client_scope"`
+	OidcUsername     types.String `tfsdk:"oidc_username"`
+	OidcPassword     types.String `tfsdk:"oidc_password"`
+	IamUrl           types.String `tfsdk:"iam_url"`
 }
 
 func (p *ncsProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
@@ -38,6 +41,15 @@ func (p *ncsProvider) Schema(ctx context.Context, req provider.SchemaRequest, re
 			"oidc_url": schema.StringAttribute{
 				Optional:  true,
 				Sensitive: true,
+			},
+			"oidc_client_id": schema.StringAttribute{
+				Optional: true,
+			},
+			"oidc_client_secret": schema.StringAttribute{
+				Optional: true,
+			},
+			"oidc_client_scope": schema.StringAttribute{
+				Optional: true,
 			},
 			"oidc_username": schema.StringAttribute{
 				Optional: true,
@@ -71,6 +83,33 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			"Unknown NCS OIDC API Url",
 			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API url. "+
 				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_URL environment variable.",
+		)
+	}
+
+	if config.oidcClientId.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("oidc_client_id"),
+			"Unknown NCS OIDC API client id",
+			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client id. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_CLIENT_ID environment variable.",
+		)
+	}
+
+	if config.oidcClientSecret.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("oidc_client_secret"),
+			"Unknown NCS OIDC API client secret",
+			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client secret. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_CLIENT_SECRET environment variable.",
+		)
+	}
+
+	if config.oidcClientScope.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("oidc_client_scope"),
+			"Unknown NCS OIDC API client scope",
+			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client scope. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_CLIENT_SCOPE environment variable.",
 		)
 	}
 
@@ -108,12 +147,27 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	// Default values to environment variables, but override
 	// with Terraform configuration value if set.
 	oidcUrl := os.Getenv("NCS_OIDC_URL")
+	oidcClientId := os.Getenv("NCS_OIDC_CLIENT_ID")
+	oidcClientSecret := os.Getenv("NCS_OIDC_CLIENT_SECRET")
+	oidcClientScope := os.Getenv("NCS_OIDC_CLIENT_SCOPE")
 	oidcUsername := os.Getenv("NCS_OIDC_USERNAME")
 	oidcPassword := os.Getenv("NCS_OIDC_PASSWORD")
 	iamUrl := os.Getenv("NCS_IAM_URL")
 
 	if !config.OidcUrl.IsNull() {
 		oidcUrl = config.OidcUrl.ValueString()
+	}
+
+	if !config.oidcClientId.IsNull() {
+		oidcClientId = config.oidcClientId.ValueString()
+	}
+
+	if !config.oidcClientSecret.IsNull() {
+		oidcClientSecret = config.oidcClientSecret.ValueString()
+	}
+
+	if !config.oidcClientScope.IsNull() {
+		oidcClientScope = config.oidcClientScope.ValueString()
 	}
 
 	if !config.OidcUsername.IsNull() {
@@ -130,6 +184,36 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 
 	// If any of the expected configurations are missing, return
 	// errors with provider-specific guidance.
+
+	if oidcClientId == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("oidc_client_id"),
+			"Missing NCS OIDC API client id",
+			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API client id. "+
+				"Set the client value in the configuration or use the NCS_OIDC_CLIENT_ID environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if oidcClientSecret == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("oidc_client_secret"),
+			"Missing NCS OIDC API client secret",
+			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API client secret. "+
+				"Set the password value in the configuration or use the NCS_OIDC_CLIENT_SECRET environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if oidcClientScope == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("oidc_client_scope"),
+			"Missing NCS OIDC API client scope",
+			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API client scope. "+
+				"Set the password value in the configuration or use the NCS_OIDC_CLIENT_SCOPE environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
 
 	if oidcUsername == "" {
 		resp.Diagnostics.AddAttributeError(
@@ -176,7 +260,9 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	}
 
 	// Create a new NCS Keystone client using the configuration values
-	keycloakClient := keycloak.NewClient(oidcUrl, 10).WithLogin(oidcUsername, oidcPassword)
+	keycloakClient := keycloak.NewClient(oidcUrl, 10).
+		WithLogin(oidcUsername, oidcPassword).
+		WithClientConfig(oidcClientId, oidcClientSecret, oidcClientScope)
 	token, err := keycloakClient.Login()
 	if err != nil {
 		resp.Diagnostics.AddError("Login error", err.Error())

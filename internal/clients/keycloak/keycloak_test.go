@@ -25,7 +25,7 @@ func (suite *RestClientKeystoneTestSuite) TestLoginSuccess() {
 			ReturnWithBody([]byte(sampleResponse)),
 	)
 	defer mockServer.Close()
-	client := NewClient(mockServer.URL, 0).WithLogin("user", "pass")
+	client := NewClient(mockServer.URL, 0).WithLogin("user", "pass").WithClientConfig("pytest", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK", "pytest")
 
 	id, err := client.Login()
 	suite.NoError(err)
@@ -42,7 +42,7 @@ func (suite *RestClientKeystoneTestSuite) TestLoginError() {
 			ReturnWithBody([]byte(`{}`)),
 	)
 	defer mockServer.Close()
-	client := NewClient(mockServer.URL, 0).WithLogin("user", "pass")
+	client := NewClient(mockServer.URL, 0).WithLogin("user", "pass").WithClientConfig("pytest", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK", "pytest")
 
 	id, err := client.Login()
 	suite.Error(err) //TODO: check error message

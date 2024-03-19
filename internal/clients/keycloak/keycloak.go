@@ -17,9 +17,9 @@ func (c *Client) Login() (string, error) {
 	formValues.Add("username", c.auth.username)
 	formValues.Add("password", c.auth.password)
 	formValues.Add("grant_type", "password")
-	formValues.Add("scope", "pytest")
-	formValues.Add("client_id", "pytest")
-	formValues.Add("client_secret", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK")
+	formValues.Add("scope", c.auth.clientScope)
+	formValues.Add("client_id", c.auth.clientId)
+	formValues.Add("client_secret", c.auth.clientSecret)
 
 	response, err := c.client.NewRequest(http.MethodPost, "").
 		UseFormData(formValues).

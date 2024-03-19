@@ -12,10 +12,13 @@ const AuthorizationHeader = "Authorization"
 type Client struct {
 	url  string
 	auth struct {
-		username    string
-		password    string
-		bearerToken string
-		xAuthToken  string
+		username     string
+		password     string
+		bearerToken  string
+		xAuthToken   string
+		clientId     string
+		clientSecret string
+		clientScope  string
 	}
 	requestID      string
 	defaultHeaders map[string]string

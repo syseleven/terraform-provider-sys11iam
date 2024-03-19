@@ -15,8 +15,11 @@ import (
 type Client struct {
 	client *rest.Client
 	auth   struct {
-		username string
-		password string
+		username     string
+		password     string
+		clientId     string
+		clientSecret string
+		clientScope  string
 	}
 }
 
@@ -47,6 +50,13 @@ func (c *Client) WithContextFromRequest(r *http.Request) *Client {
 func (c *Client) WithLogin(username string, password string) *Client {
 	c.auth.username = username
 	c.auth.password = password
+	return c
+}
+
+func (c *Client) WithClientConfig(clientId string, clientSecret string, clientScope string) *Client {
+	c.auth.clientId = clientId
+	c.auth.clientSecret = clientSecret
+	c.auth.clientScope = clientScope
 	return c
 }
 
