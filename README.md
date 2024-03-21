@@ -1,5 +1,9 @@
 # terraform-provider-ncs
 
+## Usage
+
+The user documentation is found at the [docs](docs/index.md).
+
 ## Building
 
 Run `make terraform-provider-ncs` to build. This results in the binary `terraform-provider-ncs`.
