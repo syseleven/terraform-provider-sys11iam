@@ -30,8 +30,6 @@ type ncsProviderModel struct {
 	OidcClientId     types.String `tfsdk:"oidc_client_id"`
 	OidcClientSecret types.String `tfsdk:"oidc_client_secret"`
 	OidcClientScope  types.String `tfsdk:"oidc_client_scope"`
-	OidcUsername     types.String `tfsdk:"oidc_username"`
-	OidcPassword     types.String `tfsdk:"oidc_password"`
 	IamUrl           types.String `tfsdk:"iam_url"`
 }
 
@@ -50,13 +48,6 @@ func (p *ncsProvider) Schema(ctx context.Context, req provider.SchemaRequest, re
 			},
 			"oidc_client_scope": schema.StringAttribute{
 				Optional: true,
-			},
-			"oidc_username": schema.StringAttribute{
-				Optional: true,
-			},
-			"oidc_password": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: true,
 			},
 			"iam_url": schema.StringAttribute{
 				Optional: true,
@@ -113,24 +104,6 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		)
 	}
 
-	if config.OidcUsername.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("oidc_username"),
-			"Unknown NCS OIDC API Username",
-			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API username. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_USERNAME environment variable.",
-		)
-	}
-
-	if config.OidcPassword.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("oidc_password"),
-			"Unknown NCS OIDC API Password",
-			"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API password. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_PASSWORD environment variable.",
-		)
-	}
-
 	if config.IamUrl.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("iam_url"),
@@ -150,8 +123,6 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	oidcClientId := os.Getenv("NCS_OIDC_CLIENT_ID")
 	oidcClientSecret := os.Getenv("NCS_OIDC_CLIENT_SECRET")
 	oidcClientScope := os.Getenv("NCS_OIDC_CLIENT_SCOPE")
-	oidcUsername := os.Getenv("NCS_OIDC_USERNAME")
-	oidcPassword := os.Getenv("NCS_OIDC_PASSWORD")
 	iamUrl := os.Getenv("NCS_IAM_URL")
 
 	if !config.OidcUrl.IsNull() {
@@ -170,14 +141,6 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 		oidcClientScope = config.OidcClientScope.ValueString()
 	}
 
-	if !config.OidcUsername.IsNull() {
-		oidcUsername = config.OidcUsername.ValueString()
-	}
-
-	if !config.OidcPassword.IsNull() {
-		oidcPassword = config.OidcPassword.ValueString()
-	}
-
 	if !config.IamUrl.IsNull() {
 		iamUrl = config.IamUrl.ValueString()
 	}
@@ -190,7 +153,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("oidc_client_id"),
 			"Missing NCS OIDC API client id",
 			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API client id. "+
-				"Set the client value in the configuration or use the NCS_OIDC_CLIENT_ID environment variable. "+
+				"Set the client id value in the configuration or use the NCS_OIDC_CLIENT_ID environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -200,7 +163,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("oidc_client_secret"),
 			"Missing NCS OIDC API client secret",
 			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API client secret. "+
-				"Set the password value in the configuration or use the NCS_OIDC_CLIENT_SECRET environment variable. "+
+				"Set the client secret value in the configuration or use the NCS_OIDC_CLIENT_SECRET environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -210,27 +173,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("oidc_client_scope"),
 			"Missing NCS OIDC API client scope",
 			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API client scope. "+
-				"Set the password value in the configuration or use the NCS_OIDC_CLIENT_SCOPE environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-
-	if oidcUsername == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("oidc_username"),
-			"Missing NCS OIDC API Username",
-			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API username. "+
-				"Set the username value in the configuration or use the NCS_OIDC_USERNAME environment variable. "+
-				"If either is already set, ensure the value is not empty.",
-		)
-	}
-
-	if oidcPassword == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("oidc_password"),
-			"Missing NCS OIDC API Password",
-			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the OIDC API password. "+
-				"Set the password value in the configuration or use the NCS_OIDC_PASSWORD environment variable. "+
+				"Set the client scope value in the configuration or use the NCS_OIDC_CLIENT_SCOPE environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -240,7 +183,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("oidc_url"),
 			"Missing NCS IAM OIDC url",
 			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the IAM OIDC url. "+
-				"Set the password value in the configuration or use the HASHICUPS_OIDCURL environment variable. "+
+				"Set the url value in the configuration or use the HASHICUPS_OIDCURL environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -250,7 +193,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("iam_url"),
 			"Missing NCS IAM API Url",
 			"The provider cannot create the NCS IAM API client as there is a missing or empty value for the IAM API url. "+
-				"Set the host value in the configuration or use the NCS_IAM_URL environment variable. "+
+				"Set the url value in the configuration or use the NCS_IAM_URL environment variable. "+
 				"If either is already set, ensure the value is not empty.",
 		)
 	}
@@ -261,7 +204,6 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 
 	// Create a new NCS Keystone client using the configuration values
 	keycloakClient := keycloak.NewClient(oidcUrl, 10).
-		WithLogin(oidcUsername, oidcPassword).
 		WithClientConfig(oidcClientId, oidcClientSecret, oidcClientScope)
 	token, err := keycloakClient.Login()
 	if err != nil {

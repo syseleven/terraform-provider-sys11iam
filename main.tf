@@ -12,8 +12,6 @@ provider "ncs" {
   oidc_client_id = "pytest"
   oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
   oidc_client_scope = "pytest"
-  oidc_username = "admin"
-  oidc_password = "admin"
   iam_url = "http://127.0.0.1:9000"
 }
 

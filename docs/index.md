@@ -20,8 +20,6 @@ provider "ncs" {
   oidc_client_id = "pytest"
   oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
   oidc_client_scope = "pytest"
-  oidc_username = "admin"
-  oidc_password = "admin"
   iam_url = "http://127.0.0.1:9000"
 }
 
@@ -72,10 +70,6 @@ The following arguments are supported for the provider "ncs":
   If omitted, the `NCS_OIDC_CLIENTSECRET` environment variable is used.
 * **`oidc_client_scope`** - The scope of an application credential to authenticate with. Required by `oidc_client_id`.
   If omitted, the `NCS_OIDC_CLIENT_SCOPE` environment variable is used.
-* **`oidc_username`** - The username to login with.
-  If omitted, the `NCS_OIDC_USERNAME` environment variable is used.
-* **`oidc_password`** - The password to login with.
-  If omitted, the `NCS_OIDC_PASSWORD` environment variable is used.
 * **`iam_url`** - The url to the IAM service for creating organization, project, organization membership and project membership resources.
   If omitted, the `NCS_IAM_URL` environment variable is used.
   

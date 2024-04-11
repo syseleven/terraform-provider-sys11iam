@@ -7,9 +7,7 @@ def keycloak_user1_token():
     headers = {}
     params = {}
     data = {
-        "username": "testuser",
-        "password": "test",
-        "grant_type": "password",
+        "grant_type": "client_credentials",
         "scope": "pytest",
         "client_id": "pytest",
         "client_secret": "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK",

@@ -14,9 +14,7 @@ type AuthResponse struct {
 
 func (c *Client) Login() (string, error) {
 	formValues := make(url.Values, 0)
-	formValues.Add("username", c.auth.username)
-	formValues.Add("password", c.auth.password)
-	formValues.Add("grant_type", "password")
+	formValues.Add("grant_type", "client_credentials")
 	formValues.Add("scope", c.auth.clientScope)
 	formValues.Add("client_id", c.auth.clientId)
 	formValues.Add("client_secret", c.auth.clientSecret)
