@@ -8,7 +8,7 @@ terraform {
 
 provider "ncs" {
   #iam_url = "https://iam.stage-apis.syseleven.net/v1"
-  oidc_url = "http://127.0.0.1:8181/realms/application/protocol/openid-connect/token"
+  oidc_url = "http://localhost:8181/realms/application/protocol/openid-connect/token"
   oidc_client_id = "pytest"
   oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
   oidc_client_scope = "pytest"

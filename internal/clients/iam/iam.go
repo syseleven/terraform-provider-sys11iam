@@ -569,6 +569,27 @@ func (c *Client) CreateOrganizationInvitation(org_id string, email string, permi
 	return iamOrganizationInvitations[0], nil
 }
 
+func (c *Client) DeleteOrganizationInvitation(org_id string, email string) error {
+	invitation, err := c.GetOrganizationInvitationByEmail(org_id, email)
+	if err != nil {
+		return err
+	}
+	path := fmt.Sprintf(IAMOrganizationInvitationEndpoint, org_id, invitation.ID)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteProjectError, err.Error())
+	}
+	return nil
+}
+
 func (c *Client) GetProjectMembership(org_id string, project_id string, id string) (IAMProjectMembership, error) {
 	path := fmt.Sprintf(IAMProjectMembershipEndpoint, org_id, project_id, id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()

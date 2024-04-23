@@ -136,12 +136,17 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationMembership resource.")
 	if !data.IsActive.ValueBool() {
-		response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if err != nil {
+		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
+		if err == nil {
 			// The email is invited, but has to be activated manually
 			resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
 				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
 					data.OrganizationId.ValueString(), data.Email.ValueString()))
+			return
+		}
+		response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
+		if err != nil {
+			// The email was neither invited, nor exists as a member
 			return
 		}
 		data.Id = types.StringValue(response.ID)
@@ -182,7 +187,7 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	}
 
 	// Update API call logic
-	tflog.Info(ctx, "Creating OrganizationMembership resource.")
+	tflog.Info(ctx, "Updating OrganizationMembership resource.")
 	elements := make([]string, 0, len(data.EditablePermissions.Elements()))
 	diags := data.EditablePermissions.ElementsAs(ctx, &elements, false)
 	resp.Diagnostics.Append(diags...)
@@ -190,6 +195,13 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 		return
 	}
 
+	if data.Id.ValueString() == "0" {
+		_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString(), elements)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+	}
 	response, err := r.client.UpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -216,7 +228,18 @@ func (r *OrganizationMembershipResource) Delete(ctx context.Context, req resourc
 	}
 
 	// Delete API call logic
-	tflog.Info(ctx, "Reading OrganizationMembership resource.")
+	tflog.Info(ctx, "Deleting OrganizationMembership resource.")
+	if data.Id.ValueString() == "0" {
+		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
+		if err != nil {
+			return
+		}
+		err = r.client.DeleteOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+	}
 	err := r.client.DeleteOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
