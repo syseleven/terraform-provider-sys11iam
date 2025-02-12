@@ -55,7 +55,7 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationSuccess() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(http.MethodPost, "/v1/orgs").
-			WithBody([]byte(`{"description":"sample-org","name":"sample-org","tags":["sample-tag"]}`)).
+			WithBody([]byte(`{"company_info":{"accepted_tos":true,"city":"testcity","company_name":"testcompany","country":"testland","phone":"+49123456789","preferred_billing_method":"SEPA","street":"teststreet","street_number":"1","vat_id":"42069","zip_code":"12345"},"description":"sample-org","name":"sample-org","tags":["sample-tag"]}`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -65,7 +65,24 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationSuccess() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.CreateOrganization("sample-org", "sample-org", []string{"sample-tag"})
+	iAMOrganization := IAMOrganization{
+		Name:        "sample-org",
+		Description: "sample-org",
+		Tags:        []string{"sample-tag"},
+		CompanyInfo: IAMOrganizationCompanyInfo{
+			Street:                 "teststreet",
+			StreetNumber:           "1",
+			ZipCode:                "12345",
+			Country:                "testland",
+			Phone:                  "+49123456789",
+			City:                   "testcity",
+			VatID:                  "42069",
+			PreferredBillingMethod: "SEPA",
+			AcceptedTos:            true,
+			CompanyName:            "testcompany",
+		},
+	}
+	id, err := client.CreateOrganization(iAMOrganization)
 	suite.NoError(err)
 	iamOrg := IAMOrganization(IAMOrganization{ID: "1", Name: "sample-org", Description: "sample-org", Tags: []string{"sample-tag"}, CreatedAt: "date", IsActive: true, UpdatedAt: "date"})
 	suite.Equal(id, iamOrg)
@@ -76,7 +93,7 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(http.MethodPost, "/v1/orgs").
-			WithBody([]byte(`{"description":"sample-org","name":"sample-org","tags":["sample-tag"]}`)).
+			WithBody([]byte(`{"company_info":{"accepted_tos":true,"city":"testcity","company_name":"testcompany","country":"testland","phone":"+49123456789","preferred_billing_method":"SEPA","street":"teststreet","street_number":"1","vat_id":"42069","zip_code":"12345"},"description":"sample-org","name":"sample-org","tags":["sample-tag"]}`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -86,7 +103,24 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationError() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.CreateOrganization("sample-org", "sample-org", []string{"sample-tag"})
+	iAMOrganization := IAMOrganization{
+		Name:        "sample-org",
+		Description: "sample-org",
+		Tags:        []string{"sample-tag"},
+		CompanyInfo: IAMOrganizationCompanyInfo{
+			Street:                 "teststreet",
+			StreetNumber:           "1",
+			ZipCode:                "12345",
+			Country:                "testland",
+			Phone:                  "+49123456789",
+			City:                   "testcity",
+			VatID:                  "42069",
+			PreferredBillingMethod: "SEPA",
+			AcceptedTos:            true,
+			CompanyName:            "testcompany",
+		},
+	}
+	id, err := client.CreateOrganization(iAMOrganization)
 	suite.Error(err) //TODO: check error message
 	iamOrg := IAMOrganization(IAMOrganization{ID: "", Name: "", Description: "", Tags: []string(nil), CreatedAt: "", IsActive: false, UpdatedAt: ""})
 	suite.Equal(id, iamOrg)

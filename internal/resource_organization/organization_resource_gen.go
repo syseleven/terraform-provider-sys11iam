@@ -71,6 +71,84 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The time the resource was last updated.",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"company_info_street": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations street.",
+				MarkdownDescription: "The organizations street.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_street_number": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations street number.",
+				MarkdownDescription: "The organizations street number.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_zip_code": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations zip code.",
+				MarkdownDescription: "The organizations zip code.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_city": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations city.",
+				MarkdownDescription: "The organizations city.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_country": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations country.",
+				MarkdownDescription: "The organizations country.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_vat_id": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations vat ID.",
+				MarkdownDescription: "The organizations vat ID,",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_preferred_billing_method": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations preferred billing method.",
+				MarkdownDescription: "The organizations preferred billing method.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_phone": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations phone.",
+				MarkdownDescription: "The organizations phone.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
+			"company_info_accepted_tos": schema.BoolAttribute{
+				Required:            true,
+				Description:         "Whether the organization has accepted the terms of service or not.",
+				MarkdownDescription: "Whether the organization has accepted the terms of service or not.",
+				PlanModifiers: []planmodifier.Bool{UseStateForUnknown()},
+			},
+			"company_info_company_name": schema.StringAttribute{
+				Required:            true,
+				Description:         "The organizations company name.",
+				MarkdownDescription: "The organizations company name.",
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+				},
+			},
 		},
 	}
 }
@@ -83,4 +161,15 @@ type OrganizationModel struct {
 	Name           types.String `tfsdk:"name"`
 	Tags           types.List   `tfsdk:"tags"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
+	CompanyInfoStreet types.String `tfsdk:"company_info_street"`
+	CompanyInfoStreetNumber types.String `tfsdk:"company_info_street_number"`
+	CompanyInfoZipCode types.String `tfsdk:"company_info_zip_code"`
+	CompanyInfoCity types.String `tfsdk:"company_info_city"`
+	CompanyInfoCountry types.String `tfsdk:"company_info_country"`
+	CompanyInfoVatID types.String `tfsdk:"company_info_vat_id"`
+	CompanyInfoPreferredBillingMethod types.String `tfsdk:"company_info_preferred_billing_method"`
+	CompanyInfoPhone types.String `tfsdk:"company_info_phone"`
+	CompanyInfoAcceptedTos types.Bool `tfsdk:"company_info_accepted_tos"`
+	CompanyInfoCompanyName types.String `tfsdk:"company_info_company_name"`
+	
 }

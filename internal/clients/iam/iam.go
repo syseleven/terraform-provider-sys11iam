@@ -46,6 +46,41 @@ type IAMOrganization struct {
 
 	// org updated_at
 	UpdatedAt string `json:"updated_at"`
+
+	// org company_info
+	CompanyInfo IAMOrganizationCompanyInfo `json:"company_info"`
+}
+
+type IAMOrganizationCompanyInfo struct {
+	// company street
+	Street string `json:"street"`
+
+	// company street number
+	StreetNumber string `json:"street_number"`
+
+	// company zip code
+	ZipCode string `json:"zip_code"`
+
+	// company city
+	City string `json:"city"`
+
+	// company country
+	Country string `json:"country"`
+
+	// company vat id
+	VatID string `json:"vat_id"`
+
+	// company preferred billing method
+	PreferredBillingMethod string `json:"preferred_billing_method"`
+
+	// company phone
+	Phone string `json:"phone"`
+
+	// company accepted tos
+	AcceptedTos bool `json:"accepted_tos"`
+
+	// company name
+	CompanyName string `json:"company_name"`
 }
 
 type IAMProject struct {
@@ -163,13 +198,25 @@ func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
 	return iamOrganization, nil
 }
 
-func (c *Client) CreateOrganization(name string, description string, tags []string) (IAMOrganization, error) {
+func (c *Client) CreateOrganization(org IAMOrganization) (IAMOrganization, error) {
 	var iamOrganization IAMOrganization
 	path := IAMOrganizationsEndpoint
 	payload, err := json.Marshal(map[string]interface{}{
-		"name":        name,
-		"description": description,
-		"tags":        tags,
+		"name":        org.Name,
+		"description": org.Description,
+		"tags":        org.Tags,
+		"company_info": map[string]interface{}{
+			"street":                   org.CompanyInfo.Street,
+			"street_number":            org.CompanyInfo.StreetNumber,
+			"zip_code":                 org.CompanyInfo.ZipCode,
+			"city":                     org.CompanyInfo.City,
+			"country":                  org.CompanyInfo.Country,
+			"vat_id":                   org.CompanyInfo.VatID,
+			"preferred_billing_method": org.CompanyInfo.PreferredBillingMethod,
+			"phone":                    org.CompanyInfo.Phone,
+			"accepted_tos":             org.CompanyInfo.AcceptedTos,
+			"company_name":             org.CompanyInfo.CompanyName,
+		},
 	})
 	if err != nil {
 		return iamOrganization, err
@@ -184,6 +231,7 @@ func (c *Client) CreateOrganization(name string, description string, tags []stri
 
 	err = c.checkResponse(response)
 	if err != nil {
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, response.Body)
 		return iamOrganization, fmt.Errorf(CreateOrganizationError, err.Error())
 	}
 

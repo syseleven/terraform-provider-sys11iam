@@ -68,7 +68,22 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	response, err := r.client.CreateOrganization(data.Name.ValueString(), data.Description.ValueString(), elements)
+	iAMOrganization := iam.IAMOrganization{
+		Name:        data.Name.ValueString(),
+		Description: data.Description.ValueString(),
+		Tags:        elements,
+		CompanyInfo: iam.IAMOrganizationCompanyInfo{
+			Street:                 data.CompanyInfoStreet.ValueString(),
+			StreetNumber:           data.CompanyInfoStreetNumber.ValueString(),
+			ZipCode:                data.CompanyInfoZipCode.ValueString(),
+			City:                   data.CompanyInfoCity.ValueString(),
+			VatID:                  data.CompanyInfoVatID.ValueString(),
+			PreferredBillingMethod: data.CompanyInfoPreferredBillingMethod.ValueString(),
+			AcceptedTos:            data.CompanyInfoAcceptedTos.ValueBool(),
+			CompanyName:            data.CompanyInfoCompanyName.ValueString(),
+		},
+	}
+	response, err := r.client.CreateOrganization(iAMOrganization)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
