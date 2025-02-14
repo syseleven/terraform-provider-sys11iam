@@ -9,7 +9,12 @@ import (
 
 type AuthResponse struct {
 	// auth token
-	AuthToken string `json:"access_token,omitempty"`
+	AuthToken         string `json:"access_token,omitempty"`
+	ExpiresIn         int    `json:"expires_in,omitempty"`
+	RefreshExpires_in int    `json:"refresh_expires_in,omitempty"`
+	TokenType         string `json:"token_type,omitempty"`
+	NotBeforePolicy   int    `json:"not-before-policy,omitempty"`
+	Scope             string `json:"scope,omitempty"`
 }
 
 func (c *Client) Login() (string, error) {

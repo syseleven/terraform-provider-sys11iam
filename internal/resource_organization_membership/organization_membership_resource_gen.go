@@ -28,6 +28,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The email of the user",
 			},
 			"id": schema.StringAttribute{
+				Optional: 			 true,
 				Computed:            true,
 				Description:         "The UUID of the user",
 				MarkdownDescription: "The UUID of the user",

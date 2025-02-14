@@ -14,16 +14,20 @@ const IAMOrganizationEndpoint string = "/v1/orgs/%s"
 const IAMProjectsEndpoint string = "/v1/orgs/%s/projects"
 const IAMProjectEndpoint string = "/v1/orgs/%s/projects/%s"
 
-const IAMOrganizationMembershipsEndpoint string = "/v1/orgs/%s/memberships"
-const IAMOrganizationMembershipEndpoint string = "/v1/orgs/%s/memberships/%s"
-const IAMOrganizationMembershipPermissionsEndpoint string = "/v1/orgs/%s/memberships/%s/permissions"
+const IAMOrganizationMembershipsEndpoint string = "/v2/orgs/%s/memberships"
+const IAMOrganizationMembershipEndpoint string = "/v2/orgs/%s/memberships/%s"
+const IAMOrganizationMembershipPermissionsEndpoint string = "/v2/orgs/%s/memberships/%s/permissions"
 
 const IAMOrganizationInvitationsEndpoint string = "/v1/orgs/%s/invitations"
 const IAMOrganizationInvitationEndpoint string = "/v1/orgs/%s/invitations/%s"
 
-const IAMProjectMembershipsEndpoint string = "/v1/orgs/%s/projects/%s/memberships"
-const IAMProjectMembershipEndpoint string = "/v1/orgs/%s/projects/%s/memberships/%s"
-const IAMProjectMembershipPermissionsEndpoint string = "/v1/orgs/%s/projects/%s/memberships/%s/permissions"
+const IAMProjectMembershipsEndpoint string = "/v2/orgs/%s/projects/%s/memberships"
+const IAMProjectMembershipEndpoint string = "/v2/orgs/%s/projects/%s/memberships/%s"
+const IAMProjectMembershipPermissionsEndpoint string = "/v2/orgs/%s/projects/%s/memberships/%s/permissions"
+
+const IAMOrganizationServiceaccountsEndpoint string = "/v2/orgs/%s/service-accounts"
+const IAMOrganizationServiceaccountEndpoint string = "/v2/orgs/%s/service-accounts/%s"
+const IAMOrganizationServiceaccountPermissionsEndpoint string = "/v2/orgs/%s/service-accounts/%s/permissions"
 
 type IAMOrganization struct {
 	// org id
@@ -95,23 +99,38 @@ type IAMProject struct {
 
 	// project tags
 	Tags []string `json:"tags"`
+
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	Status    string `json:"status"`
 }
 
 type IAMOrganizationMembership struct {
-	// OrganizationMembership id
-	ID string `json:"id"`
-
-	// OrganizationMembership email
-	Email string `json:"email"`
-
-	// org id
-	OrganizationId string `json:"org_id"`
-
-	// org name
-	OrganizationName string `json:"org_name,omitempty"`
-
+	Affiliation    string `json:"affiliation"`
+	MembershipType string `json:"membership_type"`
 	// OrganizationMembership permissions
-	Permissions []string `json:"editable_permissions,omitempty"`
+	Permissions          []string                      `json:"editable_permissions,omitempty"`
+	ImmutablePermissions []string                      `json:"non_editable_permissions,omitempty"`
+	ServiceAccount       IAMOrganisationServiceAccount `json:"service_account"`
+	Organisation         IAMOrganization               `json:"organization"`
+	User                 IAMOrganisationUser           `json:"user"`
+}
+
+type IAMOrganisationServiceAccount struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type IAMOrganisationUser struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	Email       string `json:"email"`
 }
 
 type IAMOrganizationInvitation struct {
@@ -132,15 +151,11 @@ type IAMOrganizationInvitation struct {
 
 	// OrganizationInvitation permissions
 	Permissions []string `json:"permissions,omitempty"`
+
+	CreatedAt string `json:"created_at"`
 }
 
 type IAMProjectMembership struct {
-	// ProjectMembership id
-	ID string `json:"id,omitempty"`
-
-	// ProjectMembership email
-	Email string `json:"email,omitempty"`
-
 	// project id
 	ProjectId string `json:"project_id,omitempty"`
 
@@ -149,6 +164,28 @@ type IAMProjectMembership struct {
 
 	// ProjectMembership permissions
 	Permissions []string `json:"permissions,omitempty"`
+
+	MembershipType string                        `json:"membership_type,omitempty"`
+	ServiceAccount IAMOrganisationServiceAccount `json:"service_account"`
+	User           IAMOrganisationUser           `json:"user"`
+	Project        IAMProject                    `json:"project"`
+}
+
+type IAMOrganizationServiceaccount struct {
+	// OrganizationServiceaccount id
+	ID string `json:"id"`
+
+	// OrganizationServiceaccount name
+	Name string `json:"name"`
+
+	// OrganizationServiceaccount description
+	Description string `json:"description"`
+
+	// org id
+	OrganizationId string `json:"org_id"`
+
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 func (c *Client) GetOrganizations() ([]IAMOrganization, error) {
@@ -461,8 +498,9 @@ func (c *Client) GetOrganizationMembershipByEmail(org_id string, email string) (
 		}
 		return IAMOrganizationMembership{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
 	}
+
 	for _, iom := range iamOrganizationMemberships {
-		if iom.Email == email {
+		if iom.User.Email == email {
 			return iom, nil
 		}
 	}
@@ -478,7 +516,7 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, per
 		return iamOrganizationMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPut, path).
+	response, err := c.client.NewRequest(http.MethodPost, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
@@ -487,7 +525,7 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, per
 
 	err = c.checkResponse(response)
 	if err != nil {
-		return iamOrganizationMembership, fmt.Errorf(CreateOrganizationMembershipError, err.Error())
+		return iamOrganizationMembership, fmt.Errorf(CreateOrganizationMembershipError, err.Error(), path)
 	}
 
 	err = response.JSONUnmarshall(&iamOrganizationMembership)
@@ -510,7 +548,7 @@ func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, per
 		return iamOrganizationMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPut, path).
+	response, err := c.client.NewRequest(http.MethodPost, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
@@ -601,7 +639,7 @@ func (c *Client) CreateOrganizationInvitation(org_id string, email string, permi
 
 	err = c.checkResponse(response)
 	if err != nil {
-		return iamOrganizationInvitation, fmt.Errorf(CreateOrganizationInvitationError, err.Error())
+		return iamOrganizationInvitation, fmt.Errorf(CreateOrganizationInvitationError, err.Error(), path)
 	}
 
 	var iamOrganizationInvitations []IAMOrganizationInvitation
@@ -683,7 +721,7 @@ func (c *Client) GetProjectMembershipByEmail(org_id string, project_id string, e
 		return IAMProjectMembership{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
 	}
 	for _, iom := range iamProjectMemberships {
-		if iom.Email == email {
+		if iom.User.Email == email {
 			return iom, nil
 		}
 	}
@@ -699,7 +737,7 @@ func (c *Client) CreateProjectMembership(org_id string, project_id string, user_
 		return iamProjectMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPut, path).
+	response, err := c.client.NewRequest(http.MethodPost, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
@@ -731,7 +769,7 @@ func (c *Client) UpdateProjectMembership(org_id string, project_id string, user_
 		return iamProjectMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPut, path).
+	response, err := c.client.NewRequest(http.MethodPost, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
@@ -768,6 +806,121 @@ func (c *Client) DeleteProjectMembership(org_id string, project_id string, id st
 	err = c.checkResponse(response)
 	if err != nil {
 		return fmt.Errorf(DeleteProjectMembershipError, err.Error())
+	}
+	return nil
+}
+
+func (c *Client) GetOrganizationServiceaccount(org_id string, id string) (IAMOrganizationServiceaccount, error) {
+	path := fmt.Sprintf(IAMOrganizationServiceaccountEndpoint, org_id, id)
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return IAMOrganizationServiceaccount{}, errors.Trace(fmt.Errorf(GetOrganizationServiceaccountError, err.Error()))
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return IAMOrganizationServiceaccount{}, errors.Trace(fmt.Errorf(GetOrganizationServiceaccountError, err.Error()))
+	}
+
+	var iamOrganizationServiceaccount IAMOrganizationServiceaccount
+	err = response.JSONUnmarshall(&iamOrganizationServiceaccount)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return IAMOrganizationServiceaccount{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+
+	return iamOrganizationServiceaccount, nil
+}
+
+func (c *Client) CreateOrganizationServiceaccount(org_id string, name string, description string) (IAMOrganizationServiceaccount, error) {
+	var iamOrganizationServiceaccount IAMOrganizationServiceaccount
+
+	// create service account
+	path := fmt.Sprintf(IAMOrganizationServiceaccountsEndpoint, org_id)
+	type serviceaccount = map[string]interface{}
+	payload, err := json.Marshal(serviceaccount{
+		"name":        name,
+		"description": description,
+	})
+	if err != nil {
+		return iamOrganizationServiceaccount, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPost, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationServiceaccount, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationServiceaccount, fmt.Errorf(CreateOrganizationServiceaccountError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationServiceaccount)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationServiceaccount, err
+	}
+	iamOrganizationServiceaccount.OrganizationId = org_id
+	return iamOrganizationServiceaccount, nil
+}
+
+func (c *Client) UpdateOrganizationServiceaccount(org_id string, serviceaccount_id string, name string, description string) (IAMOrganizationServiceaccount, error) {
+	var iamOrganizationServiceaccount IAMOrganizationServiceaccount
+	// update service account
+	path := fmt.Sprintf(IAMOrganizationServiceaccountEndpoint, org_id, serviceaccount_id)
+	type serviceaccount = map[string]interface{}
+	payload, err := json.Marshal(serviceaccount{
+		"name":        name,
+		"description": description,
+	})
+
+	response, err := c.client.NewRequest(http.MethodPut, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationServiceaccount, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationServiceaccount, fmt.Errorf(UpdateOrganizationServiceaccountPermissionError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationServiceaccount)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationServiceaccount, err
+	}
+	iamOrganizationServiceaccount.OrganizationId = org_id
+	return iamOrganizationServiceaccount, nil
+}
+
+func (c *Client) DeleteOrganizationServiceaccount(org_id string, id string) error {
+	path := fmt.Sprintf(IAMOrganizationServiceaccountEndpoint, org_id, id)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteOrganizationServiceaccountError, err.Error())
 	}
 	return nil
 }

@@ -373,15 +373,16 @@ func (suite *RestClientIAMTestSuite) TestDeleteProjectError() {
 
 func (suite *RestClientIAMTestSuite) TestGetOrganizationMembershipSuccess() {
 	sampleResponse := `{
-		"id": "1",
-		"email": "test@syseleven.net",
-		"org_id": "1",
-		"org_name": "syseleven",
+		"organization": {
+			"id": "1",
+			"name": "syseleven"
+		},
+		"user": {"id": "1", "email": "test@syseleven.net"},
 		"editable_permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodGet, "/v1/orgs/1/memberships/1").
+		responses.Expect(http.MethodGet, "/v2/orgs/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -393,22 +394,23 @@ func (suite *RestClientIAMTestSuite) TestGetOrganizationMembershipSuccess() {
 
 	id, err := client.GetOrganizationMembership("1", "1")
 	suite.NoError(err)
-	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "1", Email: "test@syseleven.net", OrganizationId: "1", OrganizationName: "syseleven", Permissions: []string{"can_do"}})
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "1", Name: "syseleven"}, User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}})
 	suite.Equal(id, iamOrgMembership)
 	mockServer.HasExpectedRequests()
 }
 
 func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipSuccess() {
 	sampleResponse := `{
-		"id": "1",
-		"email": "test@syseleven.net",
-		"org_id": "1",
-		"org_name": "syseleven",
+		"organization": {
+			"id": "1",
+			"name": "syseleven"
+		},
+		"user": {"id": "1", "email": "test@syseleven.net"},
 		"editable_permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -419,17 +421,17 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipSuccess() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
+	iom, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
 	suite.NoError(err)
-	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "1", Email: "test@syseleven.net", OrganizationId: "1", OrganizationName: "syseleven", Permissions: []string{"can_do"}})
-	suite.Equal(id, iamOrgMembership)
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "1", Name: "syseleven"}, User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}})
+	suite.Equal(iom, iamOrgMembership)
 	mockServer.HasExpectedRequests()
 }
 
 func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -442,22 +444,23 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipError() {
 
 	id, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
 	suite.Error(err) //TODO: check error message
-	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "", Email: "", OrganizationId: "", OrganizationName: "", Permissions: []string(nil)})
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "", Name: ""}, Permissions: []string(nil)})
 	suite.Equal(id, iamOrgMembership)
 	mockServer.HasExpectedRequests()
 }
 
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 	sampleResponse := `{
-		"id": "1",
-		"email": "test@syseleven.net",
-		"org_id": "1",
-		"org_name": "syseleven",
+		"organization": {
+			"id": "1",
+			"name": "syseleven"
+		},
+		"user": {"id": "1", "email": "test@syseleven.net"},
 		"editable_permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -470,7 +473,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 
 	id, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
 	suite.NoError(err)
-	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "1", Email: "test@syseleven.net", OrganizationId: "1", OrganizationName: "syseleven", Permissions: []string{"can_do"}})
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "1", Name: "syseleven"}, User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}})
 	suite.Equal(id, iamOrgMembership)
 	mockServer.HasExpectedRequests()
 }
@@ -478,7 +481,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -491,7 +494,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
 
 	id, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
 	suite.Error(err)
-	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{ID: "", Email: "", OrganizationId: "", OrganizationName: "", Permissions: []string(nil)})
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "", Name: ""}, Permissions: []string(nil)})
 	suite.Equal(id, iamOrgMembership)
 	mockServer.HasExpectedRequests()
 }
@@ -499,7 +502,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
 func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipSuccess() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodDelete, "/v1/orgs/1/memberships/1").
+		responses.Expect(http.MethodDelete, "/v2/orgs/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -517,7 +520,7 @@ func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipSuccess() {
 func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodDelete, "/v1/orgs/1/memberships/1").
+		responses.Expect(http.MethodDelete, "/v2/orgs/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -534,15 +537,15 @@ func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipError() {
 
 func (suite *RestClientIAMTestSuite) TestGetProjectMembershipSuccess() {
 	sampleResponse := `{
+		"project": {
 		"id": "1",
-		"email": "test@syseleven.net",
-		"project_id": "1",
-		"project_name": "syseleven",
+		"name": "syseleven"},
+		"user": {"id": "1", "email": "test@syseleven.net"},
 		"permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodGet, "/v1/orgs/1/projects/1/memberships/1").
+		responses.Expect(http.MethodGet, "/v2/orgs/1/projects/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -554,22 +557,22 @@ func (suite *RestClientIAMTestSuite) TestGetProjectMembershipSuccess() {
 
 	id, err := client.GetProjectMembership("1", "1", "1")
 	suite.NoError(err)
-	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "1", Email: "test@syseleven.net", ProjectId: "1", ProjectName: "syseleven", Permissions: []string{"can_do"}})
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}, Project: IAMProject{ID: "1", Name: "syseleven"}})
 	suite.Equal(id, iamProjectMembership)
 	mockServer.HasExpectedRequests()
 }
 
 func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipSuccess() {
 	sampleResponse := `{
+		"project": {
 		"id": "1",
-		"email": "test@syseleven.net",
-		"project_id": "1",
-		"project_name": "syseleven",
+		"name": "syseleven"},
+		"user": {"id": "1", "email": "test@syseleven.net"},
 		"permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/projects/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -582,7 +585,7 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipSuccess() {
 
 	id, err := client.CreateProjectMembership("1", "1", "1", []string{"can_do"})
 	suite.NoError(err)
-	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "1", Email: "test@syseleven.net", ProjectId: "1", ProjectName: "syseleven", Permissions: []string{"can_do"}})
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}, Project: IAMProject{ID: "1", Name: "syseleven"}})
 	suite.Equal(id, iamProjectMembership)
 	mockServer.HasExpectedRequests()
 }
@@ -590,7 +593,7 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipSuccess() {
 func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/projects/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -603,22 +606,22 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectMembershipError() {
 
 	id, err := client.CreateProjectMembership("1", "1", "1", []string{"can_do"})
 	suite.Error(err) //TODO: check error message
-	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "", Email: "", ProjectId: "", ProjectName: "", Permissions: []string(nil)})
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{User: IAMOrganisationUser{ID: "", Email: ""}, Permissions: nil, Project: IAMProject{ID: "", Name: ""}})
 	suite.Equal(id, iamProjectMembership)
 	mockServer.HasExpectedRequests()
 }
 
 func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipSuccess() {
 	sampleResponse := `{
+		"project": {
 		"id": "1",
-		"email": "test@syseleven.net",
-		"project_id": "1",
-		"project_name": "syseleven",
+		"name": "syseleven"},
+		"user": {"id": "1", "email": "test@syseleven.net"},
 		"permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/projects/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -629,17 +632,17 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipSuccess() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.UpdateProjectMembership("1", "1", "1", []string{"can_do"})
+	ipm, err := client.UpdateProjectMembership("1", "1", "1", []string{"can_do"})
 	suite.NoError(err)
-	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "1", Email: "test@syseleven.net", ProjectId: "1", ProjectName: "syseleven", Permissions: []string{"can_do"}})
-	suite.Equal(id, iamProjectMembership)
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}, Project: IAMProject{ID: "1", Name: "syseleven"}})
+	suite.Equal(ipm, iamProjectMembership)
 	mockServer.HasExpectedRequests()
 }
 
 func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPut, "/v1/orgs/1/projects/1/memberships/1/permissions").
+		responses.Expect(http.MethodPost, "/v2/orgs/1/projects/1/memberships/1/permissions").
 			WithBody([]byte(`["can_do"]`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -652,7 +655,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipError() {
 
 	id, err := client.UpdateProjectMembership("1", "1", "1", []string{"can_do"})
 	suite.Error(err) //TODO: check error message
-	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{ID: "", Email: "", ProjectId: "", ProjectName: "", Permissions: []string(nil)})
+	iamProjectMembership := IAMProjectMembership(IAMProjectMembership{User: IAMOrganisationUser{ID: "", Email: ""}, Permissions: nil, Project: IAMProject{ID: "", Name: ""}})
 	suite.Equal(id, iamProjectMembership)
 	mockServer.HasExpectedRequests()
 }
@@ -660,7 +663,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectMembershipError() {
 func (suite *RestClientIAMTestSuite) TestDeleteProjectMembershipSuccess() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodDelete, "/v1/orgs/1/projects/1/memberships/1").
+		responses.Expect(http.MethodDelete, "/v2/orgs/1/projects/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -678,7 +681,7 @@ func (suite *RestClientIAMTestSuite) TestDeleteProjectMembershipSuccess() {
 func (suite *RestClientIAMTestSuite) TestDeleteProjectMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodDelete, "/v1/orgs/1/projects/1/memberships/1").
+		responses.Expect(http.MethodDelete, "/v2/orgs/1/projects/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).

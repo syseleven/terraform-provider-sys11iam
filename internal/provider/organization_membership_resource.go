@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -63,6 +64,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationMembership resource.")
 	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	data.IsActive = types.BoolValue(false)
 	// Is the organization active?
 	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
 	if err != nil {
@@ -85,7 +87,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 
 	// Is the e-mail already a member?
 	org_membership_response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-	if err != nil {
+	if data.Id.ValueString() == "" && err != nil {
 		// Is the e-mail at least invited?
 		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
 		if err != nil {
@@ -106,18 +108,33 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	response, err := r.client.CreateOrganizationMembership(data.OrganizationId.ValueString(), org_membership_response.ID, elements)
+	if org_membership_response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(org_membership_response.ServiceAccount.ID)
+	}
+
+	if org_membership_response.User.ID != "" {
+		data.Id = types.StringValue(org_membership_response.User.ID)
+	}
+
+	response, err := r.client.CreateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
-	data.Email = types.StringValue(response.Email)
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+		data.Email = types.StringValue(response.User.Email)
+	}
+	data.OrganizationId = types.StringValue(response.Organisation.ID)
+	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
-	data.IsActive = types.BoolValue(true)
+	//data.IsActive = types.BoolValue(true)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -147,9 +164,17 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 		response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
 		if err != nil {
 			// The email was neither invited, nor exists as a member
+			resp.Diagnostics.AddWarning("InvitationInexistentWarning",
+				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s was neither invited, nor exists as a member: %s",
+					data.OrganizationId.ValueString(), data.Email.ValueString(), err.Error()))
 			return
 		}
-		data.Id = types.StringValue(response.ID)
+		if response.ServiceAccount.ID != "" {
+			data.Id = types.StringValue(response.ServiceAccount.ID)
+		}
+		if response.User.ID != "" {
+			data.Id = types.StringValue(response.User.ID)
+		}
 	}
 	response, err := r.client.GetOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
 	if err != nil {
@@ -157,10 +182,17 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 		return
 	}
 
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
+
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
-	data.Email = types.StringValue(response.Email)
+	data.OrganizationId = types.StringValue(response.Organisation.ID)
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 	data.IsActive = types.BoolValue(true)
 
@@ -209,9 +241,17 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
-	data.Email = types.StringValue(response.Email)
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
+	data.OrganizationId = types.StringValue(response.Organisation.ID)
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
+	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+	data.IsActive = types.BoolValue(true)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -102,17 +103,29 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 				data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Email.ValueString()))
 		return
 	}
+	if org_membership_response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(org_membership_response.ServiceAccount.ID)
+	}
+	if org_membership_response.User.ID != "" {
+		data.Id = types.StringValue(org_membership_response.User.ID)
+	}
 
-	response, err := r.client.CreateProjectMembership(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), org_membership_response.ID, elements)
+	response, err := r.client.CreateProjectMembership(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
 	data.ProjectId = types.StringValue(response.ProjectId)
-	data.Email = types.StringValue(response.Email)
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save data into Terraform state
@@ -138,9 +151,15 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
 	data.ProjectId = types.StringValue(response.ProjectId)
-	data.Email = types.StringValue(response.Email)
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
@@ -181,10 +200,16 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
 	data.ProjectId = types.StringValue(response.ProjectId)
-	data.Email = types.StringValue(response.Email)
-	//data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
+	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
