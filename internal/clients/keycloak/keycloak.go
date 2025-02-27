@@ -9,7 +9,9 @@ import (
 
 type AuthResponse struct {
 	// auth token
-	AuthToken         string `json:"access_token,omitempty"`
+	AuthToken         string `json:"access_token"`
+	RefreshToken      string `json:"refresh_token,omitempty"`
+	SessionState      string `json:"session_state,omitempty"`
 	ExpiresIn         int    `json:"expires_in,omitempty"`
 	RefreshExpires_in int    `json:"refresh_expires_in,omitempty"`
 	TokenType         string `json:"token_type,omitempty"`
@@ -19,10 +21,12 @@ type AuthResponse struct {
 
 func (c *Client) Login() (string, error) {
 	formValues := make(url.Values, 0)
-	formValues.Add("grant_type", "client_credentials")
-	formValues.Add("scope", c.auth.clientScope)
+	formValues.Add("grant_type", "password")
+	formValues.Add("username", c.auth.username)
+	formValues.Add("password", c.auth.password)
 	formValues.Add("client_id", c.auth.clientId)
 	formValues.Add("client_secret", c.auth.clientSecret)
+	formValues.Add("scope", c.auth.clientScope)
 
 	response, err := c.client.NewRequest(http.MethodPost, "").
 		UseFormData(formValues).

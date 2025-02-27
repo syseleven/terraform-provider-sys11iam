@@ -353,6 +353,36 @@ func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
 	return iamOrganization, nil
 }
 
+func (c *Client) GetOrganizationByName(name string) (IAMOrganization, error) {
+	path := fmt.Sprintf(IAMOrganizationsEndpoint)
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return IAMOrganization{}, errors.Trace(fmt.Errorf(GetOrganizationsError, err.Error()))
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return IAMOrganization{}, errors.Trace(fmt.Errorf(GetOrganizationsError, err.Error()))
+	}
+
+	var iamOrganizations []IAMOrganization
+	err = response.JSONUnmarshall(&iamOrganizations)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return IAMOrganization{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+
+	for _, io := range iamOrganizations {
+		if io.Name == name {
+			return io, nil
+		}
+	}
+
+	return IAMOrganization{}, nil
+}
+
 func (c *Client) CreateOrganization(org IAMOrganization) (IAMOrganization, error) {
 	var iamOrganization IAMOrganization
 	path := IAMOrganizationsEndpoint
@@ -402,18 +432,13 @@ func (c *Client) CreateOrganization(org IAMOrganization) (IAMOrganization, error
 	return iamOrganization, nil
 }
 
-func (c *Client) UpdateOrganization(id string, description string, tags []string) (IAMOrganization, error) {
+func (c *Client) UpdateOrganization(id string, org IAMOrganization) (IAMOrganization, error) {
 	var iamOrganization IAMOrganization
 	path := fmt.Sprintf(IAMOrganizationEndpoint, id)
-	raw_payload := map[string]interface{}{}
-	if description != "" {
-		raw_payload["description"] = description
-	}
-	if len(tags) != 0 {
-		raw_payload["tags"] = tags
-	}
-
-	payload, err := json.Marshal(raw_payload)
+	payload, err := json.Marshal(map[string]interface{}{
+		"description": org.Description,
+		"tags":        org.Tags,
+	})
 	if err != nil {
 		return iamOrganization, err
 	}
@@ -659,14 +684,23 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, per
 }
 
 func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, permissions []string) (IAMOrganizationMembership, error) {
-	var iamOrganizationMembership IAMOrganizationMembership
-	path := fmt.Sprintf(IAMOrganizationMembershipPermissionsEndpoint, org_id, user_id)
-	payload, err := json.Marshal(permissions)
+	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPost, path).
+	path := fmt.Sprintf(IAMOrganizationMembershipEndpoint, org_id, user_id)
+	type membership = map[string]interface{}
+	payload, err := json.Marshal(membership{
+		"affiliation":          iamOrganizationMembership.Affiliation,
+		"membership_type":      iamOrganizationMembership.MembershipType,
+		"editable_permissions": permissions,
+	})
+	if err != nil {
+		return iamOrganizationMembership, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPatch, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {

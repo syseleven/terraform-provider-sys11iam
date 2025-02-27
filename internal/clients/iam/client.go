@@ -45,6 +45,11 @@ func (c *Client) WithBearerToken(token string) *Client {
 	return c
 }
 
+func (c *Client) WithServiceAccountToken(token string) *Client {
+	c.client.AddDefaultHeader("X-S11-CREDENTIAL", token)
+	return c
+}
+
 func (c Client) Health() error {
 	// check for availability and auth by using
 	resp, err := c.client.NewRequest(http.MethodGet, "/").Do()
@@ -71,9 +76,11 @@ var errorResponse struct {
 func (c *Client) checkResponse(response *rest.Response) error {
 	genericError := func(message string) error {
 		errorMsg := fmt.Sprintf(
-			"unexpected response from iam service: HTTP %d - %s",
+			"unexpected response from iam service: HTTP %d - %s for %s %s",
 			response.StatusCode,
 			message,
+			response.Request.Method,
+			response.Request.URL,
 		)
 
 		logging.Error(errorMsg)

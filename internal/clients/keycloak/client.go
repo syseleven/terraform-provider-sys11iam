@@ -47,10 +47,12 @@ func (c *Client) WithContextFromRequest(r *http.Request) *Client {
 	return c
 }
 
-func (c *Client) WithClientConfig(clientId string, clientSecret string, clientScope string) *Client {
+func (c *Client) WithClientConfig(clientId string, clientSecret string, clientScope string, clientUserName string, clientPassword string) *Client {
 	c.auth.clientId = clientId
 	c.auth.clientSecret = clientSecret
 	c.auth.clientScope = clientScope
+	c.auth.username = clientUserName
+	c.auth.password = clientPassword
 	return c
 }
 

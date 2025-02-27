@@ -68,42 +68,63 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	iAMOrganization := iam.IAMOrganization{
-		Name:        data.Name.ValueString(),
-		Description: data.Description.ValueString(),
-		Tags:        elements,
-		CompanyInfo: iam.IAMOrganizationCompanyInfo{
-			Street:                 data.CompanyInfoStreet.ValueString(),
-			StreetNumber:           data.CompanyInfoStreetNumber.ValueString(),
-			ZipCode:                data.CompanyInfoZipCode.ValueString(),
-			City:                   data.CompanyInfoCity.ValueString(),
-			VatID:                  data.CompanyInfoVatID.ValueString(),
-			PreferredBillingMethod: data.CompanyInfoPreferredBillingMethod.ValueString(),
-			AcceptedTos:            data.CompanyInfoAcceptedTos.ValueBool(),
-			CompanyName:            data.CompanyInfoCompanyName.ValueString(),
-		},
-	}
-	response, err := r.client.CreateOrganization(iAMOrganization)
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
-		return
-	}
 
-	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.Name = types.StringValue(response.Name)
-	data.Description = types.StringValue(response.Description)
-	data.CreatedAt = types.StringValue(response.CreatedAt)
-	data.UpdatedAt = types.StringValue(response.UpdatedAt)
-	data.IsActive = types.BoolValue(response.IsActive)
-	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	if data.Id.ValueString() != "" {
+		response, err := r.client.GetOrganization(data.Id.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+		// Data value setting
+		data.Id = types.StringValue(response.ID)
+		data.Name = types.StringValue(response.Name)
+		data.Description = types.StringValue(response.Description)
+		data.CreatedAt = types.StringValue(response.CreatedAt)
+		data.UpdatedAt = types.StringValue(response.UpdatedAt)
+		data.IsActive = types.BoolValue(response.IsActive)
+		data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	} else {
+		iAMOrganization := iam.IAMOrganization{
+			Name:        data.Name.ValueString(),
+			Description: data.Description.ValueString(),
+			Tags:        elements,
+			CompanyInfo: iam.IAMOrganizationCompanyInfo{
+				Street:                 data.CompanyInfoStreet.ValueString(),
+				StreetNumber:           data.CompanyInfoStreetNumber.ValueString(),
+				ZipCode:                data.CompanyInfoZipCode.ValueString(),
+				City:                   data.CompanyInfoCity.ValueString(),
+				VatID:                  data.CompanyInfoVatID.ValueString(),
+				PreferredBillingMethod: data.CompanyInfoPreferredBillingMethod.ValueString(),
+				AcceptedTos:            data.CompanyInfoAcceptedTos.ValueBool(),
+				CompanyName:            data.CompanyInfoCompanyName.ValueString(),
+			},
+		}
+		response, err := r.client.CreateOrganization(iAMOrganization)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+		// Data value setting
+		data.Id = types.StringValue(response.ID)
+		data.Name = types.StringValue(response.Name)
+		data.Description = types.StringValue(response.Description)
+		data.CreatedAt = types.StringValue(response.CreatedAt)
+		data.UpdatedAt = types.StringValue(response.UpdatedAt)
+		data.IsActive = types.BoolValue(response.IsActive)
+		data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	}
 
 	// Emit manual steps as warnings
 	if !data.IsActive.ValueBool() {
 		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
 			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact an IAM administrator.",
 				data.Id.ValueString()))
+	} else {
+		resp.Diagnostics.AddWarning("OrganizationAlreadyActiveWarning",
+			fmt.Sprintf("Organization with id %s did already exist and is active. Please rerun terraform to create the resources depending on this organization.",
+				data.Id.ValueString()))
 	}
+	data.IsActive = types.BoolValue(false)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -121,10 +142,17 @@ func (r *organizationResource) Read(ctx context.Context, req resource.ReadReques
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading organization resource.")
-	response, err := r.client.GetOrganization(data.Id.ValueString())
+	response, err := r.client.GetOrganizationByName(data.Name.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
+	}
+	if response.Name != data.Name.ValueString() {
+		response, err = r.client.GetOrganization(data.Id.ValueString())
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
 	}
 
 	// Data value setting
@@ -167,7 +195,12 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	response, err := r.client.UpdateOrganization(data.Id.ValueString(), data.Description.ValueString(), elements)
+	iAMOrganization := iam.IAMOrganization{
+		Description: data.Description.ValueString(),
+		Tags:        elements,
+	}
+
+	response, err := r.client.UpdateOrganization(data.Id.ValueString(), iAMOrganization)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return

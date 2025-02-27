@@ -150,7 +150,25 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationSuccess() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.UpdateOrganization("1", "sample-org", []string{"sample-tag"})
+	iAMOrganization := IAMOrganization{
+		Name:        "sample-org",
+		Description: "sample-org",
+		Tags:        []string{"sample-tag"},
+		CompanyInfo: IAMOrganizationCompanyInfo{
+			Street:                 "teststreet",
+			StreetNumber:           "1",
+			ZipCode:                "12345",
+			Country:                "testland",
+			Phone:                  "+49123456789",
+			City:                   "testcity",
+			VatID:                  "42069",
+			PreferredBillingMethod: "SEPA",
+			AcceptedTos:            true,
+			CompanyName:            "testcompany",
+		},
+	}
+
+	id, err := client.UpdateOrganization("1", iAMOrganization)
 	suite.NoError(err)
 	iamOrg := IAMOrganization(IAMOrganization{ID: "1", Name: "sample-org", Description: "sample-org", Tags: []string{"sample-tag"}, CreatedAt: "date", IsActive: true, UpdatedAt: "date"})
 	suite.Equal(id, iamOrg)
@@ -171,7 +189,25 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationError() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.UpdateOrganization("1", "sample-org", []string{"sample-tag"})
+	iAMOrganization := IAMOrganization{
+		Name:        "sample-org",
+		Description: "sample-org",
+		Tags:        []string{"sample-tag"},
+		CompanyInfo: IAMOrganizationCompanyInfo{
+			Street:                 "teststreet",
+			StreetNumber:           "1",
+			ZipCode:                "12345",
+			Country:                "testland",
+			Phone:                  "+49123456789",
+			City:                   "testcity",
+			VatID:                  "42069",
+			PreferredBillingMethod: "SEPA",
+			AcceptedTos:            true,
+			CompanyName:            "testcompany",
+		},
+	}
+
+	id, err := client.UpdateOrganization("1", iAMOrganization)
 	suite.Error(err) //TODO: check error message
 	iamOrg := IAMOrganization(IAMOrganization{ID: "", Name: "", Description: "", Tags: []string(nil), CreatedAt: "", IsActive: false, UpdatedAt: ""})
 	suite.Equal(id, iamOrg)
@@ -451,17 +487,20 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipError() {
 
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 	sampleResponse := `{
-		"organization": {
-			"id": "1",
-			"name": "syseleven"
-		},
-		"user": {"id": "1", "email": "test@syseleven.net"},
+		"membership_type": "service_account",
+        "affiliation": "member",
 		"editable_permissions": ["can_do"]
 	  }`
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
-			WithBody([]byte(`["can_do"]`)).
+		responses.Expect(http.MethodGet, "/v2/orgs/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusOK).
+			ReturnWithBody([]byte(sampleResponse)),
+		responses.Expect(http.MethodPatch, "/v2/orgs/1/memberships/1").
+			WithBody([]byte(`{"affiliation":"member","editable_permissions":["can_do"],"membership_type":"service_account"}`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -473,7 +512,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 
 	id, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
 	suite.NoError(err)
-	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "1", Name: "syseleven"}, User: IAMOrganisationUser{ID: "1", Email: "test@syseleven.net"}, Permissions: []string{"can_do"}})
+	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "", Name: ""}, User: IAMOrganisationUser{ID: "", Email: ""}, Affiliation: "member", MembershipType: "service_account", Permissions: []string{"can_do"}})
 	suite.Equal(id, iamOrgMembership)
 	mockServer.HasExpectedRequests()
 }
@@ -481,13 +520,11 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
-			WithBody([]byte(`["can_do"]`)).
+		responses.Expect(http.MethodGet, "/v2/orgs/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
-			ReturnWithCode(http.StatusConflict).
-			ReturnWithBody([]byte(`{}`)),
+			ReturnWithCode(http.StatusNotFound),
 	)
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")

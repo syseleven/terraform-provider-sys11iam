@@ -38,12 +38,12 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
+				Optional: true,
 				Description:         "The UUID of the organization",
 				MarkdownDescription: "The UUID of the organization",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"is_active": schema.BoolAttribute{
-				Optional:            true,
 				Computed:            true,
 				Default:             booldefault.StaticBool(false),
 				Description:         "Whether the organization is active or not.",

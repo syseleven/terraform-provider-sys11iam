@@ -20,12 +20,12 @@ func (suite *RestClientKeystoneTestSuite) TestLoginSuccess() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(http.MethodPost, "/").
-			WithBody([]byte(`client_id=pytest&client_secret=YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK&grant_type=client_credentials&scope=pytest`)).
+			WithBody([]byte(`client_id=pytest&client_secret=YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK&grant_type=password&password=pytest&scope=pytest&username=pytest`)).
 			ReturnWithCode(http.StatusCreated).
 			ReturnWithBody([]byte(sampleResponse)),
 	)
 	defer mockServer.Close()
-	client := NewClient(mockServer.URL, 0).WithClientConfig("pytest", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK", "pytest")
+	client := NewClient(mockServer.URL, 0).WithClientConfig("pytest", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK", "pytest", "pytest", "pytest")
 
 	id, err := client.Login()
 	suite.NoError(err)
@@ -37,12 +37,12 @@ func (suite *RestClientKeystoneTestSuite) TestLoginError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(http.MethodPost, "/").
-			WithBody([]byte(`client_id=pytest&client_secret=YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK&grant_type=client_credentials&scope=pytest`)).
+			WithBody([]byte(`client_id=pytest&client_secret=YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK&grant_type=password&password=pytest&scope=pytest&username=pytest`)).
 			ReturnWithCode(http.StatusConflict).
 			ReturnWithBody([]byte(`{}`)),
 	)
 	defer mockServer.Close()
-	client := NewClient(mockServer.URL, 0).WithClientConfig("pytest", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK", "pytest")
+	client := NewClient(mockServer.URL, 0).WithClientConfig("pytest", "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK", "pytest", "pytest", "pytest")
 
 	id, err := client.Login()
 	suite.Error(err) //TODO: check error message
