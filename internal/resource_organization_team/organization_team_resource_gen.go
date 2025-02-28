@@ -59,8 +59,7 @@ func OrganizationTeamResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The tags of the team.",
 			},
 			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 		},
 	}

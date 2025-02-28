@@ -85,8 +85,7 @@ func OrganizationContactResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The roles of the contact.",
 			},
 			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 		},
 	}

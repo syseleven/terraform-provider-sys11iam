@@ -21,16 +21,13 @@ func ProjectTeamResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The editable permissions of the user",
 			},
 			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 			"project_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 			"team_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 		},
 	}

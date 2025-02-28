@@ -35,8 +35,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 			"is_active": schema.BoolAttribute{
 				Computed:            true,

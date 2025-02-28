@@ -46,12 +46,10 @@ func ProjectS3UserResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"organization_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 			"project_id": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
+				Required:            true,
 			},
 		},
 	}
