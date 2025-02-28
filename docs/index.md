@@ -14,9 +14,11 @@ terraform {
   }
 }
 
-# Configure the NCS Provider
+# Configure the NCS Provider for regular user authentication (see configuration for service accounts below)
 provider "ncs" {
   oidc_url = "http://127.0.0.1:8181/realms/application/protocol/openid-connect/token"
+  oidc_client_username = "admin"
+  oidc_client_password = "admin"
   oidc_client_id = "pytest"
   oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
   oidc_client_scope = "pytest"
@@ -28,6 +30,16 @@ resource "ncs_organization" "test_org" {
   name = "test_org"
   description = "testdescription"
   tags = ["testing"]
+  company_info_street = "teststreet"
+  company_info_street_number = "1"
+  company_info_zip_code = "12345"
+  company_info_city = "testcity"
+  company_info_country = "testland"
+  company_info_vat_id = "42069"
+  company_info_preferred_billing_method = "SEPA"
+  company_info_phone = "+49123456789"
+  company_info_accepted_tos = true
+  company_info_company_name = "testcompany"
 }
 
 # Create an NCS project
@@ -56,7 +68,90 @@ resource "ncs_project_membership" "test_project_membership" {
   organization_id = ncs_organization.test_org.id
   project_id = ncs_project.test_project[0].id
 }
+
+# Create an NCS service account
+resource "ncs_organization_serviceaccount" "test_serviceaccount" {
+  count = ncs_organization.test_org.is_active ? 1 : 0
+  name = "deploy"
+  description = "deployment account"
+  organization_id = ncs_organization.test_org.id
+}
+
+# Create an NCS organization contact
+resource "ncs_organization_contact" "test_organization_contact" {
+  count = ncs_organization.test_org.is_active ? 1 : 0
+  first_name = "Test"
+  last_name = "Contact"
+  notes = "test notes"
+  email = "test@syseleven.net"
+  phone = "+491684941254823"
+  roles = ["Technical"]
+  organization_id = ncs_organization.test_org.id
+}
+
+# Create an NCS organization team
+resource "ncs_organization_team" "test_organization_team" {
+  count = ncs_organization.test_org.is_active ? 1 : 0
+  name = "Testteam"
+  description = "test team"
+  tags = ["testing2"]
+  editable_permissions = ["can_become_project_administrator_in_org"]
+  organization_id = ncs_organization.test_org.id
+}
+
+# Create an NCS project eam
+resource "ncs_project_team" "test_project_team" {
+  count = ncs_organization.test_org.is_active ? 1 : 0
+  organization_id = ncs_organization.test_org.id
+  project_id = ncs_project.test_project[0].id
+  team_id = ncs_organization_team.test_organization_team[0].id
+  editable_permissions = ["can_become_administrator_in_project"]
+}
+
+# Create an NCS organization team membership
+resource "ncs_organization_team_membership" "test_organization_team_membership" {
+  count = ncs_organization.test_org.is_active ? 1 : 0
+  id = ncs_organization_serviceaccount.test_serviceaccount[0].id
+  organization_id = ncs_organization.test_org.id
+  team_id = ncs_organization_team.test_organization_team[0].id
+  editable_permissions = ["can_become_project_administrator_in_org"]
+}
+
+# Create an NCS project S3User
+resource "ncs_project_s3user" "test_project_s3user" {
+  count = ncs_organization.test_org.is_active ? 1 : 0
+  name = "tests3user"
+  description = "test s3user"
+  organization_id = ncs_organization.test_org.id
+  project_id = ncs_project.test_project[0].id
+}
+
 ```
+
+Replacing above provider configuration:
+```
+# Configure the NCS Provider for regular user authentication
+provider "ncs" {
+  oidc_url = "http://127.0.0.1:8181/realms/application/protocol/openid-connect/token"
+  oidc_client_username = "admin"
+  oidc_client_password = "admin"
+  oidc_client_id = "pytest"
+  oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
+  oidc_client_scope = "pytest"
+  iam_url = "http://127.0.0.1:9000"
+}
+```
+
+with the following, allows you to authenticate with a service account instead of a regular user account, but disallows organization creation:
+
+```
+# Configure the NCS Provider for service account user authentication
+provider "ncs" {
+  oidc_url = "http://127.0.0.1:8181/realms/application/protocol/openid-connect/token"
+  oidc_client_secret = "s11_orgsa_my-s-e-c-r_e_tserviceaccountcredential"
+  iam_url = "http://127.0.0.1:9000"
+}
+````
 
 ## Configuration Reference
 
@@ -66,9 +161,11 @@ The following arguments are supported for the provider "ncs":
   If omitted, the `NCS_OIDC_URL` environment variable is used.
 * **`oidc_client_id`** - The ID of an application credential to authenticate with. An`oidc_client_secret` and `oidc_client_scope` has to bet set along with this parameter.
   If omitted, the `NCS_OIDC_CLIENT_ID` environment variable is used.
-* **`oidc_client_secret`** - The secret of an application credential to authenticate with. Required by `oidc_client_id`.
+* **`oidc_client_secret`** - The secret of an application credential to authenticate with. Required by `oidc_client_id`. When `oidc_client_id` is not set, the value is used for a service account authentication credential.
   If omitted, the `NCS_OIDC_CLIENTSECRET` environment variable is used.
 * **`oidc_client_scope`** - The scope of an application credential to authenticate with. Required by `oidc_client_id`.
+* **`oidc_client_username`** - The regular user username to authenticate with. Required by `oidc_client_id`.
+* **`oidc_client_password`** - The regular user password to authenticate with. Required by `oidc_client_id`.
   If omitted, the `NCS_OIDC_CLIENT_SCOPE` environment variable is used.
 * **`iam_url`** - The url to the IAM service for creating organization, project, organization membership and project membership resources.
   If omitted, the `NCS_IAM_URL` environment variable is used.
