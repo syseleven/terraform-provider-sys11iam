@@ -74,7 +74,7 @@ func (resp *Response) JSONUnmarshall(v interface{}) error {
 	err = validate.Var(v, "dive")
 	if err != nil {
 		validationErrors := err.(validator.ValidationErrors)
-		return fmt.Errorf("validation error: %v", validationErrors)
+		return fmt.Errorf("validation error: %v ; Parsed: %v ; Body: %s", validationErrors, v, bodyString)
 	}
 	return nil
 }

@@ -70,18 +70,18 @@ type IAMOrganization struct {
 	UpdatedAt string `json:"updated_at" validate:"required"`
 
 	// org company_info
-	CompanyInfo IAMOrganizationCompanyInfo `json:"company_info" validate:"required"`
+	CompanyInfo IAMOrganizationCompanyInfo `json:"company_info"`
 }
 
 type IAMOrganizationCompanyInfo struct {
 	// company street
-	Street string `json:"street" validate:"required"`
+	Street string `json:"street"`
 
 	// company street number
-	StreetNumber string `json:"street_number" validate:"required"`
+	StreetNumber string `json:"street_number"`
 
 	// company zip code
-	ZipCode string `json:"zip_code" validate:"required"`
+	ZipCode string `json:"zip_code"`
 
 	// company city
 	City string `json:"city"`
