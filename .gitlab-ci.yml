@@ -27,7 +27,7 @@ test.unit:
   script:
     - go get -u golang.org/x/tools/...
     - go install gotest.tools/gotestsum@v1.8.2
-    - make unit-test
+    - make unit-test-ci
 
 e2e-testing:
   stage: test

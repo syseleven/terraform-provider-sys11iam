@@ -44,44 +44,44 @@ const IAMProjectTeamMembershipsEndpoint string = "/v2/orgs/%s/projects/%s/teams/
 const IAMProjectTeamMembershipEndpoint string = "/v2/orgs/%s/projects/%s/teams/%s/memberships/%s"
 const IAMProjectTeamMembershipPermissionsEndpoint string = "/v2/orgs/%s/projects/%s/teams/%s/memberships/%s/permissions"
 
-const IAMProjectS3UsersEndpoint string = "/v1/orgs/%s/projects/%s/s3-users"
-const IAMProjectS3UserEndpoint string = "/v1/orgs/%s/projects/%s/s3-users/%s"
+const IAMProjectS3UsersEndpoint string = "/v2/orgs/%s/projects/%s/s3-users"
+const IAMProjectS3UserEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s"
 
 type IAMOrganization struct {
 	// org id
-	ID string `json:"id"`
+	ID string `json:"id" validate:"required"`
 
 	// org name
-	Name string `json:"name"`
+	Name string `json:"name" validate:"required"`
 
 	// org description
-	Description string `json:"description"`
+	Description string `json:"description" validate:"required"`
 
 	// org tags
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags" validate:"required"`
 
 	// org created_at
-	CreatedAt string `json:"created_at"`
+	CreatedAt string `json:"created_at" validate:"required"`
 
 	// org is_active
-	IsActive bool `json:"is_active"`
+	IsActive bool `json:"is_active" validate:"required"`
 
 	// org updated_at
-	UpdatedAt string `json:"updated_at"`
+	UpdatedAt string `json:"updated_at" validate:"required"`
 
 	// org company_info
-	CompanyInfo IAMOrganizationCompanyInfo `json:"company_info"`
+	CompanyInfo IAMOrganizationCompanyInfo `json:"company_info" validate:"required"`
 }
 
 type IAMOrganizationCompanyInfo struct {
 	// company street
-	Street string `json:"street"`
+	Street string `json:"street" validate:"required"`
 
 	// company street number
-	StreetNumber string `json:"street_number"`
+	StreetNumber string `json:"street_number" validate:"required"`
 
 	// company zip code
-	ZipCode string `json:"zip_code"`
+	ZipCode string `json:"zip_code" validate:"required"`
 
 	// company city
 	City string `json:"city"`
@@ -306,29 +306,6 @@ type IAMOrganizationServiceaccount struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-func (c *Client) GetOrganizations() ([]IAMOrganization, error) {
-	response, err := c.client.NewRequest(http.MethodGet, IAMOrganizationsEndpoint).Do()
-	if err != nil {
-		return []IAMOrganization{}, errors.Trace(fmt.Errorf(GetOrganizationsError, err.Error()))
-	}
-	err = c.checkResponse(response)
-	if err != nil {
-		return []IAMOrganization{}, errors.Trace(fmt.Errorf(GetOrganizationsError, err.Error()))
-	}
-
-	var iamOrganizations []IAMOrganization
-	err = response.JSONUnmarshall(&iamOrganizations)
-	if err != nil {
-		body, respErr := response.StringBody()
-		if respErr != nil {
-			body = "unable to parse body"
-		}
-		return []IAMOrganization{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
-	}
-
-	return iamOrganizations, nil
-}
-
 func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
 	path := fmt.Sprintf(IAMOrganizationEndpoint, id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
@@ -429,6 +406,7 @@ func (c *Client) CreateOrganization(org IAMOrganization) (IAMOrganization, error
 		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
 		return iamOrganization, err
 	}
+
 	return iamOrganization, nil
 }
 

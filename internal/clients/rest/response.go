@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type Response struct {
@@ -67,6 +69,12 @@ func (resp *Response) JSONUnmarshall(v interface{}) error {
 	err := decoder.Decode(&v)
 	if err != nil {
 		return fmt.Errorf("Err: %s ; Body: %s ; From: %s %s", err.Error(), bodyString, resp.Request.Method, resp.Request.URL)
+	}
+	validate := validator.New()
+	err = validate.Var(v, "dive")
+	if err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		return fmt.Errorf("validation error: %v", validationErrors)
 	}
 	return nil
 }

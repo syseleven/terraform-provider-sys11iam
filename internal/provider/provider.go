@@ -226,7 +226,9 @@ func (p *ncsProvider) Metadata(ctx context.Context, req provider.MetadataRequest
 }
 
 func (p *ncsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	return []func() datasource.DataSource{
+		NewOrganizationDataSource,
+	}
 }
 
 func (p *ncsProvider) Resources(ctx context.Context) []func() resource.Resource {
