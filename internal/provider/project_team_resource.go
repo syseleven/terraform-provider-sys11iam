@@ -113,8 +113,8 @@ func (r *ProjectTeamResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	sort.Sort(sort.StringSlice(response.TeamPermissions))
-	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.TeamPermissions)
+	sort.Sort(sort.StringSlice(response))
+	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

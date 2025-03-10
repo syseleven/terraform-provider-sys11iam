@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/iam"
 	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/resource_organization_team_membership"
@@ -78,14 +77,7 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		return
 	}
 
-	elements := make([]string, 0, len(data.EditablePermissions.Elements()))
-	diags := data.EditablePermissions.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	_, err = r.client.CreateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString(), elements)
+	_, err = r.client.CreateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -118,7 +110,6 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 
 	// Data value setting
 	sort.Sort(sort.StringSlice(response.TeamPermissions))
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.TeamPermissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -137,14 +128,8 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeamMembership resource.")
-	elements := make([]string, 0, len(data.EditablePermissions.Elements()))
-	diags := data.EditablePermissions.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
-	response, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString(), elements)
+	response, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -152,7 +137,6 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 
 	// Data value setting
 	sort.Sort(sort.StringSlice(response.TeamPermissions))
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.TeamPermissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

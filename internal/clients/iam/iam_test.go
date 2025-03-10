@@ -489,11 +489,11 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
 func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipSuccess() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodDelete, "/v2/orgs/1/memberships/1").
+		responses.Expect(http.MethodDelete, "/v2/orgs/1/service-accounts/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
-			ReturnWithCode(http.StatusNoContent).
+			ReturnWithCode(http.StatusNotFound).
 			ReturnWithBody([]byte(``)),
 	)
 	defer mockServer.Close()
@@ -507,6 +507,12 @@ func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipSuccess() {
 func (suite *RestClientIAMTestSuite) TestDeleteOrganizationMembershipError() {
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
+		responses.Expect(http.MethodDelete, "/v2/orgs/1/service-accounts/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusBadRequest).
+			ReturnWithBody([]byte(``)),
 		responses.Expect(http.MethodDelete, "/v2/orgs/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
@@ -911,8 +917,8 @@ func (suite *RestClientIAMTestSuite) TestGetProjectTeamPermissionsSuccess() {
 	method := http.MethodGet
 	url := "/v2/orgs/1/projects/1/teams/1/permissions"
 	status := http.StatusOK
-	expected := IAMProjectTeamPermissions(IAMProjectTeamPermissions{})
-	sampleResponse, err := json.Marshal(expected)
+	expected := []string{"can_do"}
+	sampleResponse, err := json.Marshal([]string{"can_do"})
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(method, url).
@@ -957,10 +963,10 @@ func (suite *RestClientIAMTestSuite) TestGetProjectTeamMembershipSuccess() {
 
 func (suite *RestClientIAMTestSuite) TestGetProjectS3UserSuccess() {
 	method := http.MethodGet
-	url := "/v2/orgs/1/projects/1/s3-users/1"
+	url := "/v2/orgs/1/projects/1/s3-users"
 	status := http.StatusOK
-	expected := IAMProjectS3User(IAMProjectS3User{})
-	sampleResponse, err := json.Marshal(expected)
+	expected := IAMProjectS3User(IAMProjectS3User{ID: "1"})
+	sampleResponse, err := json.Marshal([]IAMProjectS3User{expected})
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(method, url).
@@ -1041,7 +1047,7 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationTeamMembershipSuccess
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	ret, err := client.CreateOrganizationTeamMembership("1", "1", "1", []string{"can_do"})
+	ret, err := client.CreateOrganizationTeamMembership("1", "1", "1")
 	suite.NoError(err)
 	suite.Equal(expected, ret)
 	mockServer.HasExpectedRequests()
@@ -1215,7 +1221,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationTeamMembershipSuccess
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	ret, err := client.UpdateOrganizationTeamMembership(examplestring, examplestring, examplestring, exampleSlicedstring)
+	ret, err := client.UpdateOrganizationTeamMembership(examplestring, examplestring, examplestring)
 	suite.NoError(err)
 	suite.Equal(expected, ret)
 	mockServer.HasExpectedRequests()
@@ -1225,8 +1231,8 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectTeamPermissionsSuccess() {
 	method := "POST"
 	url := "/v2/orgs/1/projects/1/teams/1/permissions"
 	status := http.StatusOK
-	body := IAMProjectTeamPermissions(exampleIAMProjectTeamPermissions)
-	expected := IAMProjectTeamPermissions(exampleIAMProjectTeamPermissions)
+	body := []string{"can_do"}
+	expected := []string{"can_do"}
 	sampleResponse, err := json.Marshal(body)
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
@@ -1272,7 +1278,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateProjectTeamMembershipSuccess() {
 }
 
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationContactSuccess() {
-	method := "POST"
+	method := "PUT"
 	url := "/v2/orgs/1/contacts/1"
 	status := http.StatusOK
 	body := IAMOrganizationContact(exampleIAMOrganizationContact)
@@ -1297,7 +1303,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationContactSuccess() {
 }
 
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationTeamSuccess() {
-	method := "POST"
+	method := "PUT"
 	url := "/v2/orgs/1/teams/1"
 	status := http.StatusOK
 	body := IAMOrganizationTeam(exampleIAMOrganizationTeam)
@@ -1322,7 +1328,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationTeamSuccess() {
 }
 
 func (suite *RestClientIAMTestSuite) TestUpdateProjectS3UserSuccess() {
-	method := "POST"
+	method := "PUT"
 	url := "/v2/orgs/1/projects/1/s3-users/1"
 	status := http.StatusOK
 	body := IAMProjectS3User(exampleIAMProjectS3User)
@@ -1370,10 +1376,10 @@ func (suite *RestClientIAMTestSuite) TestDeleteOrganizationTeamMembershipSuccess
 }
 
 func (suite *RestClientIAMTestSuite) TestDeleteProjectTeamPermissionsSuccess() {
-	method := "DELETE"
+	method := "PATCH"
 	url := "/v2/orgs/1/projects/1/teams/1/permissions"
 	status := http.StatusOK
-	body := ""
+	body := "[]"
 	sampleResponse, err := json.Marshal(body)
 	mockServer := responses.NewMockServer(
 		&suite.Suite,

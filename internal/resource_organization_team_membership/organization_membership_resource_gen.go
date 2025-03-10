@@ -15,12 +15,6 @@ import (
 func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"editable_permissions": schema.ListAttribute{
-				ElementType:         types.StringType,
-				Required:            true,
-				Description:         "The editable permissions of the user",
-				MarkdownDescription: "The editable permissions of the user",
-			},
 			"id": schema.StringAttribute{
 				Optional: 			 true,
 				Computed:            true,
@@ -39,7 +33,6 @@ func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema
 }
 
 type OrganizationTeamMembershipModel struct {
-	EditablePermissions    types.List   `tfsdk:"editable_permissions"`
 	Id                     types.String `tfsdk:"id"`
 	OrganizationId         types.String `tfsdk:"organization_id"`
 	TeamId         types.String `tfsdk:"team_id"`
