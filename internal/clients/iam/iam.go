@@ -64,7 +64,7 @@ type IAMOrganization struct {
 	CreatedAt string `json:"created_at" validate:"required"`
 
 	// org is_active
-	IsActive bool `json:"is_active" validate:"required"`
+	IsActive bool `json:"is_active"`
 
 	// org updated_at
 	UpdatedAt string `json:"updated_at" validate:"required"`
