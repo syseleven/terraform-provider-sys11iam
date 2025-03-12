@@ -1,3 +1,6 @@
 coverage.out
 test-report.xml
 main.tf
+terraform-provider-ncs
+terraform.tfstate
+terraform.tfstate.backup

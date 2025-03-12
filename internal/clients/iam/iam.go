@@ -55,7 +55,7 @@ type IAMOrganization struct {
 	Name string `json:"name" validate:"required"`
 
 	// org description
-	Description string `json:"description" validate:"required"`
+	Description string `json:"description"`
 
 	// org tags
 	Tags []string `json:"tags" validate:"required"`
