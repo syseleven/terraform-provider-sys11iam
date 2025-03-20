@@ -124,6 +124,7 @@ type IAMProject struct {
 }
 
 type IAMOrganizationMembership struct {
+	ID             string `json:"id"`
 	Affiliation    string `json:"affiliation"`
 	MembershipType string `json:"membership_type"`
 	// OrganizationMembership permissions
@@ -623,14 +624,23 @@ func (c *Client) GetOrganizationMembershipByEmail(org_id string, email string) (
 }
 
 func (c *Client) CreateOrganizationMembership(org_id string, user_id string, permissions []string) (IAMOrganizationMembership, error) {
-	var iamOrganizationMembership IAMOrganizationMembership
-	path := fmt.Sprintf(IAMOrganizationMembershipPermissionsEndpoint, org_id, user_id)
-	payload, err := json.Marshal(permissions)
+	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPost, path).
+	path := fmt.Sprintf(IAMOrganizationMembershipEndpoint, org_id, user_id)
+	type membership = map[string]interface{}
+	payload, err := json.Marshal(membership{
+		"affiliation":          iamOrganizationMembership.Affiliation,
+		"membership_type":      iamOrganizationMembership.MembershipType,
+		"editable_permissions": permissions,
+	})
+	if err != nil {
+		return iamOrganizationMembership, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPatch, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {

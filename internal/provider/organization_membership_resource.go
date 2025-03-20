@@ -86,34 +86,36 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	}
 
 	// Is the e-mail already a member?
-	org_membership_response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-	if data.Id.ValueString() == "" && err != nil {
-		// Is the e-mail at least invited?
-		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if err != nil {
-			// Invite the e-mail
-			_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString(), elements)
+	if data.Email.ValueString() != "" {
+		org_membership_response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
+		if data.Id.ValueString() == "" && err != nil {
+			// Is the e-mail at least invited?
+			_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
 			if err != nil {
-				resp.Diagnostics.AddError("", err.Error())
-				return
+				// Invite the e-mail
+				_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString(), elements)
+				if err != nil {
+					resp.Diagnostics.AddError("", err.Error())
+					return
+				}
 			}
+			// The email is invited, but has to be activated manually
+			resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
+				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
+					data.OrganizationId.ValueString(), data.Email.ValueString()))
+			// Save data into Terraform state
+			data.Id = types.StringValue("0")
+			resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+			return
 		}
-		// The email is invited, but has to be activated manually
-		resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
-			fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
-				data.OrganizationId.ValueString(), data.Email.ValueString()))
-		// Save data into Terraform state
-		data.Id = types.StringValue("0")
-		resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-		return
-	}
 
-	if org_membership_response.ServiceAccount.ID != "" {
-		data.Id = types.StringValue(org_membership_response.ServiceAccount.ID)
-	}
+		if org_membership_response.ServiceAccount.ID != "" {
+			data.Id = types.StringValue(org_membership_response.ServiceAccount.ID)
+		}
 
-	if org_membership_response.User.ID != "" {
-		data.Id = types.StringValue(org_membership_response.User.ID)
+		if org_membership_response.User.ID != "" {
+			data.Id = types.StringValue(org_membership_response.User.ID)
+		}
 	}
 
 	response, err := r.client.CreateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), elements)
@@ -152,7 +154,7 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationMembership resource.")
-	if !data.IsActive.ValueBool() {
+	if data.Email.ValueString() != "" && !data.IsActive.ValueBool() {
 		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
 		if err == nil {
 			// The email is invited, but has to be activated manually

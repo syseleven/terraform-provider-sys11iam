@@ -396,12 +396,18 @@ func (suite *RestClientIAMTestSuite) TestGetOrganizationMembershipSuccess() {
 }
 
 func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipSuccess() {
-	expected := IAMOrganizationMembership(exampleIAMOrganizationMembership)
+	expected := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: exampleIAMOrganization, User: IAMOrganisationUser{ID: "", Email: ""}, Affiliation: "member", MembershipType: "service_account", Permissions: []string{"can_do"}})
 	sampleResponse, err := json.Marshal(expected)
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
-			WithBody([]byte(`["can_do"]`)).
+		responses.Expect(http.MethodGet, "/v2/orgs/1/memberships/1").
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(http.StatusOK).
+			ReturnWithBody([]byte(sampleResponse)),
+		responses.Expect(http.MethodPatch, "/v2/orgs/1/memberships/1").
+			WithBody([]byte(`{"affiliation":"member","editable_permissions":["can_do"],"membership_type":"service_account"}`)).
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
@@ -418,15 +424,16 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipSuccess() {
 }
 
 func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipError() {
+	expected := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: exampleIAMOrganization, User: IAMOrganisationUser{ID: "", Email: ""}, Affiliation: "member", MembershipType: "service_account", Permissions: []string{"can_do"}})
+	sampleResponse, err := json.Marshal(expected)
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
-		responses.Expect(http.MethodPost, "/v2/orgs/1/memberships/1/permissions").
-			WithBody([]byte(`["can_do"]`)).
+		responses.Expect(http.MethodGet, "/v2/orgs/1/memberships/1").
 			WithHeaders(map[string]string{
 				"Authorization": "Bearer testtoken",
 			}).
-			ReturnWithCode(http.StatusConflict).
-			ReturnWithBody([]byte(`{}`)),
+			ReturnWithCode(http.StatusNotFound).
+			ReturnWithBody([]byte(sampleResponse)),
 	)
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
