@@ -7,23 +7,16 @@ terraform {
   }
 }
 
-# Configure the NCS Provider for regular user authentication (see configuration for service accounts below)
+# Configure the NCS Provider for service account authentication (see configuration for regular accounts below)
 provider "ncs" {
-  oidc_url = "http://127.0.0.1:8181/realms/application/protocol/openid-connect/token"
-  #oidc_url = ""
-  #oidc_client_username = "admin"
-  #oidc_client_password = "admin"
-  #oidc_client_id = "pytest"
-  oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
-  #oidc_client_scope = "pytest"
-  #iam_url = "http://127.0.0.1:9000"
+  serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36FJqasdmalkwaksnkajc"
   iam_url = "https://iam.stage-apis.syseleven.net"
 }
 
 # Get an NCS organization
 data "ncs_organization" "testorg" {
   id = "6bd591c7-f940-4ee4-8fe7-8fe9b76e51d6"
-  name = "struckorg"
+  name = "test_org"
 }
 
 # Create an NCS project
@@ -98,7 +91,6 @@ resource "ncs_organization_team_membership" "testorganization_team_membership" {
   id = ncs_organization_serviceaccount.test_serviceaccount[0].id
   organization_id = data.ncs_organization.testorg.id
   team_id = ncs_organization_team.testorganization_team[0].id
-  editable_permissions = ["can_become_project_administrator_in_org"]
 }
 
 # Create an NCS project S3User
@@ -109,3 +101,4 @@ resource "ncs_project_s3user" "test_project_s3user" {
   organization_id = data.ncs_organization.testorg.id
   project_id = ncs_project.test_project[0].id
 }
+
