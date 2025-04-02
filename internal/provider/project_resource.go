@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -183,4 +184,37 @@ func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,project_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading Project resource.")
+	response, err := r.client.GetProject(idParts[0], idParts[1])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_project.ProjectModel
+	// Data value setting
+	data.Id = types.StringValue(response.ID)
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
+	data.OrganizationId = types.StringValue(idParts[0])
+	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	// resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

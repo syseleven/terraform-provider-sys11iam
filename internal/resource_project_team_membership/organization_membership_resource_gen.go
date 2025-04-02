@@ -5,11 +5,10 @@ package resource_project_team_membership
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func ProjectTeamMembershipResourceSchema(ctx context.Context) schema.Schema {
@@ -22,20 +21,20 @@ func ProjectTeamMembershipResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The editable permissions of the user",
 			},
 			"id": schema.StringAttribute{
-				Optional: 			 true,
+				Optional:            true,
 				Computed:            true,
 				Description:         "The UUID of the user",
 				MarkdownDescription: "The UUID of the user",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"organization_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 			"project_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 			"team_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 		},
 	}
@@ -43,8 +42,8 @@ func ProjectTeamMembershipResourceSchema(ctx context.Context) schema.Schema {
 
 type ProjectTeamMembershipModel struct {
 	Permissions    types.List   `tfsdk:"editable_permissions"`
-	Id                     types.String `tfsdk:"id"`
-	OrganizationId         types.String `tfsdk:"organization_id"`
-	ProjectId         types.String `tfsdk:"project_id"`
+	Id             types.String `tfsdk:"id"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	ProjectId      types.String `tfsdk:"project_id"`
 	TeamId         types.String `tfsdk:"team_id"`
 }

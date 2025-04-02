@@ -4,16 +4,16 @@ package resource_project_membership
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func ProjectMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"email": schema.StringAttribute{
-				Required: true,
+				Required:            true,
 				Description:         "The email address of the user.",
 				MarkdownDescription: "The email address of the user.",
 			},
@@ -26,13 +26,13 @@ func ProjectMembershipResourceSchema(ctx context.Context) schema.Schema {
 				Required: true,
 			},
 			"permissions": schema.ListAttribute{
-				Required: true,
+				Required:            true,
 				ElementType:         types.StringType,
 				Description:         "The permissions of the user",
 				MarkdownDescription: "The permissions of the user",
 			},
 			"project_id": schema.StringAttribute{
-				Required: true,
+				Required:            true,
 				Description:         "The UUID of the project",
 				MarkdownDescription: "The UUID of the project",
 			},

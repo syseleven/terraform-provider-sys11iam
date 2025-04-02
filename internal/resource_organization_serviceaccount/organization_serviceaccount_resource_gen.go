@@ -5,11 +5,10 @@ package resource_organization_serviceaccount
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func OrganizationServiceaccountResourceSchema(ctx context.Context) schema.Schema {
@@ -29,18 +28,18 @@ func OrganizationServiceaccountResourceSchema(ctx context.Context) schema.Schema
 				Computed:            true,
 				Description:         "The UUID of the service-account",
 				MarkdownDescription: "The UUID of the service-account",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"organization_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 		},
 	}
 }
 
 type OrganizationServiceaccountModel struct {
-	Name                   types.String `tfsdk:"name"`
-	Description            types.String `tfsdk:"description"`
-	Id                     types.String `tfsdk:"id"`
-	OrganizationId         types.String `tfsdk:"organization_id"`
+	Name           types.String `tfsdk:"name"`
+	Description    types.String `tfsdk:"description"`
+	Id             types.String `tfsdk:"id"`
+	OrganizationId types.String `tfsdk:"organization_id"`
 }

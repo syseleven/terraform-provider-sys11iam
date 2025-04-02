@@ -4,9 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	responses "gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/http-responses"
-
 	"github.com/stretchr/testify/suite"
+	responses "gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/http-responses"
 )
 
 type RestClientKeystoneTestSuite struct {

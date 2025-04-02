@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -73,7 +74,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	}
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
-			fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
+			fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as it is not active. Organization activation is a manual step, please contact the SysEleven GmbH Sales Team <sales@syseleven.de>.\n This can also be done via https://dashboard.syseleven.de/dashboard",
 				data.OrganizationId.ValueString()))
 		return
 	}
@@ -287,4 +288,41 @@ func (r *OrganizationMembershipResource) Delete(ctx context.Context, req resourc
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || (len(idParts) == 2 && (idParts[0] == "" || idParts[1] == "")) {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,member_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading OrganizationMembership resource.")
+	response, err := r.client.GetOrganizationMembership(idParts[0], idParts[1])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_organization_membership.OrganizationMembershipModel
+	// Data value setting
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
+	data.OrganizationId = types.StringValue(idParts[0])
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
+	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+	data.IsActive = types.BoolValue(true)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

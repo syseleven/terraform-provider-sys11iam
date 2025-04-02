@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -154,9 +155,13 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.FirstName = types.StringValue(response.FirstName)
+	data.LastName = types.StringValue(response.LastName)
+	data.Phone = types.StringValue(response.Phone)
+	data.Email = types.StringValue(response.Email)
+	data.Notes = types.StringValue(response.Notes)
 	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
-
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -178,4 +183,43 @@ func (r *OrganizationContactResource) Delete(ctx context.Context, req resource.D
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *OrganizationContactResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,contact_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading OrganizationContact resource.")
+	response, err := r.client.GetOrganizationContact(idParts[0], idParts[1])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_organization_contact.OrganizationContactModel
+	// Data value setting
+	data.Id = types.StringValue(response.ID)
+	data.FirstName = types.StringValue(response.FirstName)
+	data.LastName = types.StringValue(response.LastName)
+	data.Phone = types.StringValue(response.Phone)
+	data.Email = types.StringValue(response.Email)
+	data.Notes = types.StringValue(response.Notes)
+	sort.Sort(sort.StringSlice(response.Roles))
+	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
+	data.OrganizationId = types.StringValue(idParts[0])
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

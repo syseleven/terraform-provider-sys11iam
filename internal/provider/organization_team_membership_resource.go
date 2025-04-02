@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/iam"
 	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/resource_organization_team_membership"
@@ -159,4 +161,36 @@ func (r *OrganizationTeamMembershipResource) Delete(ctx context.Context, req res
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 3 || idParts[0] == "" || idParts[1] == "" || idParts[2] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,team_id,member_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
+	response, err := r.client.GetOrganizationTeamMembership(idParts[0], idParts[1], idParts[2])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_organization_team_membership.OrganizationTeamMembershipModel
+
+	// Data value setting
+	data.Id = types.StringValue(idParts[2])
+	data.TeamId = types.StringValue(idParts[1])
+	data.OrganizationId = types.StringValue(idParts[0])
+
+	sort.Sort(sort.StringSlice(response.TeamPermissions))
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

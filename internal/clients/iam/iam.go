@@ -31,6 +31,7 @@ const IAMOrganizationServiceaccountPermissionsEndpoint string = "/v2/orgs/%s/ser
 
 const IAMOrganizationTeamsEndpoint string = "/v2/orgs/%s/teams"
 const IAMOrganizationTeamEndpoint string = "/v2/orgs/%s/teams/%s"
+const IAMOrganizationTeamPermissionsEndpoint string = "/v2/orgs/%s/teams/%s/permissions"
 
 const IAMOrganizationContactsEndpoint string = "/v2/orgs/%s/contacts"
 const IAMOrganizationContactEndpoint string = "/v2/orgs/%s/contacts/%s"
@@ -147,6 +148,11 @@ type IAMOrganizationTeam struct {
 
 	// team tags
 	Tags []string `json:"tags"`
+}
+
+type IAMOrganizationTeamPermissions struct {
+	// team id
+	TeamPermissions []string `json:"."`
 }
 
 type IAMProjectTeamPermissions struct {
@@ -1086,6 +1092,30 @@ func (c *Client) GetOrganizationTeam(org_id string, id string) (IAMOrganizationT
 	}
 
 	return iamOrganizationTeam, nil
+}
+
+func (c *Client) GetOrganizationTeamPermissions(org_id string, id string) (IAMOrganizationTeamPermissions, error) {
+	path := fmt.Sprintf(IAMOrganizationTeamPermissionsEndpoint, org_id, id)
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return IAMOrganizationTeamPermissions{}, errors.Trace(fmt.Errorf(GetOrganizationTeamError, err.Error()))
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return IAMOrganizationTeamPermissions{}, errors.Trace(fmt.Errorf(GetOrganizationTeamError, err.Error()))
+	}
+
+	var iamOrganizationTeamPermissions IAMOrganizationTeamPermissions
+	err = response.JSONUnmarshall(&iamOrganizationTeamPermissions.TeamPermissions)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return IAMOrganizationTeamPermissions{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+
+	return iamOrganizationTeamPermissions, nil
 }
 
 func (c *Client) CreateOrganizationTeam(org_id string, name string, description string, tags []string) (IAMOrganizationTeam, error) {

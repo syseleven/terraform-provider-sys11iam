@@ -1,10 +1,9 @@
 package keycloak
 
 import (
-	"net/url"
-
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type AuthResponse struct {

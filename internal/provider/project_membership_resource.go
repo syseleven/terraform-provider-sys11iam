@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -157,7 +158,7 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 	if response.User.ID != "" {
 		data.Id = types.StringValue(response.User.ID)
 	}
-	data.ProjectId = types.StringValue(response.ProjectId)
+	data.ProjectId = types.StringValue(response.Project.ID)
 	data.Email = types.StringValue(response.User.Email)
 	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
@@ -232,4 +233,42 @@ func (r *ProjectMembershipResource) Delete(ctx context.Context, req resource.Del
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *ProjectMembershipResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 3 || idParts[0] == "" || idParts[1] == "" || idParts[2] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,project_id,member_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading ProjectMembership resource.")
+	response, err := r.client.GetProjectMembership(idParts[0], idParts[1], idParts[2])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_project_membership.ProjectMembershipModel
+
+	// Data value setting
+	if response.ServiceAccount.ID != "" {
+		data.Id = types.StringValue(response.ServiceAccount.ID)
+	}
+	if response.User.ID != "" {
+		data.Id = types.StringValue(response.User.ID)
+	}
+	data.ProjectId = types.StringValue(response.Project.ID)
+	data.OrganizationId = types.StringValue(idParts[0])
+	data.Email = types.StringValue(response.User.Email)
+	sort.Sort(sort.StringSlice(response.Permissions))
+	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

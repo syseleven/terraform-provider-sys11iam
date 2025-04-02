@@ -4,13 +4,12 @@ import (
 	"context"
 	"os"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/iam"
 	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/keycloak"
 )

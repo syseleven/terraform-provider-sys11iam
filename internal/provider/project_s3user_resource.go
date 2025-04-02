@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -158,4 +159,35 @@ func (r *ProjectS3UserResource) Delete(ctx context.Context, req resource.DeleteR
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *ProjectS3UserResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 3 || idParts[0] == "" || idParts[1] == "" || idParts[2] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,project_id,s3_user_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading ProjectS3User resource.")
+	response, err := r.client.GetProjectS3User(idParts[0], idParts[1], idParts[2])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_project_s3user.ProjectS3UserModel
+	// Data value setting
+	data.Id = types.StringValue(response.ID)
+	data.ProjectId = types.StringValue(idParts[1])
+	data.OrganizationId = types.StringValue(idParts[0])
+	data.Description = types.StringValue(response.Description)
+	data.Name = types.StringValue(response.Name)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -6,16 +6,13 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func ProjectS3UserResourceSchema(ctx context.Context) schema.Schema {
@@ -35,7 +32,7 @@ func ProjectS3UserResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The UUID of the S3User",
 				MarkdownDescription: "The UUID of the S3User",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -46,10 +43,10 @@ func ProjectS3UserResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"organization_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 			"project_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 		},
 	}
@@ -59,6 +56,6 @@ type ProjectS3UserModel struct {
 	Description    types.String `tfsdk:"description"`
 	Id             types.String `tfsdk:"id"`
 	Name           types.String `tfsdk:"name"`
-	OrganizationId         types.String `tfsdk:"organization_id"`
-	ProjectId         types.String `tfsdk:"project_id"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	ProjectId      types.String `tfsdk:"project_id"`
 }

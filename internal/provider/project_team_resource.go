@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -168,4 +169,35 @@ func (r *ProjectTeamResource) Delete(ctx context.Context, req resource.DeleteReq
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *ProjectTeamResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 3 || idParts[0] == "" || idParts[1] == "" || idParts[2] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,project_id,team_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading ProjectTeam resource.")
+	response, err := r.client.GetProjectTeamPermissions(idParts[0], idParts[1], idParts[2])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_project_team.ProjectTeamModel
+
+	sort.Sort(sort.StringSlice(response))
+	data.TeamId = types.StringValue(idParts[2])
+	data.ProjectId = types.StringValue(idParts[1])
+	data.OrganizationId = types.StringValue(idParts[0])
+	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -1,21 +1,20 @@
 package main
 
 import (
-    "context"
-    "log"
+	"context"
+	"log"
 
-    "gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/provider"
-
-    "github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/provider"
 )
 
 func main() {
-    opts := providerserver.ServeOpts{
-        Address: "hashicorp.com/syseleven/ncs",
-    }
+	opts := providerserver.ServeOpts{
+		Address: "hashicorp.com/syseleven/ncs",
+	}
 
-    err := providerserver.Serve(context.Background(), provider.New(), opts)
-    if err != nil {
-        log.Fatal(err.Error())
-    }
+	err := providerserver.Serve(context.Background(), provider.New(), opts)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }

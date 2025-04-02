@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -84,7 +85,6 @@ func (r *OrganizationServiceaccountResource) Create(ctx context.Context, req res
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 
@@ -112,7 +112,6 @@ func (r *OrganizationServiceaccountResource) Read(ctx context.Context, req resou
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 
@@ -141,7 +140,6 @@ func (r *OrganizationServiceaccountResource) Update(ctx context.Context, req res
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(response.OrganizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 
@@ -166,4 +164,35 @@ func (r *OrganizationServiceaccountResource) Delete(ctx context.Context, req res
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *OrganizationServiceaccountResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,service_account_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+	tflog.Info(ctx, "Reading OrganizationServiceaccount resource.")
+	response, err := r.client.GetOrganizationServiceaccount(idParts[0], idParts[1])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_organization_serviceaccount.OrganizationServiceaccountModel
+
+	// Data value setting
+	data.Id = types.StringValue(response.ID)
+	data.OrganizationId = types.StringValue(idParts[0])
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

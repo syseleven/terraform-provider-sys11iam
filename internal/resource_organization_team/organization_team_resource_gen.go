@@ -6,16 +6,13 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func OrganizationTeamResourceSchema(ctx context.Context) schema.Schema {
@@ -41,7 +38,7 @@ func OrganizationTeamResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The UUID of the team",
 				MarkdownDescription: "The UUID of the team",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -59,17 +56,17 @@ func OrganizationTeamResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The tags of the team.",
 			},
 			"organization_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 		},
 	}
 }
 
 type OrganizationTeamModel struct {
-	EditablePermissions    types.List   `tfsdk:"editable_permissions"`
-	Description    types.String `tfsdk:"description"`
-	Id             types.String `tfsdk:"id"`
-	Name           types.String `tfsdk:"name"`
-	Tags           types.List   `tfsdk:"tags"`
-	OrganizationId         types.String `tfsdk:"organization_id"`
+	EditablePermissions types.List   `tfsdk:"editable_permissions"`
+	Description         types.String `tfsdk:"description"`
+	Id                  types.String `tfsdk:"id"`
+	Name                types.String `tfsdk:"name"`
+	Tags                types.List   `tfsdk:"tags"`
+	OrganizationId      types.String `tfsdk:"organization_id"`
 }

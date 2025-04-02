@@ -6,16 +6,13 @@ import (
 	"context"
 	"regexp"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func OrganizationContactResourceSchema(ctx context.Context) schema.Schema {
@@ -25,7 +22,7 @@ func OrganizationContactResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The UUID of the contact",
 				MarkdownDescription: "The UUID of the contact",
-				PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"first_name": schema.StringAttribute{
 				Optional:            true,
@@ -85,7 +82,7 @@ func OrganizationContactResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The roles of the contact.",
 			},
 			"organization_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 		},
 	}
@@ -93,11 +90,11 @@ func OrganizationContactResourceSchema(ctx context.Context) schema.Schema {
 
 type OrganizationContactModel struct {
 	Id             types.String `tfsdk:"id"`
-	FirstName           types.String `tfsdk:"first_name"`
-	LastName           types.String `tfsdk:"last_name"`
-	Phone           types.String `tfsdk:"phone"`
-	Email           types.String `tfsdk:"email"`
-	Notes    types.String `tfsdk:"notes"`
-	Roles           types.List   `tfsdk:"roles"`
-	OrganizationId         types.String `tfsdk:"organization_id"`
+	FirstName      types.String `tfsdk:"first_name"`
+	LastName       types.String `tfsdk:"last_name"`
+	Phone          types.String `tfsdk:"phone"`
+	Email          types.String `tfsdk:"email"`
+	Notes          types.String `tfsdk:"notes"`
+	Roles          types.List   `tfsdk:"roles"`
+	OrganizationId types.String `tfsdk:"organization_id"`
 }

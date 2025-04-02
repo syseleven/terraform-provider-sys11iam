@@ -5,10 +5,8 @@ package resource_project_team
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 func ProjectTeamResourceSchema(ctx context.Context) schema.Schema {
@@ -21,13 +19,13 @@ func ProjectTeamResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The editable permissions of the user",
 			},
 			"organization_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 			"project_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 			"team_id": schema.StringAttribute{
-				Required:            true,
+				Required: true,
 			},
 		},
 	}
@@ -35,7 +33,7 @@ func ProjectTeamResourceSchema(ctx context.Context) schema.Schema {
 
 type ProjectTeamModel struct {
 	Permissions    types.List   `tfsdk:"editable_permissions"`
-	OrganizationId         types.String `tfsdk:"organization_id"`
-	ProjectId         types.String `tfsdk:"project_id"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	ProjectId      types.String `tfsdk:"project_id"`
 	TeamId         types.String `tfsdk:"team_id"`
 }

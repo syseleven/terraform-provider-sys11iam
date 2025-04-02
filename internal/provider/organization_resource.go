@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -117,7 +118,7 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	// Emit manual steps as warnings
 	if !data.IsActive.ValueBool() {
 		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
-			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact an IAM administrator.",
+			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact the SysEleven GmbH Sales Team <sales@syseleven.de>.\n This can also be done via https://dashboard.syseleven.de/dashboard.",
 				data.Id.ValueString()))
 	} else {
 		resp.Diagnostics.AddWarning("OrganizationAlreadyActiveWarning",
@@ -166,7 +167,7 @@ func (r *organizationResource) Read(ctx context.Context, req resource.ReadReques
 	// Emit manual steps as warnings
 	if !data.IsActive.ValueBool() {
 		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
-			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact an IAM administrator.",
+			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact the SysEleven GmbH Sales Team <sales@syseleven.de>.\n This can also be done via https://dashboard.syseleven.de/dashboard.",
 				data.Id.ValueString()))
 	}
 
@@ -235,4 +236,44 @@ func (r *organizationResource) Delete(ctx context.Context, req resource.DeleteRe
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+}
+
+func (r *organizationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
+
+	if len(idParts) != 1 || idParts[0] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id. Got: %q", req.ID),
+		)
+		return
+	}
+
+	// Read API call logic
+
+	response, err := r.client.GetOrganization(idParts[0])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	var data resource_organization.OrganizationModel
+	// Data value setting
+	data.Id = types.StringValue(idParts[0])
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
+	data.IsActive = types.BoolValue(response.IsActive)
+	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+
+	// Emit manual steps as warnings
+	if !data.IsActive.ValueBool() {
+		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
+			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact the SysEleven GmbH Sales Team <sales@syseleven.de>.\n This can also be done via https://dashboard.syseleven.de/dashboard.",
+				data.Id.ValueString()))
+	}
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
