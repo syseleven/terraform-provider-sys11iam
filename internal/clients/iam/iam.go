@@ -629,7 +629,7 @@ func (c *Client) GetOrganizationMembershipByEmail(org_id string, email string) (
 	return IAMOrganizationMembership{}, fmt.Errorf("membership with that e-mail address was not found: %s", email)
 }
 
-func (c *Client) CreateOrganizationMembership(org_id string, user_id string, permissions []string) (IAMOrganizationMembership, error) {
+func (c *Client) CreateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error) {
 	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
@@ -638,7 +638,7 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, per
 	path := fmt.Sprintf(IAMOrganizationMembershipEndpoint, org_id, user_id)
 	type membership = map[string]interface{}
 	payload, err := json.Marshal(membership{
-		"affiliation":          iamOrganizationMembership.Affiliation,
+		"affiliation":          affiliation,
 		"membership_type":      iamOrganizationMembership.MembershipType,
 		"editable_permissions": permissions,
 	})
@@ -670,7 +670,7 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, per
 	return iamOrganizationMembership, nil
 }
 
-func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, permissions []string) (IAMOrganizationMembership, error) {
+func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error) {
 	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
@@ -679,7 +679,7 @@ func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, per
 	path := fmt.Sprintf(IAMOrganizationMembershipEndpoint, org_id, user_id)
 	type membership = map[string]interface{}
 	payload, err := json.Marshal(membership{
-		"affiliation":          iamOrganizationMembership.Affiliation,
+		"affiliation":          affiliation,
 		"membership_type":      iamOrganizationMembership.MembershipType,
 		"editable_permissions": permissions,
 	})

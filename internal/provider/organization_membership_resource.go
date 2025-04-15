@@ -119,7 +119,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		}
 	}
 
-	response, err := r.client.CreateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), elements)
+	response, err := r.client.CreateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Affiliation.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -194,6 +194,7 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 
 	// Data value setting
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
+	data.Affiliation = types.StringValue(response.Affiliation)
 	data.Email = types.StringValue(response.User.Email)
 	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
@@ -237,7 +238,7 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 			return
 		}
 	}
-	response, err := r.client.UpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), elements)
+	response, err := r.client.UpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Affiliation.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -318,6 +319,7 @@ func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req re
 		data.Id = types.StringValue(response.User.ID)
 	}
 	data.OrganizationId = types.StringValue(idParts[0])
+	data.Affiliation = types.StringValue(response.Affiliation)
 	data.Email = types.StringValue(response.User.Email)
 	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)

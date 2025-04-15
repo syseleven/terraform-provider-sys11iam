@@ -15,6 +15,11 @@ import (
 func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"affiliation": schema.StringAttribute{
+				Required:            true,
+				Description:         "The affiliation of the user to this organization. This is not to be understood as a role.",
+				MarkdownDescription: "The affiliation of the user to this organization. This is not to be understood as a role.",
+			},
 			"editable_permissions": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Required:            true,
@@ -48,6 +53,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type OrganizationMembershipModel struct {
+	Affiliation         types.String `tfsdk:"affiliation"`
 	EditablePermissions types.List   `tfsdk:"editable_permissions"`
 	Email               types.String `tfsdk:"email"`
 	Id                  types.String `tfsdk:"id"`
