@@ -17,12 +17,12 @@ terraform {
 # Configure the NCS Provider for service account authentication (see configuration for regular accounts below)
 provider "ncs" {
   serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36FJqasdmalkwaksnkajc"
-  iam_url = "https://iam.stage-apis.syseleven.net"
+  iam_url = "https://iam.apis.syseleven.de"
 }
 
 # Get an NCS organization
 data "ncs_organization" "testorg" {
-  id = "6bd591c7-f940-4ee4-8fe7-8fe9b76e51d6"
+  id = "12345678-90ab-4cde-f123-4567890abcde"
   name = "test_org"
 }
 
@@ -38,7 +38,8 @@ resource "ncs_project" "test_project" {
 # Create an NCS organization membership
 resource "ncs_organization_membership" "test_membership" {
   count = data.ncs_organization.testorg.is_active ? 1 : 0
-  email = "test@syseleven.net"
+  email = "test@example.com"
+  affiliation = "member"
   editable_permissions = ["can_become_project_administrator_in_org"]
   organization_id = data.ncs_organization.testorg.id
 }
@@ -47,7 +48,7 @@ resource "ncs_organization_membership" "test_membership" {
 resource "ncs_project_membership" "test_project_membership" {
   depends_on = [ncs_project.test_project, ncs_organization_membership.test_membership]
   count = one(ncs_organization_membership.test_membership[*].is_active) == true ? 1 : 0
-  email = "test@syseleven.net"
+  email = "test@example.com"
   permissions = ["can_become_administrator_in_project", "can_crud_permissions_in_project"]
   organization_id = data.ncs_organization.testorg.id
   project_id = ncs_project.test_project[0].id
@@ -67,7 +68,7 @@ resource "ncs_organization_contact" "testorganization_contact" {
   first_name = "Test"
   last_name = "Contact"
   notes = "test notes"
-  email = "test@syseleven.net"
+  email = "test@example.com"
   phone = "+491684941254823"
   roles = ["Technical"]
   organization_id = data.ncs_organization.testorg.id
@@ -112,26 +113,12 @@ resource "ncs_project_s3user" "test_project_s3user" {
 ```
 
 Replacing above provider configuration:
-```
-# Configure the NCS Provider for regular user authentication
-provider "ncs" {
-  oidc_url = "http://127.0.0.1:8181/realms/application/protocol/openid-connect/token"
-  oidc_client_username = "admin"
-  oidc_client_password = "admin"
-  oidc_client_id = "pytest"
-  oidc_client_secret = "YKjKvRHYtGjbxjsU2auNzcvt4FOaH5SK"
-  oidc_client_scope = "pytest"
-  iam_url = "http://127.0.0.1:9000"
-}
-```
-
-with the following, allows you to authenticate with a service account instead of a regular user account, but disallows organization creation:
 
 ```
 # Configure the NCS Provider for service account user authentication
 provider "ncs" {
   serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36FJqasdmalkwaksnkajc"
-  iam_url = "https://iam.stage-apis.syseleven.net"
+  iam_url = "https://iam.apis.syseleven.de"
 }
 ````
 
@@ -139,16 +126,6 @@ provider "ncs" {
 
 The following arguments are supported for the provider "ncs":
 
-* **`oidc_url`** - The identity authentication URL.
-  If omitted, the `NCS_OIDC_URL` environment variable is used.
-* **`oidc_client_id`** - The ID of an application credential to authenticate with. An`oidc_client_secret` and `oidc_client_scope` has to bet set along with this parameter.
-  If omitted, the `NCS_OIDC_CLIENT_ID` environment variable is used.
-* **`oidc_client_secret`** - The secret of an application credential to authenticate with. Required by `oidc_client_id`. When `oidc_client_id` is not set, the value is used for a service account authentication credential.
-  If omitted, the `NCS_OIDC_CLIENTSECRET` environment variable is used.
-* **`oidc_client_scope`** - The scope of an application credential to authenticate with. Required by `oidc_client_id`.
-* **`oidc_client_username`** - The regular user username to authenticate with. Required by `oidc_client_id`.
-* **`oidc_client_password`** - The regular user password to authenticate with. Required by `oidc_client_id`.
-  If omitted, the `NCS_OIDC_CLIENT_SCOPE` environment variable is used.
 * **`iam_url`** - The url to the IAM service for creating organization, project, organization membership and project membership resources.
   If omitted, the `NCS_IAM_URL` environment variable is used.
 * **`serviceaccount_secret`** - The secret of an service account to authenticate with. If omitted, the `NCS_SERVICEACCOUNT_SECRET` environment variable is used.
@@ -167,6 +144,7 @@ The following arguments are supported for the resource "ncs_project":
 The following arguments are supported for the resource "ncs_organization_membership":
 
 * **`email`** - The email of the user.
+* **`affiliation`** - The member affiliation can be ("member" | "admin" | "owner")
 * **`editable_permissions`** - The editable permissions of the user.
 * **`organization_id`** - The UUID of the organization.
 * **`is_active`** - Whether the organization membership is active or not. Organization membership activation is a manual step executed by the invited user. An invitation is issued by creating this resource. (default: false)

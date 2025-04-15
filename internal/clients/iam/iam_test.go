@@ -417,7 +417,7 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipSuccess() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	ret, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
+	ret, err := client.CreateOrganizationMembership("1", "1", "member", []string{"can_do"})
 	suite.NoError(err)
 	suite.Equal(expected, ret)
 	mockServer.HasExpectedRequests()
@@ -438,7 +438,7 @@ func (suite *RestClientIAMTestSuite) TestCreateOrganizationMembershipError() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.CreateOrganizationMembership("1", "1", []string{"can_do"})
+	id, err := client.CreateOrganizationMembership("1", "1", "member", []string{"can_do"})
 	suite.Error(err) //TODO: check error message
 	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "", Name: ""}, Permissions: []string(nil)})
 	suite.Equal(id, iamOrgMembership)
@@ -467,7 +467,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipSuccess() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	ret, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
+	ret, err := client.UpdateOrganizationMembership("1", "1", "member", []string{"can_do"})
 	suite.NoError(err)
 	//iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "", Name: ""}, User: IAMOrganisationUser{ID: "", Email: ""}, Affiliation: "member", MembershipType: "service_account", Permissions: []string{"can_do"}})
 	suite.Equal(expected, ret)
@@ -486,7 +486,7 @@ func (suite *RestClientIAMTestSuite) TestUpdateOrganizationMembershipError() {
 	defer mockServer.Close()
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
-	id, err := client.UpdateOrganizationMembership("1", "1", []string{"can_do"})
+	id, err := client.UpdateOrganizationMembership("1", "1", "member", []string{"can_do"})
 	suite.Error(err)
 	iamOrgMembership := IAMOrganizationMembership(IAMOrganizationMembership{Organisation: IAMOrganization{ID: "", Name: ""}, Permissions: []string(nil)})
 	suite.Equal(id, iamOrgMembership)

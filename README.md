@@ -1,4 +1,4 @@
-# terraform-provider-ncs
+# Terraform Provider for the SysEleven Cloud IAM
 
 ## Usage
 
