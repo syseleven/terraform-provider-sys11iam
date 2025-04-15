@@ -3,7 +3,7 @@ package errors
 import (
 	"runtime"
 
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/logging"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/logging"
 )
 
 func Trace(err error) error {

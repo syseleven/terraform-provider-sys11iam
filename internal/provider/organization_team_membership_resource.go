@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/iam"
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/resource_organization_team_membership"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_team_membership"
 )
 
 var _ resource.Resource = (*OrganizationTeamMembershipResource)(nil)

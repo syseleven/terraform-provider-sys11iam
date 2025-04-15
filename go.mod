@@ -1,4 +1,4 @@
-module gitlab.syseleven.de/ncs/terraform-provider-ncs
+module github.com/syseleven/terraform-provider-sys11iam
 
 go 1.22.7
 

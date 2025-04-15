@@ -10,21 +10,21 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/iam"
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/keycloak"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/keycloak"
 )
 
-var _ provider.Provider = (*ncsProvider)(nil)
+var _ provider.Provider = (*sys11IamProvider)(nil)
 
 func New() func() provider.Provider {
 	return func() provider.Provider {
-		return &ncsProvider{}
+		return &sys11IamProvider{}
 	}
 }
 
-type ncsProvider struct{}
+type sys11IamProvider struct{}
 
-type ncsProviderModel struct {
+type sys11IamProviderModel struct {
 	OidcUrl              types.String `tfsdk:"oidc_url"`
 	IamUrl               types.String `tfsdk:"iam_url"`
 	OidcClientUsername   types.String `tfsdk:"oidc_client_username"`
@@ -35,7 +35,7 @@ type ncsProviderModel struct {
 	ServiceAccountSecret types.String `tfsdk:"serviceaccount_secret"`
 }
 
-func (p *ncsProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *sys11IamProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"oidc_url": schema.StringAttribute{
@@ -67,9 +67,9 @@ func (p *ncsProvider) Schema(ctx context.Context, req provider.SchemaRequest, re
 	}
 }
 
-func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *sys11IamProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Retrieve provider data from configuration
-	var config ncsProviderModel
+	var config sys11IamProviderModel
 	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -84,7 +84,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("iam_url"),
 			"Unknown NCS IAM API Url.",
 			"The provider cannot create the IAM API client as there is an unknown configuration value for the IAM API url. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_IAM_URL environment variable.",
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_IAM_URL environment variable.",
 		)
 	}
 
@@ -95,7 +95,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 					path.Root("oidc_url"),
 					"Unknown NCS OIDC API Url",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API url. "+
-						"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_URL environment variable.",
+						"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_OIDC_URL environment variable.",
 				)
 			}
 
@@ -104,15 +104,15 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 					path.Root("oidc_client"),
 					"Unknown NCS OIDC API client credentials. Provide username+password+id+secret combination (regular account).",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client. "+
-						"Set the client secret value in the configuration or use the NCS_OIDC_CLIENT_SECRET environment variable. "+
+						"Set the client secret value in the configuration or use the SYS11IAM_OIDC_CLIENT_SECRET environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client username value in the configuration or use the NCS_OIDC_CLIENT_USERNAME environment variable. "+
+						"Set the client username value in the configuration or use the SYS11IAM_OIDC_CLIENT_USERNAME environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client password value in the configuration or use the NCS_OIDC_CLIENT_PASSWORD environment variable. "+
+						"Set the client password value in the configuration or use the SYS11IAM_OIDC_CLIENT_PASSWORD environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client id value in the configuration or use the NCS_OIDC_CLIENT_ID environment variable. "+
+						"Set the client id value in the configuration or use the SYS11IAM_OIDC_CLIENT_ID environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client scope value in the configuration or use the NCS_OIDC_CLIENT_SCOPE environment variable. "+
+						"Set the client scope value in the configuration or use the SYS11IAM_OIDC_CLIENT_SCOPE environment variable. "+
 						"If either is already set, ensure the value is not empty.",
 				)
 			}
@@ -120,7 +120,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			resp.Diagnostics.AddAttributeError(
 				path.Root("serviceaccount_secret"),
 				"Unknown NCS service account secret. Alternatively provide regular account authentication details as described below.",
-				"Set the client secret value in the configuration or use the NCS_SERVICEACCOUNT_SECRET environment variable. "+
+				"Set the client secret value in the configuration or use the SYS11IAM_SERVICEACCOUNT_SECRET environment variable. "+
 					"If either is already set, ensure the value is not empty.",
 			)
 		}
@@ -132,14 +132,14 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 
 	// Default values to environment variables, but override
 	// with Terraform configuration value if set.
-	oidcUrl := os.Getenv("NCS_OIDC_URL")
-	iamUrl := os.Getenv("NCS_IAM_URL")
-	oidcClientUsername := os.Getenv("NCS_OIDC_CLIENT_USERNAME")
-	oidcClientPassword := os.Getenv("NCS_OIDC_CLIENT_PASSWORD")
-	oidcClientSecret := os.Getenv("NCS_OIDC_CLIENT_SECRET")
-	oidcClientId := os.Getenv("NCS_OIDC_CLIENT_ID")
-	oidcClientScope := os.Getenv("NCS_OIDC_CLIENT_SCOPE")
-	serviceAccountSecret := os.Getenv("NCS_SERVICEACCOUNT_SECRET")
+	oidcUrl := os.Getenv("SYS11IAM_OIDC_URL")
+	iamUrl := os.Getenv("SYS11IAM_IAM_URL")
+	oidcClientUsername := os.Getenv("SYS11IAM_OIDC_CLIENT_USERNAME")
+	oidcClientPassword := os.Getenv("SYS11IAM_OIDC_CLIENT_PASSWORD")
+	oidcClientSecret := os.Getenv("SYS11IAM_OIDC_CLIENT_SECRET")
+	oidcClientId := os.Getenv("SYS11IAM_OIDC_CLIENT_ID")
+	oidcClientScope := os.Getenv("SYS11IAM_OIDC_CLIENT_SCOPE")
+	serviceAccountSecret := os.Getenv("SYS11IAM_SERVICEACCOUNT_SECRET")
 
 	if !config.OidcUrl.IsNull() {
 		oidcUrl = config.OidcUrl.ValueString()
@@ -181,7 +181,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			path.Root("iam_url"),
 			"Unknown NCS IAM API Url.",
 			"The provider cannot create the IAM API client as there is an unknown configuration value for the IAM API url. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_IAM_URL environment variable.",
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_IAM_URL environment variable.",
 		)
 	}
 
@@ -192,7 +192,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 					path.Root("oidc_url"),
 					"Unknown NCS OIDC API Url",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API url. "+
-						"Either target apply the source of the value first, set the value statically in the configuration, or use the NCS_OIDC_URL environment variable.",
+						"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_OIDC_URL environment variable.",
 				)
 			}
 
@@ -201,15 +201,15 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 					path.Root("oidc_client"),
 					"Unknown NCS OIDC API client credentials. Provide username+password+id+secret combination (regular account).",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client. "+
-						"Set the client secret value in the configuration or use the NCS_OIDC_CLIENT_SECRET environment variable. "+
+						"Set the client secret value in the configuration or use the SYS11IAM_OIDC_CLIENT_SECRET environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client username value in the configuration or use the NCS_OIDC_CLIENT_USERNAME environment variable. "+
+						"Set the client username value in the configuration or use the SYS11IAM_OIDC_CLIENT_USERNAME environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client password value in the configuration or use the NCS_OIDC_CLIENT_PASSWORD environment variable. "+
+						"Set the client password value in the configuration or use the SYS11IAM_OIDC_CLIENT_PASSWORD environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client id value in the configuration or use the NCS_OIDC_CLIENT_ID environment variable. "+
+						"Set the client id value in the configuration or use the SYS11IAM_OIDC_CLIENT_ID environment variable. "+
 						"If either is already set, ensure the value is not empty."+
-						"Set the client scope value in the configuration or use the NCS_OIDC_CLIENT_SCOPE environment variable. "+
+						"Set the client scope value in the configuration or use the SYS11IAM_OIDC_CLIENT_SCOPE environment variable. "+
 						"If either is already set, ensure the value is not empty.",
 				)
 			}
@@ -217,7 +217,7 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 			resp.Diagnostics.AddAttributeError(
 				path.Root("serviceaccount_secret"),
 				"Unknown NCS service account secret. Alternatively provide regular account authentication details as described below.",
-				"Set the client secret value in the configuration or use the NCS_SERVICEACCOUNT_SECRET environment variable. "+
+				"Set the client secret value in the configuration or use the SYS11IAM_SERVICEACCOUNT_SECRET environment variable. "+
 					"If either is already set, ensure the value is not empty.",
 			)
 		}
@@ -249,17 +249,17 @@ func (p *ncsProvider) Configure(ctx context.Context, req provider.ConfigureReque
 	resp.ResourceData = client
 }
 
-func (p *ncsProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "ncs"
+func (p *sys11IamProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "sys11iam"
 }
 
-func (p *ncsProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *sys11IamProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewOrganizationDataSource,
 	}
 }
 
-func (p *ncsProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *sys11IamProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewOrganizationResource, NewProjectResource, NewOrganizationMembershipResource, NewProjectMembershipResource,
 		NewOrganizationServiceaccountResource, NewOrganizationContactResource, NewOrganizationTeamResource,

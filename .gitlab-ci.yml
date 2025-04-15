@@ -15,10 +15,10 @@ build.binary:
   before_script:
     - *create_netrc
   script:
-    - make terraform-provider-ncs
+    - make terraform-provider-sys11iam
   artifacts:
     paths:
-      - terraform-provider-ncs
+      - terraform-provider-sys11iam
 
 test.unit:
   stage: test

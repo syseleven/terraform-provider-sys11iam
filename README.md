@@ -6,12 +6,12 @@ The user documentation is found at the [docs](docs/index.md).
 
 ## Building
 
-Run `make terraform-provider-ncs` to build. This results in the binary `terraform-provider-ncs`.
+Run `make terraform-provider-sys11iam` to build. This results in the binary `terraform-provider-sys11iam`.
 
 ## Installing
 
 Run `go install .` to install the binary to your local golang binary path. This should result
-in a deployment to `~/go/bin/terraform-provider-ncs`, where `terraform` can find it.
+in a deployment to `~/go/bin/terraform-provider-sys11iam`, where `terraform` can find it.
 
 ## Running
 

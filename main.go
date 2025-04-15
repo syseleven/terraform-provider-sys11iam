@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/provider"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/provider"
 )
 
 func main() {

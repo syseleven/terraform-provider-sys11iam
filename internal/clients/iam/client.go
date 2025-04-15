@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/clients/rest"
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/logging"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/rest"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/logging"
 )
 
 type Client struct {

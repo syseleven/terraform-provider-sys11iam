@@ -1,7 +1,7 @@
 .PHONY: format unit-test
 
-terraform-provider-ncs:
-	go build -ldflags "-X gitlab.syseleven.de/ncs/terraform-provider-ncs/tmp_main.Version=$(shell git describe --tags --always)"
+terraform-provider-sys11iam:
+	go build -ldflags "-X github.com/syseleven/terraform-provider-sys11iam/tmp_main.Version=$(shell git describe --tags --always)"
 
 tf-generate:
 	tfplugingen-openapi generate --config ./generator_config.yml --output ./provider-code-spec.json ./openapi.json

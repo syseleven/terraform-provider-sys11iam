@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"gitlab.syseleven.de/ncs/terraform-provider-ncs/internal/errors"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/errors"
 )
 
 const IAMOrganizationsEndpoint string = "/v1/orgs"
