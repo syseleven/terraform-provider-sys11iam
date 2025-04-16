@@ -22,19 +22,6 @@ file `main.tf` to run it against a live environment.
 
 Run `make unit-test` to run the unit tests including the `keycloak` and `glue-api` client.
 
-## Testing (e2e)
-
-Clone the repository https://gitlab.syseleven.de/ncs/glue-e2e-testing for a full offline
-testing environment.
-
-Run `docker compose up glue-api wiremock` in the cloned repository.
-
-See the `main.tf` in this repository for example values pointing to both the
-`keycloak` container and the `glue-api` container.
-
-Run `TF_LOG=DEBUG terraform apply -auto-approve` to apply the contents of the `main.tf`
-in this repositories directory against the docker container composition.
-
 ## Demo
 
 See the plugin in action:
