@@ -1,0 +1,7 @@
+coverage.out
+test-report.xml
+main.tf
+terraform-provider-sys11iam
+terraform.tfstate
+terraform.tfstate.backup
+openapi.json

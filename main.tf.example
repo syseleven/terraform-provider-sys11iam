@@ -1,0 +1,124 @@
+# Define required providers
+terraform {
+  required_providers {
+    sys11iam = {
+      source = "hashicorp.com/syseleven/sys11iam"
+    }
+  }
+}
+
+# Configure the SysEleven IAM Provider for service account authentication (see configuration for regular accounts below)
+provider "sys11iam" {
+  serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36FJqasdmalkwaksnkajc"
+  iam_url = "https://iam.stage-apis.syseleven.net"
+}
+
+# Get an SysEleven IAM organization
+data "sys11iam_organization" "testorg" {
+  id = "6bd591c7-f940-4ee4-8fe7-8fe9b76e51d6"
+  name = "test_org"
+}
+
+# Create an SysEleven IAM project
+resource "sys11iam_project" "test_project" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = "testproject"
+  description = "testdescription"
+  tags = ["testing"]
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+# Create an SysEleven IAM organization membership
+resource "sys11iam_organization_membership" "test_membership" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  email = "test@syseleven.net"
+  editable_permissions = ["can_become_project_administrator_in_org"]
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+# Create an SysEleven IAM  project membership
+resource "sys11iam_project_membership" "test_project_membership" {
+  depends_on = [sys11iam_project.test_project, sys11iam_organization_membership.test_membership]
+  count = one(sys11iam_organization_membership.test_membership[*].is_active) == true ? 1 : 0
+  email = "test@syseleven.net"
+  permissions = ["can_become_administrator_in_project", "can_crud_permissions_in_project"]
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.test_project[0].id
+}
+
+# Create an SysEleven IAM  service account
+resource "sys11iam_organization_serviceaccount" "test_serviceaccount" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = "deploy"
+  description = "deployment account"
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+# Create an SysEleven IAM  organization contact
+resource "sys11iam_organization_contact" "testorganization_contact" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  first_name = "Test"
+  last_name = "Contact"
+  notes = "test notes"
+  email = "test@syseleven.net"
+  phone = "+491684941254823"
+  roles = ["Technical"]
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+# Create an SysEleven IAM  organization team
+resource "sys11iam_organization_team" "testorganization_team" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = "testteam"
+  description = "test team"
+  tags = ["testing2"]
+  editable_permissions = ["can_become_project_administrator_in_org"]
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+# Create an SysEleven IAM  project team
+resource "sys11iam_project_team" "test_project_team" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.test_project[0].id
+  team_id = sys11iam_organization_team.testorganization_team[0].id
+  editable_permissions = ["can_become_administrator_in_project"]
+}
+
+# Create an SysEleven IAM  organization team membership
+resource "sys11iam_organization_team_membership" "testorganization_team_membership" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
+  organization_id = data.sys11iam_organization.testorg.id
+  team_id = sys11iam_organization_team.testorganization_team[0].id
+}
+
+# Create an SysEleven IAM  project S3User
+resource "sys11iam_project_s3user" "test_project_s3user" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = "tests3user"
+  description = "test s3user"
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.test_project[0].id
+}
+
+# Create an SysEleven IAM  project S3 User
+resource "sys11iam_project_s3user" "test_terraform_project_s3user" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  # count = 0
+  name = "terraform-tests3user-new-name"
+  description = "terraform test s3user- new description"
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.terraform_test_project[0].id
+}
+
+# Create a SysEleven IAM project S3 User key
+resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  # count = 0
+  s3_user_id = sys11iam_project_s3user.test_terraform_project_s3user[0].id
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.terraform_test_project[0].id
+}
+
+
