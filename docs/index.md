@@ -84,7 +84,7 @@ resource "sys11iam_organization_team" "testorganization_team" {
   organization_id = data.sys11iam_organization.testorg.id
 }
 
-# Create an sys11iam project eam
+# Create an sys11iam project team
 resource "sys11iam_project_team" "test_project_team" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   organization_id = data.sys11iam_organization.testorg.id
