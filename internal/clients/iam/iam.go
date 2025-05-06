@@ -47,6 +47,8 @@ const IAMProjectTeamMembershipPermissionsEndpoint string = "/v2/orgs/%s/projects
 
 const IAMProjectS3UsersEndpoint string = "/v2/orgs/%s/projects/%s/s3-users"
 const IAMProjectS3UserEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s"
+const IAMProjectS3UserKeysEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s/ec2-credentials"
+const IAMProjectS3UserKeyEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s/ec2-credentials/%s"
 
 type IAMOrganization struct {
 	// org id
@@ -204,8 +206,17 @@ type IAMProjectS3User struct {
 	Name string `json:"name"`
 	// s3user description
 	Description string `json:"description"`
-	// ProjectMembership permissions
-	Keys []string `json:"keys"`
+	// s3user keys
+	Keys []IAMProjectS3UserKey `json:"keys"`
+}
+
+type IAMProjectS3UserKey struct {
+	//s3user access key
+	AccessKey string `json:"access_key"`
+	//s3user secret key
+	SecretKey string `json:"secret_key"`
+
+	CreatedAt string `json:"created_at"`
 }
 
 type IAMOrganizationContact struct {
@@ -1742,4 +1753,77 @@ func (c *Client) DeleteProjectS3User(org_id string, project_id string, id string
 		return fmt.Errorf(DeleteProjectS3UserError, err.Error())
 	}
 	return nil
+}
+
+func (c *Client) CreateProjectS3UserKey(org_id string, project_id string, s3user_id string) (IAMProjectS3UserKey, error) {
+	var iamProjectS3UserKey IAMProjectS3UserKey
+	path := fmt.Sprintf(IAMProjectS3UserKeysEndpoint, org_id, project_id, s3user_id)
+	type s3user_key = map[string]interface{}
+	payload, err := json.Marshal(s3user_key{
+		"key_type": "access",
+	})
+
+	response, err := c.client.NewRequest(http.MethodPost, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamProjectS3UserKey, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamProjectS3UserKey, fmt.Errorf(CreateProjectS3UserKeyError, err.Error(), path)
+	}
+
+	err = response.JSONUnmarshall(&iamProjectS3UserKey)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamProjectS3UserKey, err
+	}
+	return iamProjectS3UserKey, nil
+}
+
+func (c *Client) DeleteProjectS3UserKey(org_id string, project_id string, s3user_id string, key_id string) error {
+	path := fmt.Sprintf(IAMProjectS3UserKeyEndpoint, org_id, project_id, s3user_id, key_id)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteProjectS3UserKeyError, err.Error())
+	}
+	return nil
+}
+
+func (c *Client) GetProjectS3UserKey(org_id string, project_id string, s3user_id string, key_id string) (IAMProjectS3UserKey, error) {
+	path := fmt.Sprintf(IAMProjectS3UserKeyEndpoint, org_id, project_id, s3user_id, key_id)
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return IAMProjectS3UserKey{}, errors.Trace(fmt.Errorf(GetProjectS3UserKeyError, err.Error()))
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return IAMProjectS3UserKey{}, errors.Trace(fmt.Errorf(GetProjectS3UserKeyError, err.Error()))
+	}
+
+	var iamProjectS3UserKey IAMProjectS3UserKey
+	err = response.JSONUnmarshall(&iamProjectS3UserKey)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return IAMProjectS3UserKey{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+
+	return iamProjectS3UserKey, nil
 }
