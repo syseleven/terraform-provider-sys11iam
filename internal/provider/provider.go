@@ -264,6 +264,6 @@ func (p *sys11IamProvider) Resources(ctx context.Context) []func() resource.Reso
 		NewOrganizationResource, NewProjectResource, NewOrganizationMembershipResource, NewProjectMembershipResource,
 		NewOrganizationServiceaccountResource, NewOrganizationContactResource, NewOrganizationTeamResource,
 		NewOrganizationTeamMembershipResource, NewProjectTeamMembershipResource, NewProjectS3UserResource,
-		NewProjectTeamResource,
+		NewProjectTeamResource, NewProjectS3UserKeyResource,
 	}
 }
