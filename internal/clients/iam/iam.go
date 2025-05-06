@@ -209,7 +209,7 @@ type IAMProjectS3User struct {
 }
 
 type IAMProjectS3UserKey struct {
-	//s3user access key vat_id
+	//s3user access key
 	AccessKey string `json:"access_key"`
 	//s3user secret key
 	SecretKey string `json:"secret_key"`
