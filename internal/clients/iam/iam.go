@@ -204,8 +204,17 @@ type IAMProjectS3User struct {
 	Name string `json:"name"`
 	// s3user description
 	Description string `json:"description"`
-	// ProjectMembership permissions
-	Keys []string `json:"keys"`
+	// s3user keys
+	Keys []IAMProjectS3UserKey `json:"keys"`
+}
+
+type IAMProjectS3UserKey struct {
+	//s3user access key vat_id
+	AccessKey string `json:"access_key"`
+	//s3user secret key
+	SecretKey string `json:"secret_key"`
+
+	CreatedAt string `json:"created_at"`
 }
 
 type IAMOrganizationContact struct {
