@@ -215,6 +215,8 @@ type IAMProjectS3UserKey struct {
 	AccessKey string `json:"access_key"`
 	//s3user secret key
 	SecretKey string `json:"secret_key"`
+
+	CreatedAt string `json:"created_at"`
 }
 
 type IAMOrganizationContact struct {
