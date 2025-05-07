@@ -1,5 +1,5 @@
 provider:
-  name: ncs
+  name: sys11iam
 resources:
   organization:
     create:
@@ -63,14 +63,14 @@ resources:
     update:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}
       method: PUT
-  project_s3_key:
-    read:
-      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_key_id}
-      method: GET
+  project_s3_user_key:
     create:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials
       method: POST
+    read:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{access_key}
+      method: GET
     delete:
-      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_key_id}
-      method: DELETE
+      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{access_key}
+      method: delete
 

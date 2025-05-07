@@ -1,6 +1,6 @@
 {
 	"provider": {
-		"name": "ncs"
+		"name": "sys11iam"
 	},
 	"resources": [
 		{
@@ -762,6 +762,60 @@
 									}
 								]
 							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "project_s3_user_key",
+			"schema": {
+				"attributes": [
+					{
+						"name": "access_key",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "The user's access key."
+						}
+					},
+					{
+						"name": "secret_key",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "The user's secret key."
+						}
+					},
+					{
+						"name": "organization_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					},
+					{
+						"name": "project_id",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "regexp"
+											},
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+											}
+										],
+										"schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(\"^[a-f0-9]{8}[a-f0-9]{4}4[a-f0-9]{3}[89ab][a-f0-9]{3}[a-f0-9]{12}$\"), \"\")"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "s3_user_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
 						}
 					}
 				]
