@@ -68,9 +68,9 @@ resources:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials
       method: POST
     read:
-      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{access_key}
+      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_access_key}
       method: GET
     delete:
-      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{access_key}
+      path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_access_key}
       method: delete
 

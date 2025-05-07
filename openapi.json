@@ -3461,13 +3461,13 @@
                 }
             }
         },
-        "/v1/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{access_key}": {
+        "/v1/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_access_key}": {
             "delete": {
                 "tags": [
                     "S3"
                 ],
                 "summary": "Delete S3 Key",
-                "operationId": "delete_s3_key_v1_orgs__organization_id__projects__project_id__s3_users__s3_user_id__ec2_credentials__access_key__delete",
+                "operationId": "delete_s3_key_v1_orgs__organization_id__projects__project_id__s3_users__s3_user_id__ec2_credentials__s3_access_key__delete",
                 "deprecated": true,
                 "security": [
                     {
@@ -3509,7 +3509,7 @@
                         }
                     },
                     {
-                        "name": "access_key",
+                        "name": "s3_access_key",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -13424,14 +13424,14 @@
                 }
             }
         },
-        "/v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{access_key}": {
+        "/v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_access_key}": {
             "delete": {
                 "tags": [
                     "S3"
                 ],
                 "summary": "Delete S3 Key",
-                "description": "Delete an S3 key\n\n\n\nArgs:\n\n    authed_user: The authenticated user in openfga representation.\n    Will be extracted from the JWT or service account credential. \n\n    ctx: The client context of the Glue API. Will be created by the API. \n\n    organization_id: The id of the organization the s3 user belongs to\n\n    project_id: The id of the project the s3 user belongs to\n\n    s3_user_id: The id of the s3 user the key belongs to\n\n    access_key: The access key of the key to delete\n\n\n\nReturns:\n\n    StatusOK: The s3 key was deleted successfully",
-                "operationId": "delete_s3_key_v2_orgs__organization_id__projects__project_id__s3_users__s3_user_id__ec2_credentials__access_key__delete",
+                "description": "Delete an S3 key\n\n\n\nArgs:\n\n    authed_user: The authenticated user in openfga representation.\n    Will be extracted from the JWT or service account credential. \n\n    ctx: The client context of the Glue API. Will be created by the API. \n\n    organization_id: The id of the organization the s3 user belongs to\n\n    project_id: The id of the project the s3 user belongs to\n\n    s3_user_id: The id of the s3 user the key belongs to\n\n    s3_access_key: The access key of the key to delete\n\n\n\nReturns:\n\n    StatusOK: The s3 key was deleted successfully",
+                "operationId": "delete_s3_key_v2_orgs__organization_id__projects__project_id__s3_users__s3_user_id__ec2_credentials__s3_access_key__delete",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -13472,7 +13472,7 @@
                         }
                     },
                     {
-                        "name": "access_key",
+                        "name": "s3_access_key",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -13540,7 +13540,7 @@
                 ],
                 "summary": "Get S3 Key",
                 "description": "V2: Get the metadata of an S3 key.\n\n\n\nArgs:\n\n    authed_user: The authenticated user in openfga representation. \n\n     Will be extracted from the JWT or service account credential. \n\n    ctx: The client context of the Glue API. Will be created by the API. \n\n    organization_id: The organization ID of the S3 key to fetch. \n\n    project_id: The project ID of the S3 key to fetch. \n\n    s3_user_id: The ID of the S3 user to fetch the key for. \n\n    s3_key_id: The ID  of the S3 key to fetch. \n\n\n\n\nReturns:\n\n    S3KeyCore: The S3 key. \n\n\n\n\nRaises:\n\n    StatusUnauthorized: If the user is not authorized. \n\n    StatusForbidden: If the user is not allowed to fetch the S3 key. \n\n    StatusNotFound: If the organization, project, S3 user or S3 key does not exist.",
-                "operationId": "get_s3_key_v2_orgs__organization_id__projects__project_id__s3_users__s3_user_id__ec2_credentials__access_key__get",
+                "operationId": "get_s3_key_v2_orgs__organization_id__projects__project_id__s3_users__s3_user_id__ec2_credentials__s3_access_key__get",
                 "security": [
                     {
                         "HTTPBearer": []
@@ -13581,7 +13581,7 @@
                         }
                     },
                     {
-                        "name": "access_key",
+                        "name": "s3_access_key",
                         "in": "path",
                         "required": true,
                         "schema": {
@@ -17523,7 +17523,7 @@
                         "title": "Created At",
                         "description": "The time the resource was created."
                     },
-                    "access_key": {
+                    "s3_access_key": {
                         "type": "string",
                         "title": "Access Key",
                         "description": "The user's access key."
@@ -17536,14 +17536,14 @@
                 },
                 "type": "object",
                 "required": [
-                    "access_key",
+                    "s3_access_key",
                     "secret_key"
                 ],
                 "title": "S3KeyCore"
             },
             "S3Keypair": {
                 "properties": {
-                    "access_key": {
+                    "s3_access_key": {
                         "type": "string",
                         "title": "Access Key",
                         "description": "The user's access key."
@@ -17556,7 +17556,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "access_key",
+                    "s3_access_key",
                     "secret_key"
                 ],
                 "title": "S3Keypair"

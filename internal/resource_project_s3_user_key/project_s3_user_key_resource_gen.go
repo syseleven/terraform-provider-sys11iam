@@ -4,11 +4,10 @@ package resource_project_s3_user_key
 
 import (
 	"context"
-	"regexp"
-
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -16,11 +15,6 @@ import (
 func ProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"access_key": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The user's access key.",
-				MarkdownDescription: "The user's access key.",
-			},
 			"organization_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -31,6 +25,11 @@ func ProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(regexp.MustCompile("^[a-f0-9]{8}[a-f0-9]{4}4[a-f0-9]{3}[89ab][a-f0-9]{3}[a-f0-9]{12}$"), ""),
 				},
+			},
+			"s3_access_key": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The user's access key.",
+				MarkdownDescription: "The user's access key.",
 			},
 			"s3_user_id": schema.StringAttribute{
 				Optional: true,
@@ -46,9 +45,9 @@ func ProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type ProjectS3UserKeyModel struct {
-	AccessKey      types.String `tfsdk:"access_key"`
 	OrganizationId types.String `tfsdk:"organization_id"`
 	ProjectId      types.String `tfsdk:"project_id"`
+	S3AccessKey    types.String `tfsdk:"s3_access_key"`
 	S3UserId       types.String `tfsdk:"s3_user_id"`
 	SecretKey      types.String `tfsdk:"secret_key"`
 }
