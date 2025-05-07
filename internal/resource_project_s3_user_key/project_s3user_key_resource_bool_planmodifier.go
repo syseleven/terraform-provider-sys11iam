@@ -1,4 +1,4 @@
-package resource_project_s3user_key
+package resource_project_s3_user_key
 
 import (
 	"context"
