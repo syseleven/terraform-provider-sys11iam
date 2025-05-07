@@ -81,7 +81,7 @@ func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	data.AccessKey = types.StringValue(response.AccessKey)
+	data.S3AccessKey = types.StringValue(response.AccessKey)
 	data.SecretKey = types.StringValue(response.SecretKey)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -99,14 +99,14 @@ func (r *ProjectS3UserKeyResource) Read(ctx context.Context, req resource.ReadRe
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading ProjectS3User resource.")
-	response, err := r.client.GetProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
+	response, err := r.client.GetProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.S3AccessKey.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	data.AccessKey = types.StringValue(response.AccessKey)
+	data.S3AccessKey = types.StringValue(response.AccessKey)
 	data.SecretKey = types.StringValue(response.SecretKey)
 
 	// Save updated data into Terraform state
@@ -126,13 +126,13 @@ func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource
 	// Import the S3User key
 	tflog.Info(ctx, "Importing S3User key Resource")
 
-	response, err := r.client.GetProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
+	response, err := r.client.GetProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.S3AccessKey.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
-	data.AccessKey = types.StringValue(response.AccessKey)
+	data.S3AccessKey = types.StringValue(response.AccessKey)
 	data.SecretKey = types.StringValue(response.SecretKey)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -151,7 +151,7 @@ func (r *ProjectS3UserKeyResource) Delete(ctx context.Context, req resource.Dele
 	// Delete the S3User key
 	tflog.Info(ctx, "Deleting S3User key Resource")
 
-	err := r.client.DeleteProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
+	err := r.client.DeleteProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.S3AccessKey.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
