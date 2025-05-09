@@ -3304,7 +3304,7 @@
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
@@ -3514,7 +3514,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Access Key"
+                            "title": "S3 Access Key"
                         }
                     }
                 ],
@@ -13477,7 +13477,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Access Key"
+                            "title": "S3 Access Key"
                         }
                     }
                 ],
@@ -13586,7 +13586,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Access Key"
+                            "title": "S3 Access Key"
                         }
                     }
                 ],
@@ -14762,8 +14762,8 @@
                         "description": "The affiliations of the user to this organization.",
                         "default": [
                             "owner",
-                            "member",
-                            "admin"
+                            "admin",
+                            "member"
                         ]
                     },
                     "non_editable_user_permissions": {
@@ -14785,14 +14785,14 @@
                         "title": "Non Editable User Permissions",
                         "description": "The non-editable permissions of the user",
                         "default": [
-                            "can_delete_org_in_org",
-                            "can_read_org_in_org",
-                            "can_manage_service_accounts_in_org",
                             "member",
+                            "can_read_org_in_org",
                             "can_manage_teams_in_org",
                             "owner",
-                            "admin",
-                            "can_update_org_in_org"
+                            "can_delete_org_in_org",
+                            "can_manage_service_accounts_in_org",
+                            "can_update_org_in_org",
+                            "admin"
                         ]
                     },
                     "editable_user_permissions": {
@@ -14816,16 +14816,16 @@
                         "title": "Editable User Permissions",
                         "description": "The editable permissions of the user",
                         "default": [
-                            "can_create_projects_in_org",
-                            "can_read_contact_persons_in_org",
-                            "can_crud_permissions_in_org",
-                            "can_delete_members_in_org",
-                            "can_create_teams_in_org",
                             "can_invite_members_in_org",
                             "can_manage_contact_persons_in_org",
+                            "can_create_teams_in_org",
+                            "can_delete_members_in_org",
+                            "can_read_members_in_org",
                             "can_become_project_administrator_in_org",
-                            "can_create_service_accounts_in_org",
-                            "can_read_members_in_org"
+                            "can_crud_permissions_in_org",
+                            "can_create_projects_in_org",
+                            "can_read_contact_persons_in_org",
+                            "can_create_service_accounts_in_org"
                         ]
                     },
                     "service_account_affiliations": {
@@ -14863,13 +14863,13 @@
                         "title": "Non Editable Service Account Permissions",
                         "description": "The non-editable permissions of the service account",
                         "default": [
-                            "can_delete_org_in_org",
-                            "can_read_org_in_org",
-                            "can_manage_service_accounts_in_org",
                             "member",
+                            "can_read_org_in_org",
                             "can_manage_teams_in_org",
-                            "admin",
-                            "can_update_org_in_org"
+                            "can_delete_org_in_org",
+                            "can_manage_service_accounts_in_org",
+                            "can_update_org_in_org",
+                            "admin"
                         ]
                     },
                     "editable_service_account_permissions": {
@@ -14893,16 +14893,16 @@
                         "title": "Editable Service Account Permissions",
                         "description": "The editable permissions of the service account",
                         "default": [
-                            "can_create_projects_in_org",
-                            "can_read_contact_persons_in_org",
-                            "can_crud_permissions_in_org",
-                            "can_delete_members_in_org",
-                            "can_create_teams_in_org",
                             "can_invite_members_in_org",
                             "can_manage_contact_persons_in_org",
+                            "can_create_teams_in_org",
+                            "can_delete_members_in_org",
+                            "can_read_members_in_org",
                             "can_become_project_administrator_in_org",
-                            "can_create_service_accounts_in_org",
-                            "can_read_members_in_org"
+                            "can_crud_permissions_in_org",
+                            "can_create_projects_in_org",
+                            "can_read_contact_persons_in_org",
+                            "can_create_service_accounts_in_org"
                         ]
                     }
                 },
@@ -16847,33 +16847,33 @@
                         "title": "User Permissions",
                         "description": "The permissions of the user",
                         "default": [
-                            "can_create_s3_users_in_object_storage",
-                            "can_read_api_keys_in_project",
-                            "can_delete_project_in_project",
-                            "can_update_clusters_in_metakube",
-                            "can_delete_databases_in_dbaas",
-                            "can_delete_s3_users_in_object_storage",
-                            "can_read_project_in_project",
-                            "can_create_api_keys_in_project",
-                            "can_create_databases_in_dbaas",
-                            "can_create_clusters_in_metakube",
                             "can_read_databases_in_dbaas",
+                            "can_update_databases_in_dbaas",
+                            "can_read_project_in_project",
+                            "can_read_clusters_in_metakube",
+                            "can_become_viewer_in_openstack",
+                            "can_update_clusters_in_metakube",
+                            "can_delete_clusters_in_metakube",
+                            "can_become_admin_in_observability",
+                            "can_read_api_keys_in_project",
+                            "can_create_ssh_keys_in_metakube",
+                            "can_crud_permissions_in_project",
+                            "can_delete_project_in_project",
                             "can_read_s3_users_in_object_storage",
                             "can_become_editor_in_openstack",
-                            "can_become_admin_in_observability",
-                            "can_read_clusters_in_metakube",
-                            "can_read_ssh_keys_in_metakube",
-                            "can_create_ssh_keys_in_metakube",
-                            "can_become_administrator_in_project",
                             "can_become_editor_in_observability",
-                            "can_delete_clusters_in_metakube",
+                            "can_read_ssh_keys_in_metakube",
+                            "can_create_api_keys_in_project",
                             "can_delete_ssh_keys_in_metakube",
+                            "can_create_clusters_in_metakube",
+                            "can_become_administrator_in_project",
+                            "can_update_ssh_keys_in_metakube",
+                            "can_create_databases_in_dbaas",
                             "can_read_backups_from_databases_in_dbaas",
-                            "can_become_viewer_in_openstack",
-                            "can_become_reader_in_observability",
-                            "can_update_databases_in_dbaas",
-                            "can_crud_permissions_in_project",
-                            "can_update_ssh_keys_in_metakube"
+                            "can_delete_databases_in_dbaas",
+                            "can_create_s3_users_in_object_storage",
+                            "can_delete_s3_users_in_object_storage",
+                            "can_become_reader_in_observability"
                         ]
                     },
                     "service_account_permissions": {
@@ -16920,39 +16920,39 @@
                         "title": "Service Account Permissions",
                         "description": "The permissions of the service account",
                         "default": [
-                            "can_read_alertmanager_in_observability",
-                            "can_create_s3_users_in_object_storage",
-                            "can_read_logs_in_observability",
-                            "can_delete_project_in_project",
-                            "can_update_clusters_in_metakube",
-                            "can_delete_databases_in_dbaas",
-                            "can_delete_s3_users_in_object_storage",
-                            "can_read_project_in_project",
-                            "can_create_databases_in_dbaas",
-                            "can_read_metrics_in_observability",
-                            "can_create_clusters_in_metakube",
                             "can_read_databases_in_dbaas",
+                            "can_update_databases_in_dbaas",
+                            "can_read_rules_in_observability",
+                            "can_read_project_in_project",
+                            "can_read_clusters_in_metakube",
+                            "can_write_metrics_in_observability",
+                            "can_become_viewer_in_openstack",
+                            "can_delete_clusters_in_metakube",
+                            "can_update_clusters_in_metakube",
+                            "can_write_rules_in_observability",
+                            "can_become_admin_in_observability",
+                            "can_read_alertmanager_in_observability",
+                            "can_write_alertmanager_in_observability",
+                            "can_create_ssh_keys_in_metakube",
+                            "can_write_logs_in_observability",
+                            "can_crud_permissions_in_project",
+                            "can_delete_project_in_project",
                             "can_read_s3_users_in_object_storage",
                             "can_become_editor_in_openstack",
-                            "can_write_alertmanager_in_observability",
-                            "can_become_admin_in_observability",
-                            "can_read_clusters_in_metakube",
-                            "can_read_ssh_keys_in_metakube",
-                            "can_create_ssh_keys_in_metakube",
-                            "can_become_administrator_in_project",
+                            "can_read_metrics_in_observability",
                             "can_become_editor_in_observability",
-                            "can_write_logs_in_observability",
-                            "can_delete_clusters_in_metakube",
+                            "can_read_ssh_keys_in_metakube",
                             "can_delete_ssh_keys_in_metakube",
-                            "can_write_rules_in_observability",
-                            "can_read_backups_from_databases_in_dbaas",
-                            "can_read_rules_in_observability",
-                            "can_become_viewer_in_openstack",
-                            "can_become_reader_in_observability",
-                            "can_update_databases_in_dbaas",
-                            "can_crud_permissions_in_project",
+                            "can_create_clusters_in_metakube",
+                            "can_become_administrator_in_project",
                             "can_update_ssh_keys_in_metakube",
-                            "can_write_metrics_in_observability"
+                            "can_create_databases_in_dbaas",
+                            "can_read_backups_from_databases_in_dbaas",
+                            "can_delete_databases_in_dbaas",
+                            "can_read_logs_in_observability",
+                            "can_create_s3_users_in_object_storage",
+                            "can_delete_s3_users_in_object_storage",
+                            "can_become_reader_in_observability"
                         ]
                     }
                 },
@@ -17523,7 +17523,7 @@
                         "title": "Created At",
                         "description": "The time the resource was created."
                     },
-                    "s3_access_key": {
+                    "access_key": {
                         "type": "string",
                         "title": "Access Key",
                         "description": "The user's access key."
@@ -17536,7 +17536,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "s3_access_key",
+                    "access_key",
                     "secret_key"
                 ],
                 "title": "S3KeyCore"
@@ -17556,7 +17556,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "s3_access_key",
+                    "access_key",
                     "secret_key"
                 ],
                 "title": "S3Keypair"
