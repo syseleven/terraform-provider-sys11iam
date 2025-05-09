@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -113,24 +114,26 @@ func (r *ProjectS3UserKeyResource) Read(ctx context.Context, req resource.ReadRe
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_project_s3_user_key.ProjectS3UserKeyModel
+func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	idParts := strings.Split(req.ID, ",")
 
-	// Read Terraform state data into the model
-	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
-
-	if resp.Diagnostics.HasError() {
+	if len(idParts) != 4 || idParts[0] == "" || idParts[1] == "" || idParts[2] == "" || idParts[3] == "" {
+		resp.Diagnostics.AddError(
+			"Unexpected Import Identifier",
+			fmt.Sprintf("Expected import identifier with format: org_id,project_id,s3_user_id,s3_access_key. Got: %q", req.ID),
+		)
 		return
 	}
 
-	// Import the S3User key
-	tflog.Info(ctx, "Importing S3User key Resource")
-
-	response, err := r.client.GetProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.S3AccessKey.ValueString())
+	// Read API Call logic
+	tflog.Info(ctx, "Reading ProjectS3UserKey resource.")
+	response, err := r.client.GetProjectS3UserKey(idParts[0], idParts[1], idParts[2], idParts[3])
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+
+	var data resource_project_s3_user_key.ProjectS3UserKeyModel
 
 	data.S3AccessKey = types.StringValue(response.AccessKey)
 	data.SecretKey = types.StringValue(response.SecretKey)
