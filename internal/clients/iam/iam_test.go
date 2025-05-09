@@ -32,6 +32,8 @@ var exampleIAMProjectTeamPermissions = IAMProjectTeamPermissions{TeamPermissions
 
 var exampleIAMProjectS3User = IAMProjectS3User{}
 
+var exampleIAMProjectS3KeyUser = IAMProjectS3UserKey{}
+
 func (suite *RestClientIAMTestSuite) TestGetOrganizationSuccess() {
 	method := "GET"
 	url := "/v1/orgs/1"
@@ -992,6 +994,30 @@ func (suite *RestClientIAMTestSuite) TestGetProjectS3UserSuccess() {
 	mockServer.HasExpectedRequests()
 }
 
+func (suite *RestClientIAMTestSuite) TestGetProjectS3UserKeySuccess() {
+	method := http.MethodGet
+	url := "/v2/orgs/1/projects/1/s3-users/1/ec2-credentials/1"
+	status := http.StatusOK
+	expected := IAMProjectS3UserKey(exampleIAMProjectS3KeyUser)
+	sampleResponse, err := json.Marshal(expected)
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(method, url).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(status).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	ret, err := client.GetProjectS3UserKey("1", "1", "1", "1")
+	suite.NoError(err)
+	suite.Equal(expected, ret)
+	mockServer.HasExpectedRequests()
+}
+
 func (suite *RestClientIAMTestSuite) TestUpdateOrganizationServiceaccountSuccess() {
 	method := "PUT"
 	url := "/v2/orgs/1/service-accounts/1"
@@ -1204,6 +1230,31 @@ func (suite *RestClientIAMTestSuite) TestCreateProjectS3UserSuccess() {
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
 	ret, err := client.CreateProjectS3User(examplestring, examplestring, examplestring, examplestring)
+	suite.NoError(err)
+	suite.Equal(expected, ret)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestCreateProjectS3UserKeySuccess() {
+	method := "POST"
+	url := "/v2/orgs/1/projects/1/s3-users/1/ec2-credentials"
+	status := http.StatusOK
+	body := IAMProjectS3UserKey(exampleIAMProjectS3KeyUser)
+	expected := IAMProjectS3UserKey(exampleIAMProjectS3KeyUser)
+	sampleResponse, err := json.Marshal(body)
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(method, url).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(status).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	ret, err := client.CreateProjectS3UserKey(examplestring, examplestring, examplestring)
 	suite.NoError(err)
 	suite.Equal(expected, ret)
 	mockServer.HasExpectedRequests()
@@ -1523,6 +1574,29 @@ func (suite *RestClientIAMTestSuite) TestDeleteProjectS3UserSuccess() {
 	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
 
 	err = client.DeleteProjectS3User(examplestring, examplestring, examplestring)
+	suite.NoError(err)
+	mockServer.HasExpectedRequests()
+}
+
+func (suite *RestClientIAMTestSuite) TestDeleteProjectS3UserKeySuccess() {
+	method := "DELETE"
+	url := "/v2/orgs/1/projects/1/s3-users/1/ec2-credentials/1"
+	status := http.StatusOK
+	body := ""
+	sampleResponse, err := json.Marshal(body)
+	mockServer := responses.NewMockServer(
+		&suite.Suite,
+		responses.Expect(method, url).
+			WithHeaders(map[string]string{
+				"Authorization": "Bearer testtoken",
+			}).
+			ReturnWithCode(status).
+			ReturnWithBody([]byte(sampleResponse)),
+	)
+	defer mockServer.Close()
+	client := NewClient(mockServer.URL, 0).WithBearerToken("testtoken")
+
+	err = client.DeleteProjectS3UserKey(examplestring, examplestring, examplestring, examplestring)
 	suite.NoError(err)
 	mockServer.HasExpectedRequests()
 }

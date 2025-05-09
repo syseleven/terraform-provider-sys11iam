@@ -60,3 +60,7 @@ const GetProjectS3UserError string = "could not get ProjectS3User: %s"
 const CreateProjectS3UserError string = "could not create ProjectS3User: %s %s"
 const UpdateProjectS3UserError string = "could not update ProjectS3User: %s"
 const DeleteProjectS3UserError string = "could not delete ProjectS3User: %s"
+
+const GetProjectS3UserKeyError string = "could not get ProjectS3UserKey: %s"
+const CreateProjectS3UserKeyError string = "could not create ProjectS3UserKey: %s %s"
+const DeleteProjectS3UserKeyError string = "could not delete ProjectS3UserKey: %s"

@@ -110,6 +110,23 @@ resource "sys11iam_project_s3user" "test_project_s3user" {
   project_id = sys11iam_project.test_project[0].id
 }
 
+# Create an SysEleven IAM  project S3 User
+resource "sys11iam_project_s3user" "test_terraform_project_s3user" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = "terraform-tests3user-new-name"
+  description = "terraform test s3user- new description"
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.terraform_test_project[0].id
+}
+
+# Create a SysEleven IAM project S3 User key
+resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  s3_user_id = sys11iam_project_s3user.test_terraform_project_s3user[0].id
+  organization_id = data.sys11iam_organization.testorg.id
+  project_id = sys11iam_project.terraform_test_project[0].id
+}
+
 ```
 
 Replacing above provider configuration:
@@ -203,3 +220,16 @@ The following arguments are supported for the resource "sys11iam_project_s3user"
 * **`description`** - The description of the S3User.
 * **`organization_id`** - The UUID of the organization.
 * **`project_id`** - The UUID of the project.
+
+The following arguments are supported for the resource "sys11iam_project_s3user":
+* **`name`** - The name of the S3 User.
+* **`description`** - The description of the S3 User.
+* **`organization_id`** - The UUID of the organization.
+* **`project_id`** - The UUID of the project.
+
+The following arguments are supported for the resource "sys11iam_project_s3user_access_key":
+
+* **`organization_id`** - The UUID of the organization.
+* **`project_id`** - The UUID of the project.
+* **`s3_user_id`** - The UUID of the S3 User.
+
