@@ -17543,7 +17543,7 @@
             },
             "S3Keypair": {
                 "properties": {
-                    "s3_access_key": {
+                    "access_key": {
                         "type": "string",
                         "title": "Access Key",
                         "description": "The user's access key."

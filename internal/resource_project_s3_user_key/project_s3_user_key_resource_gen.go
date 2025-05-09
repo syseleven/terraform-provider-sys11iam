@@ -15,6 +15,11 @@ import (
 func ProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"access_key": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The user's access key.",
+				MarkdownDescription: "The user's access key.",
+			},
 			"organization_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -27,9 +32,8 @@ func ProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 				},
 			},
 			"s3_access_key": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The user's access key.",
-				MarkdownDescription: "The user's access key.",
+				Optional: true,
+				Computed: true,
 			},
 			"s3_user_id": schema.StringAttribute{
 				Optional: true,
@@ -45,6 +49,7 @@ func ProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type ProjectS3UserKeyModel struct {
+	AccessKey      types.String `tfsdk:"access_key"`
 	OrganizationId types.String `tfsdk:"organization_id"`
 	ProjectId      types.String `tfsdk:"project_id"`
 	S3AccessKey    types.String `tfsdk:"s3_access_key"`

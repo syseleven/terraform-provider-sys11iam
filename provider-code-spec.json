@@ -772,7 +772,7 @@
 			"schema": {
 				"attributes": [
 					{
-						"name": "s3_access_key",
+						"name": "access_key",
 						"string": {
 							"computed_optional_required": "computed",
 							"description": "The user's access key."
@@ -814,6 +814,12 @@
 					},
 					{
 						"name": "s3_user_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					},
+					{
+						"name": "s3_access_key",
 						"string": {
 							"computed_optional_required": "computed_optional"
 						}
