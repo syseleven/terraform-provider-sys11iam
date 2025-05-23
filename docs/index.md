@@ -9,7 +9,7 @@ The sys11iam provider is used to interact with the SysEleven NCS IAM. The provid
 terraform {
   required_providers {
     sys11iam = {
-      source = "hashicorp.com/syseleven/sys11iam"
+      source = "syseleven/sys11iam"
     }
   }
 }

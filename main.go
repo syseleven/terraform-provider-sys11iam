@@ -10,7 +10,7 @@ import (
 
 func main() {
 	opts := providerserver.ServeOpts{
-		Address: "hashicorp.com/syseleven/ncs",
+		Address: "syseleven/sys11iam",
 	}
 
 	err := providerserver.Serve(context.Background(), provider.New(), opts)
