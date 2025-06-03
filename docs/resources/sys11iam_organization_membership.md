@@ -24,16 +24,16 @@ The following arguments are supported for the resource "sys11iam_organization_me
 * **`editable_permissions`** - The editable permissions of the user in an organization. 
 
     Supported permissions: 
-        * `can_become_project_administrator_in_org` 
-        * `can_create_projects_in_org`
-        * `can_invite_members_in_org`
-        * `can_crud_permissions_in_org`
-        * `can_read_members_in_org`
-        * `can_delete_members_in_org`
-        * `can_manage_contact_persons_in_org`
-        * `can_read_contact_persons_in_org`
-        * `can_create_teams_in_org`
-        * `can_create_service_accounts_in_org`
+    * `can_become_project_administrator_in_org` 
+    * `can_create_projects_in_org`
+    * `can_invite_members_in_org`
+    * `can_crud_permissions_in_org`
+    * `can_read_members_in_org`
+    * `can_delete_members_in_org`
+    * `can_manage_contact_persons_in_org`
+    * `can_read_contact_persons_in_org`
+    * `can_create_teams_in_org`
+    * `can_create_service_accounts_in_org`
 * **`organization_id`** - The UUID of the organization.
 * **`is_active`** - Whether the organization membership is active or not. Organization membership activation is a manual step executed by the invited user. An invitation is issued by creating this resource. (default: false)
 * **`id`** - The UUID of the organization membership. (read-only)
