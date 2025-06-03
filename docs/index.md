@@ -14,15 +14,7 @@ terraform {
   }
 }
 
-```hcl
-# Configure the sys11iam Provider for service account authentication (see configuration for regular accounts below)
-provider "sys11iam" {
-  serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36FJqasdmalkwaksnkajc"
-  iam_url = "https://iam.apis.syseleven.de"
-}
-```
-
-Replacing above provider configuration:
+Using the `sys11iam` provider above:
 
 ```hcl
 # Configure the sys11iam Provider for service account user authentication
