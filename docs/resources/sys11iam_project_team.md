@@ -48,3 +48,25 @@ The following arguments are supported for the resource "sys11iam_project_team":
     * `can_become_reader_in_observability`
     * `can_become_editor_in_observability`
     * `can_become_admin_in_observability`
+
+## Importing Organization Project Teams
+
+To import an organization project team, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_project_team" "test_project_team" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+  project_id = sys11iam_project.test_project[0].id # or ""
+  team_id = sys11iam_organization_team.testorganization_team[0].id # or ""
+  editable_permissions = []
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_project_team.test_project_team <organization_id,project_id,team_id>
+```
+
+Where `organization_id` is the ID of the organization, `project_id` is the ID of the project you want to import, and `team_id` is the ID of the team to be imported.

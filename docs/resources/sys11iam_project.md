@@ -23,3 +23,25 @@ The following arguments are supported for the resource "sys11iam_project":
 * **`organization_id`** - The UUID of the organization.
 * **`id`** - The UUID of the project. (read-only)
 
+## Importing Organization Projects
+
+To import an organization project, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_project" "test_project" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = ""
+  description = ""
+  tags = []
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_project.test_project <organization_id,project_id>
+```
+
+Where `organization_id` is the ID of the organization and `project_id` is the ID of the project you want to import.
+

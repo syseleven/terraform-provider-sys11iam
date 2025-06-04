@@ -36,3 +36,26 @@ The following arguments are supported for the resource "sys11iam_organization_te
 * **`organization_id`** - The UUID of the organization.
 * **`id`** - The UUID of the organization team. (read-only)
 
+## Importing Organization Service Accounts
+
+To import an organization service account, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_organization_team" "testorganization_team" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = ""
+  description = ""
+  tags = []
+  editable_permissions = []
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_organization_team.testorganization_team <organization_id,team_id>
+```
+
+Where `organization_id` is the ID of the organization and `team_id` is the ID of the team you want to import.
+
