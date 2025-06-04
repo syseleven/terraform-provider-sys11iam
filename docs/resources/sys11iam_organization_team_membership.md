@@ -20,3 +20,23 @@ The following arguments are supported for the resource "sys11iam_organization_te
 * **`organization_id`** - The UUID of the organization.
 * **`team_id`** - The UUID of the organization team.
 
+## Importing Organization Team Memberships
+
+To import an organization team membership, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_organization_team_membership" "testorganization_team_membership" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  id = ""
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+  team_id = ""
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_organization_team_membership.testorganization_team_membership <organization_id,team_id,member_id>
+```
+
+Where `organization_id` is the ID of the organization, `team_id` is the ID of the team you want to import, and `member_id` is the ID of the team member (user/service account) to be imported.

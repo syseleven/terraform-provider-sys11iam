@@ -38,4 +38,25 @@ The following arguments are supported for the resource "sys11iam_organization_me
 * **`is_active`** - Whether the organization membership is active or not. Organization membership activation is a manual step executed by the invited user. An invitation is issued by creating this resource. (default: false)
 * **`id`** - The UUID of the organization membership. (read-only)
 
+## Importing Organization Memberships
+
+To import an organization membership, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_organization_membership" "test_membership" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  email = ""
+  affiliation = ""
+  editable_permissions = []
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_organization_membership.test_membership <organization_id,member_id>
+```
+
+Where `organization_id` is the ID of the organization and `member_id` is the ID of the organization member you want to import.
 

@@ -31,5 +31,28 @@ The following arguments are supported:
 * **`organization_id`** - The UUID of the organization.
 * **`id`** - The UUID of the organization contact. (read-only)
 
+## Importing Contacts
+
+To import an organization contact, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_organization_contact" "testorganization_contact" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  first_name = ""
+  last_name = ""
+  notes = ""
+  email = ""
+  phone = ""
+  roles = []
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+}
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_organization_contact.testorganization_contact <organization_id,contact_id>
+```
+
+Where `organization_id` is the ID of the organization and `contact_id` is the ID of the contact you want to import.
 
 

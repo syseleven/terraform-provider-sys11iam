@@ -21,3 +21,24 @@ The following arguments are supported for the resource "sys11iam_project_s3user_
 * **`project_id`** - The UUID of the project.
 * **`s3_user_id`** - The UUID of the S3 User.
 
+## Importing Organization Project S3 User Keys
+
+To import an organization project S3 User key, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  s3_user_id = sys11iam_project_s3user.test_terraform_project_s3user[0].id # or ""
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+  project_id = sys11iam_project.terraform_test_project[0].id # or ""
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_project_s3user_key.test_terraform_project_s3_user_key <organization_id,project_id,s3_user_id,s3_access_key>
+```
+
+Where `organization_id` is the ID of the organization, `project_id` is the ID of the project you want to import, `s3_user_id` is the ID of the S3 user to be imported, and `s3_access_key` is the access key of the S3 credential to be imported. The access and secret key of the S3 credential will be added to the Terraform state.
+

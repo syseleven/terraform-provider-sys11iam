@@ -22,3 +22,25 @@ The following arguments are supported for the resource "sys11iam_project_s3user"
 * **`organization_id`** - The UUID of the organization.
 * **`project_id`** - The UUID of the project.
 
+## Importing Organization Project Memberships
+
+To import an organization project membership, your configuration would look like the following:
+
+```hcl
+resource "sys11iam_project_s3user" "test_project_s3user" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = ""
+  description = ""
+  organization_id = data.sys11iam_organization.testorg.id # or ""
+  project_id = sys11iam_project.test_project[0].id # or ""
+}
+
+```
+Then you execute:
+
+```bash
+terraform import sys11iam_project_s3user.test_project_s3user <organization_id,project_id,s3_user_id>
+```
+
+Where `organization_id` is the ID of the organization, `project_id` is the ID of the project you want to import, and `s3_user_id` is the ID of the S3 user to be imported.
+
