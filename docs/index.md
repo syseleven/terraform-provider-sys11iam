@@ -13,13 +13,14 @@ terraform {
     }
   }
 }
+```
 
 Using the `sys11iam` provider above:
 
 ```hcl
 # Configure the sys11iam Provider for service account user authentication
-provider "ncs" {
-  serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36FJqasdmalkwaksnkajc"
+provider "sys11iam" {
+  serviceaccount_secret = "s11_orgsa_asdziuch-967s-aduc-123f-00asdasd8asd_9xjakshdkjOJPvk-36Fxxx"
   iam_url = "https://iam.apis.syseleven.de"
 }
 ```

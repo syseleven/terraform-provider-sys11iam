@@ -45,18 +45,36 @@ To import an organization membership, your configuration would look like the fol
 ```hcl
 resource "sys11iam_organization_membership" "test_membership" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  email = ""
-  affiliation = ""
+  email = "test@example.com"
+  affiliation = "member"
   editable_permissions = []
-  organization_id = data.sys11iam_organization.testorg.id # or ""
+  organization_id = data.sys11iam_organization.testorg.id
 }
 
 ```
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_membership.test_membership <organization_id,member_id>
+terraform import sys11iam_organization_membership.test_membership[0] <organization_id,member_id>
 ```
 
 Where `organization_id` is the ID of the organization and `member_id` is the ID of the organization member you want to import.
+
+A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
+
+```hcl
+import {
+    to = sys11iam_organization_membership.test_membership[0]
+    id = "<organization_id,member_id>"
+}
+
+resource "sys11iam_organization_membership" "test_membership" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  email = "test@example.com"
+  affiliation = "member"
+  editable_permissions = []
+  organization_id = data.sys11iam_organization.testorg.id
+}
+```
+Now the resource to be imported can be managed with `terraform plan/apply`.
 
