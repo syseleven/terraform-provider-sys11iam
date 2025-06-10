@@ -43,8 +43,8 @@ To import an organization service account, your configuration would look like th
 ```hcl
 resource "sys11iam_organization_team" "testorganization_team" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  name = ""
-  description = ""
+  name = "<team name>"
+  description = "<description>"
   tags = []
   editable_permissions = []
   organization_id = data.sys11iam_organization.testorg.id
@@ -54,8 +54,28 @@ resource "sys11iam_organization_team" "testorganization_team" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_team.testorganization_team <organization_id,team_id>
+terraform import sys11iam_organization_team.testorganization_team[0] <organization_id,team_id>
 ```
 
 Where `organization_id` is the ID of the organization and `team_id` is the ID of the team you want to import.
+
+A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
+
+```hcl
+import {
+    to = sys11iam_organization_team.testorganization_team[0] 
+    id = "<organization_id,team_id>"
+}
+
+resource "sys11iam_organization_team" "testorganization_team" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  name = "<team name>"
+  description = "<description>"
+  tags = []
+  editable_permissions = []
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+```
+Now the resource to be imported can be managed with `terraform plan/apply`.
 

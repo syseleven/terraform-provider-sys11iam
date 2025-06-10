@@ -38,21 +38,45 @@ To import an organization contact, your configuration would look like the follow
 ```hcl
 resource "sys11iam_organization_contact" "testorganization_contact" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  first_name = ""
-  last_name = ""
-  notes = ""
-  email = ""
-  phone = ""
+  first_name = "<first name>"
+  last_name = "<last name>"
+  notes = "<notes>"
+  email = "<email>"
+  phone = "<phone>"
   roles = []
-  organization_id = data.sys11iam_organization.testorg.id # or ""
+  organization_id = data.sys11iam_organization.testorg.id
 }
 ```
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_contact.testorganization_contact <organization_id,contact_id>
+terraform import sys11iam_organization_contact.testorganization_contact[0] <organization_id,contact_id>
 ```
 
 Where `organization_id` is the ID of the organization and `contact_id` is the ID of the contact you want to import.
+
+A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
+
+```hcl
+import {
+  to = sys11iam_organization_contact.testorganization_contact[0] 
+  id = "<organization_id,contact_id>"
+}
+
+resource "sys11iam_organization_contact" "testorganization_contact" {
+  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  first_name = "<first name>"
+  last_name = "<last name>"
+  notes = "<notes>"
+  email = "<email>"
+  phone = "<phone>"
+  roles = []
+  organization_id = data.sys11iam_organization.testorg.id
+}
+
+```
+
+Now the resource to be imported can be managed with `terraform plan/apply`.
+
 
 

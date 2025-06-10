@@ -82,8 +82,9 @@ func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	data.S3AccessKey = types.StringValue(response.AccessKey)
-	data.AccessKey = types.StringValue(response.AccessKey)
+	accessKey := types.StringValue(response.AccessKey)
+	data.S3AccessKey = accessKey
+	data.AccessKey = accessKey
 	data.SecretKey = types.StringValue(response.SecretKey)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
