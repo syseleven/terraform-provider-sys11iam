@@ -1,7 +1,3 @@
----
-page_title: sys11iam_organization
----
-
 # sys11iam_organization
 
 Get an Organization by its ID and name.
