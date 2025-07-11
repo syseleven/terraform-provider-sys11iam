@@ -19,8 +19,8 @@ data "sys11iam_organization" "testorg" {
   name = "test_org"
 }
 
-# Create an SysEleven IAM project
-resource "sys11iam_project" "test_project" {
+# Create an SysEleven IAM organization project
+resource "sys11iam_organization_project" "test_project" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "testproject"
   description = "testdescription"
@@ -31,19 +31,37 @@ resource "sys11iam_project" "test_project" {
 # Create an SysEleven IAM organization membership
 resource "sys11iam_organization_membership" "test_membership" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  email = "test@syseleven.net"
-  editable_permissions = ["can_become_project_administrator_in_org"]
+  id = "user-uuid-here"
   organization_id = data.sys11iam_organization.testorg.id
+
+  membership = {
+    user_membership = {
+      permissions = ["can_become_project_administrator_in_org"]
+      affiliation = "member"
+      membership_type = "user"
+      email = "test@syseleven.net"
+    }
+  }
 }
 
-# Create an SysEleven IAM  project membership
-resource "sys11iam_project_membership" "test_project_membership" {
-  depends_on = [sys11iam_project.test_project, sys11iam_organization_membership.test_membership]
+# Create an SysEleven IAM organization project membership
+resource "sys11iam_organization_project_membership" "test_project_membership" {
+  depends_on = [sys11iam_organization_project.test_project, sys11iam_organization_membership.test_membership]
   count = one(sys11iam_organization_membership.test_membership[*].is_active) == true ? 1 : 0
-  email = "test@syseleven.net"
-  permissions = ["can_become_administrator_in_project", "can_crud_permissions_in_project"]
   organization_id = data.sys11iam_organization.testorg.id
-  project_id = sys11iam_project.test_project[0].id
+  project_id = sys11iam_organization_project.test_project[0].id
+  project_name = sys11iam_organization_project.test_project[0].name
+  id = sys11iam_organization_membership.test_membership[0].id
+
+  membership = {
+    user_membership = {
+      permissions = ["can_become_administrator_in_project", "can_crud_permissions_in_project"]
+      membership_type = "user"
+      user = {
+        email = "test@syseleven.net"
+      }
+    }
+  }
 }
 
 # Create an SysEleven IAM  service account
@@ -72,53 +90,66 @@ resource "sys11iam_organization_team" "testorganization_team" {
   name = "testteam"
   description = "test team"
   tags = ["testing2"]
-  editable_permissions = ["can_become_project_administrator_in_org"]
+  organization_permissions = ["can_become_project_administrator_in_org"]
   organization_id = data.sys11iam_organization.testorg.id
+  
+  project = [
+    {
+      id = sys11iam_organization_project.test_project[0].id
+      name = sys11iam_organization_project.test_project[0].name
+      project_permissions = ["can_become_administrator_in_project"]
+    }
+  ]
 }
 
-# Create an SysEleven IAM  project team
-resource "sys11iam_project_team" "test_project_team" {
-  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  organization_id = data.sys11iam_organization.testorg.id
-  project_id = sys11iam_project.test_project[0].id
-  team_id = sys11iam_organization_team.testorganization_team[0].id
-  editable_permissions = ["can_become_administrator_in_project"]
-}
 
 # Create an SysEleven IAM  organization team membership
 resource "sys11iam_organization_team_membership" "testorganization_team_membership" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+  team_id = sys11iam_organization_team.testorganization_team[0].id
+  team_name = sys11iam_organization_team.testorganization_team[0].name
   id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
   organization_id = data.sys11iam_organization.testorg.id
-  team_id = sys11iam_organization_team.testorganization_team[0].id
+  membership_type = "service_account"
+
+  membership = {
+    service_account_team_membership = {
+      membership_type = "service_account"
+      service_account = {
+        id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
+        name = sys11iam_organization_serviceaccount.test_serviceaccount[0].name
+      }
+      team_permissions = ["can_manage_team_in_team"]
+    }
+  }
 }
 
-# Create an SysEleven IAM  project S3User
-resource "sys11iam_project_s3user" "test_project_s3user" {
+# Create an SysEleven IAM organization project S3User
+resource "sys11iam_organization_project_s3user" "test_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "tests3user"
   description = "test s3user"
   organization_id = data.sys11iam_organization.testorg.id
-  project_id = sys11iam_project.test_project[0].id
+  project_id = sys11iam_organization_project.test_project[0].id
 }
 
-# Create an SysEleven IAM  project S3 User
-resource "sys11iam_project_s3user" "test_terraform_project_s3user" {
+# Create an SysEleven IAM organization project S3 User
+resource "sys11iam_organization_project_s3user" "test_terraform_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   # count = 0
   name = "terraform-tests3user-new-name"
   description = "terraform test s3user- new description"
   organization_id = data.sys11iam_organization.testorg.id
-  project_id = sys11iam_project.terraform_test_project[0].id
+  project_id = sys11iam_organization_project.test_project[0].id
 }
 
-# Create a SysEleven IAM project S3 User key
-resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
+# Create a SysEleven IAM organization project S3 User key
+resource "sys11iam_organization_project_s3user_key" "test_terraform_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   # count = 0
-  s3_user_id = sys11iam_project_s3user.test_terraform_project_s3user[0].id
+  s3_user_id = sys11iam_organization_project_s3user.test_terraform_project_s3user[0].id
   organization_id = data.sys11iam_organization.testorg.id
-  project_id = sys11iam_project.terraform_test_project[0].id
+  project_id = sys11iam_organization_project.test_project[0].id
 }
 
 

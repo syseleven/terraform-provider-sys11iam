@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
-	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_project"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project"
 )
 
 var _ resource.Resource = (*ProjectResource)(nil)
@@ -25,11 +25,11 @@ type ProjectResource struct {
 }
 
 func (r *ProjectResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_project"
+	resp.TypeName = req.ProviderTypeName + "_organization_project"
 }
 
 func (r *ProjectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_project.ProjectResourceSchema(ctx)
+	resp.Schema = resource_organization_project.OrganizationProjectResourceSchema(ctx)
 }
 
 func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -51,8 +51,20 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 	r.client = client
 }
 
+func (r *ProjectResource) buildData(ctx context.Context, data *resource_organization_project.OrganizationProjectModel, response *iam.IAMProject, organizationId string) {
+	data.Id = types.StringValue(response.ID)
+	data.ProjectId = types.StringValue(response.ID)
+	data.OrganizationId = types.StringValue(organizationId)
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
+	data.Status = types.StringValue(response.Status)
+	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
+}
+
 func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -77,10 +89,12 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	if len(data.Tags.Elements()) > 0 {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 	response, err := r.client.CreateProject(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
@@ -89,17 +103,14 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.Name = types.StringValue(response.Name)
-	data.Description = types.StringValue(response.Description)
-	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	r.buildData(ctx, &data, &response, data.OrganizationId.ValueString())
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -117,16 +128,14 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// Data value setting
-	data.Name = types.StringValue(response.Name)
-	data.Description = types.StringValue(response.Description)
-	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	r.buildData(ctx, &data, &response, data.OrganizationId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -146,29 +155,31 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	// Update API call logic
-	tflog.Info(ctx, "Creating Project resource.")
+	tflog.Info(ctx, "Updating Project resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	if len(data.Tags.Elements()) > 0 {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
-	_, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
+	response, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	// does not return updated structure-
+	r.buildData(ctx, &data, &response, data.OrganizationId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -178,7 +189,7 @@ func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 
 	// Delete API call logic
-	tflog.Info(ctx, "Reading Project resource.")
+	tflog.Info(ctx, "Deleting Project resource.")
 	err := r.client.DeleteProject(data.OrganizationId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -198,20 +209,16 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 	}
 
 	// Read API call logic
-	tflog.Info(ctx, "Reading Project resource.")
+	tflog.Info(ctx, "Importing Project resource.")
 	response, err := r.client.GetProject(idParts[0], idParts[1])
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 	// Data value setting
-	data.Id = types.StringValue(response.ID)
-	data.Name = types.StringValue(response.Name)
-	data.Description = types.StringValue(response.Description)
-	data.OrganizationId = types.StringValue(idParts[0])
-	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	r.buildData(ctx, &data, &response, idParts[0])
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

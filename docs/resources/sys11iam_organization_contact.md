@@ -47,6 +47,7 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
   organization_id = data.sys11iam_organization.testorg.id
 }
 ```
+
 Then you execute:
 
 ```bash
@@ -77,6 +78,3 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
 ```
 
 Now the resource to be imported can be managed with `terraform plan/apply`.
-
-
-

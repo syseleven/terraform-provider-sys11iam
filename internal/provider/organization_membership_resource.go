@@ -3,12 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_membership"
@@ -52,6 +54,101 @@ func (r *OrganizationMembershipResource) Configure(_ context.Context, req resour
 	r.client = client
 }
 
+func getServiceAccountMembershipAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"id":              types.StringType,
+		"name":            types.StringType,
+		"affiliation":     types.StringType,
+		"membership_type": types.StringType,
+		"permissions":     types.ListType{ElemType: types.StringType},
+	}
+}
+
+func getUserMembershipAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"id":              types.StringType,
+		"email":           types.StringType,
+		"affiliation":     types.StringType,
+		"membership_type": types.StringType,
+		"permissions":     types.ListType{ElemType: types.StringType},
+	}
+}
+
+func getMembershipAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"service_account_membership": basetypes.ObjectType{AttrTypes: getServiceAccountMembershipAttrTypes()},
+		"user_membership":            basetypes.ObjectType{AttrTypes: getUserMembershipAttrTypes()},
+	}
+}
+
+func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *resource_organization_membership.OrganizationMembershipModel, response *iam.IAMOrganizationMembership) diag.Diagnostics {
+	data.Id = types.StringValue(response.ID)
+
+	permissionsAttrs := convertSliceToAttrValues(response.Permissions, func(s string) attr.Value {
+		return types.StringValue(s)
+	})
+
+	serviceAccountMembershipAttrTypes := getServiceAccountMembershipAttrTypes()
+	userMembershipAttrTypes := getUserMembershipAttrTypes()
+	membershipAttrTypes := getMembershipAttrTypes()
+
+	var membership basetypes.ObjectValue
+	diags := data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{})
+	if diags.HasError() {
+		return diags
+	}
+
+	if response.User.ID != "" {
+		var userMembership resource_organization_membership.UserMembershipValue
+		diags = membership.Attributes()["user_membership"].(basetypes.ObjectValue).As(ctx, &userMembership, basetypes.ObjectAsOptions{})
+		if diags.HasError() {
+			return diags
+		}
+
+		userMembershipPermissionsAttrs := MergeSlices(userMembership.Permissions.Elements(), permissionsAttrs, func(p attr.Value) attr.Value {
+			return p
+		})
+
+		userMembershipValue := basetypes.NewObjectValueMust(userMembershipAttrTypes, map[string]attr.Value{
+			"id":              types.StringValue(response.User.ID),
+			"email":           types.StringValue(response.User.Email),
+			"affiliation":     types.StringValue(response.Affiliation),
+			"membership_type": types.StringValue(response.MembershipType),
+			"permissions":     types.ListValueMust(types.StringType, userMembershipPermissionsAttrs),
+		})
+
+		data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+			"service_account_membership": basetypes.NewObjectNull(serviceAccountMembershipAttrTypes),
+			"user_membership":            userMembershipValue,
+		})
+	} else if response.ServiceAccount.ID != "" {
+		var serviceAccountMembership resource_organization_membership.ServiceAccountMembershipValue
+		diags = membership.Attributes()["service_account_membership"].(basetypes.ObjectValue).As(ctx, &serviceAccountMembership, basetypes.ObjectAsOptions{})
+		if diags.HasError() {
+			return diags
+		}
+
+		serviceAccountMembershipPermissionsAttrs := MergeSlices(serviceAccountMembership.Permissions.Elements(), permissionsAttrs, func(p attr.Value) attr.Value {
+			return p
+		})
+
+		serviceAccountMembershipValue := basetypes.NewObjectValueMust(serviceAccountMembershipAttrTypes, map[string]attr.Value{
+			"id":              types.StringValue(response.ServiceAccount.ID),
+			"name":            types.StringValue(response.ServiceAccount.Name),
+			"affiliation":     types.StringValue(response.Affiliation),
+			"membership_type": types.StringValue(response.MembershipType),
+			"permissions":     types.ListValueMust(types.StringType, serviceAccountMembershipPermissionsAttrs),
+		})
+
+		data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+			"service_account_membership": serviceAccountMembershipValue,
+			"user_membership":            basetypes.NewObjectNull(userMembershipAttrTypes),
+		})
+	}
+
+	return diags
+}
+
 func (r *OrganizationMembershipResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data resource_organization_membership.OrganizationMembershipModel
 
@@ -65,7 +162,6 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationMembership resource.")
 	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
-	data.IsActive = types.BoolValue(false)
 	// Is the organization active?
 	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
 	if err != nil {
@@ -79,65 +175,125 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		return
 	}
 
-	elements := make([]string, 0, len(data.EditablePermissions.Elements()))
-	diags := data.EditablePermissions.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
+	var permissions []string
+	var membership basetypes.ObjectValue
+	diag := data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{})
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
 		return
 	}
 
-	// Is the e-mail already a member?
-	if data.Email.ValueString() != "" {
-		org_membership_response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if data.Id.ValueString() == "" && err != nil {
+	var affiliation string
+	var membershipType string
+
+	if userMembershipAttr, ok := membership.Attributes()["user_membership"]; ok && !userMembershipAttr.IsNull() && !userMembershipAttr.IsUnknown() {
+		userMembershipObj := userMembershipAttr.(basetypes.ObjectValue)
+
+		var userMembership resource_organization_membership.UserMembershipValue
+		diag = userMembershipObj.As(ctx, &userMembership, basetypes.ObjectAsOptions{})
+		if diag.HasError() {
+			resp.Diagnostics.Append(diag...)
+			return
+		}
+
+		diags := userMembership.Permissions.ElementsAs(ctx, &permissions, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		affiliation = userMembership.Affiliation.ValueString()
+		membershipType = userMembership.MembershipType.ValueString()
+
+		// Is the user already a member?
+		email := userMembership.Email.ValueString()
+
+		org_membership_response, err := r.client.GetOrganizationMembershipByEmail(ctx, data.OrganizationId.ValueString(), email)
+		if userMembership.Id.IsNull() || userMembership.Id.IsUnknown() && err != nil {
 			// Is the e-mail at least invited?
-			_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-			if err != nil {
+			org_invitation_response, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), email)
+			if org_invitation_response.ID == "" || err != nil {
 				// Invite the e-mail
-				_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString(), elements)
+				invitationResponse, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), email, permissions)
 				if err != nil {
 					resp.Diagnostics.AddError("", err.Error())
 					return
 				}
+				data.Id = types.StringValue(invitationResponse.ID)
 			}
 			// The email is invited, but has to be activated manually
-			resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
+			resp.Diagnostics.AddError("InvitationNotAccepted",
 				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
-					data.OrganizationId.ValueString(), data.Email.ValueString()))
-			// Save data into Terraform state
-			data.Id = types.StringValue("0")
+					data.OrganizationId.ValueString(), email))
+
+			// data value setting
+			if data.Id.IsNull() || data.Id.IsUnknown() {
+				data.Id = types.StringValue(org_invitation_response.ID)
+			}
+
+			serviceAccountMembershipAttrTypes := getServiceAccountMembershipAttrTypes()
+			userMembershipAttrTypes := getUserMembershipAttrTypes()
+			membershipAttrTypes := getMembershipAttrTypes()
+
+			userMembershipValue := basetypes.NewObjectValueMust(userMembershipAttrTypes, map[string]attr.Value{
+				"id":              data.Id,
+				"email":           userMembership.Email,
+				"affiliation":     userMembership.Affiliation,
+				"membership_type": userMembership.MembershipType,
+				"permissions":     userMembership.Permissions,
+			})
+
+			data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+				"service_account_membership": basetypes.NewObjectNull(serviceAccountMembershipAttrTypes),
+				"user_membership":            userMembershipValue,
+			})
+
 			resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 			return
 		}
+		data.Id = types.StringValue(org_membership_response.ID)
+	} else if serviceAccountMembershipAttr, ok := membership.Attributes()["service_account_membership"]; ok && !serviceAccountMembershipAttr.IsNull() && !serviceAccountMembershipAttr.IsUnknown() {
+		serviceAccountMembershipObj := serviceAccountMembershipAttr.(basetypes.ObjectValue)
 
-		if org_membership_response.ServiceAccount.ID != "" {
-			data.Id = types.StringValue(org_membership_response.ServiceAccount.ID)
+		var serviceAccountMembership resource_organization_membership.ServiceAccountMembershipValue
+		diag = serviceAccountMembershipObj.As(ctx, &serviceAccountMembership, basetypes.ObjectAsOptions{})
+		if diag.HasError() {
+			resp.Diagnostics.Append(diag...)
+			return
 		}
 
-		if org_membership_response.User.ID != "" {
-			data.Id = types.StringValue(org_membership_response.User.ID)
+		diags := serviceAccountMembership.Permissions.ElementsAs(ctx, &permissions, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		affiliation = serviceAccountMembership.Affiliation.ValueString()
+		membershipType = serviceAccountMembership.MembershipType.ValueString()
+
+		if data.Id.IsNull() || data.Id.IsUnknown() {
+			if serviceAccountMembership.Id.IsNull() || serviceAccountMembership.Id.IsUnknown() {
+				resp.Diagnostics.AddError("", "Service account membership id is required")
+				return
+			}
+			data.Id = serviceAccountMembership.Id
 		}
 	}
 
-	response, err := r.client.CreateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Affiliation.ValueString(), elements)
+	response, err := r.client.CreateOrUpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), affiliation, membershipType, permissions)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	if response.ServiceAccount.ID != "" {
-		data.Id = types.StringValue(response.ServiceAccount.ID)
+	diag = r.buildData(ctx, &data, &response)
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
+		return
 	}
 
-	if response.User.ID != "" {
-		data.Id = types.StringValue(response.User.ID)
-		data.Email = types.StringValue(response.User.Email)
-	}
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
-	sort.Sort(sort.StringSlice(response.Permissions))
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
-	//data.IsActive = types.BoolValue(true)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -155,50 +311,26 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationMembership resource.")
-	if data.Email.ValueString() != "" && !data.IsActive.ValueBool() {
-		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if err == nil {
-			// The email is invited, but has to be activated manually
-			resp.Diagnostics.AddWarning("InvitationNotAcceptedWarning",
-				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
-					data.OrganizationId.ValueString(), data.Email.ValueString()))
-			return
-		}
-		response, err := r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if err != nil {
-			// The email was neither invited, nor exists as a member
-			resp.Diagnostics.AddWarning("InvitationInexistentWarning",
-				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s was neither invited, nor exists as a member: %s",
-					data.OrganizationId.ValueString(), data.Email.ValueString(), err.Error()))
-			return
-		}
-		if response.ServiceAccount.ID != "" {
-			data.Id = types.StringValue(response.ServiceAccount.ID)
-		}
-		if response.User.ID != "" {
-			data.Id = types.StringValue(response.User.ID)
-		}
+
+	if data.Id.IsNull() || data.Id.IsUnknown() {
+		resp.Diagnostics.AddError("", "Organization membership id is required")
+		return
 	}
+
 	response, err := r.client.GetOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
-	if response.ServiceAccount.ID != "" {
-		data.Id = types.StringValue(response.ServiceAccount.ID)
-	}
-	if response.User.ID != "" {
-		data.Id = types.StringValue(response.User.ID)
+	// Data value setting
+	diag := r.buildData(ctx, &data, &response)
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
+		return
 	}
 
-	// Data value setting
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
-	data.Affiliation = types.StringValue(response.Affiliation)
-	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
-	data.IsActive = types.BoolValue(true)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -215,47 +347,85 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 		return
 	}
 
-	planned_email := data.Email.ValueString()
-	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("email"), &data.Email)...)
-	if planned_email != data.Email.ValueString() {
-		resp.Diagnostics.AddError("", "Updating the 'email' field of an organization membership is currently not implemented.")
-		return
-	}
-
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationMembership resource.")
-	elements := make([]string, 0, len(data.EditablePermissions.Elements()))
-	diags := data.EditablePermissions.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
+
+	var permissions []string
+	var membership basetypes.ObjectValue
+	diag := data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{
+		UnhandledNullAsEmpty:    true,
+		UnhandledUnknownAsEmpty: true,
+	})
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
 		return
 	}
 
-	if data.Id.ValueString() == "0" {
-		_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString(), elements)
-		if err != nil {
-			resp.Diagnostics.AddError("", err.Error())
+	var affiliation string
+	var membershipType string
+
+	if userMembershipAttr, ok := membership.Attributes()["user_membership"]; ok && !userMembershipAttr.IsNull() && !userMembershipAttr.IsUnknown() {
+		userMembershipObj := userMembershipAttr.(basetypes.ObjectValue)
+
+		var userMembership resource_organization_membership.UserMembershipValue
+		diag = userMembershipObj.As(ctx, &userMembership, basetypes.ObjectAsOptions{})
+		if diag.HasError() {
+			resp.Diagnostics.Append(diag...)
 			return
 		}
+
+		diags := userMembership.Permissions.ElementsAs(ctx, &permissions, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		affiliation = userMembership.Affiliation.ValueString()
+		membershipType = userMembership.MembershipType.ValueString()
+
+		if userMembership.Id.ValueString() != "" && data.Id.ValueString() == "0" {
+			email := userMembership.Email.ValueString()
+
+			_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), email, permissions)
+			if err != nil {
+				resp.Diagnostics.AddError("", err.Error())
+				return
+			}
+			return
+		}
+	} else if serviceAccountMembershipAttr, ok := membership.Attributes()["service_account_membership"]; ok && !serviceAccountMembershipAttr.IsNull() && !serviceAccountMembershipAttr.IsUnknown() {
+		serviceAccountMembershipObj := serviceAccountMembershipAttr.(basetypes.ObjectValue)
+
+		var serviceAccountMembership resource_organization_membership.ServiceAccountMembershipValue
+		diag = serviceAccountMembershipObj.As(ctx, &serviceAccountMembership, basetypes.ObjectAsOptions{})
+		if diag.HasError() {
+			resp.Diagnostics.Append(diag...)
+			return
+		}
+
+		diags := serviceAccountMembership.Permissions.ElementsAs(ctx, &permissions, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		affiliation = serviceAccountMembership.Affiliation.ValueString()
+		membershipType = serviceAccountMembership.MembershipType.ValueString()
 	}
-	response, err := r.client.UpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Affiliation.ValueString(), elements)
+
+	response, err := r.client.UpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), affiliation, membershipType, permissions)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	if response.ServiceAccount.ID != "" {
-		data.Id = types.StringValue(response.ServiceAccount.ID)
-	}
-	if response.User.ID != "" {
-		data.Id = types.StringValue(response.User.ID)
+	diag = r.buildData(ctx, &data, &response)
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
+		return
 	}
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
-	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
-	data.IsActive = types.BoolValue(true)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -274,14 +444,37 @@ func (r *OrganizationMembershipResource) Delete(ctx context.Context, req resourc
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting OrganizationMembership resource.")
 	if data.Id.ValueString() == "0" {
-		_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if err != nil {
+		var membership basetypes.ObjectValue
+		diag := data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{
+			UnhandledNullAsEmpty:    true,
+			UnhandledUnknownAsEmpty: true,
+		})
+		if diag.HasError() {
+			resp.Diagnostics.Append(diag...)
 			return
 		}
-		err = r.client.DeleteOrganizationInvitation(data.OrganizationId.ValueString(), data.Email.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("", err.Error())
-			return
+
+		if userMembershipAttr, ok := membership.Attributes()["user_membership"]; ok && !userMembershipAttr.IsNull() && !userMembershipAttr.IsUnknown() {
+			userMembershipObj := userMembershipAttr.(basetypes.ObjectValue)
+
+			var userMembership resource_organization_membership.UserMembershipValue
+			diag = userMembershipObj.As(ctx, &userMembership, basetypes.ObjectAsOptions{})
+			if diag.HasError() {
+				resp.Diagnostics.Append(diag...)
+				return
+			}
+
+			email := userMembership.Email.ValueString()
+
+			_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), email)
+			if err != nil {
+				return
+			}
+			err = r.client.DeleteOrganizationInvitation(data.OrganizationId.ValueString(), email)
+			if err != nil {
+				resp.Diagnostics.AddError("", err.Error())
+				return
+			}
 		}
 	}
 	err := r.client.DeleteOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
@@ -294,6 +487,7 @@ func (r *OrganizationMembershipResource) Delete(ctx context.Context, req resourc
 func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	idParts := strings.Split(req.ID, ",")
 
+	tflog.Info(ctx, "Importing OrganizationMembership resource.")
 	if len(idParts) != 2 || (len(idParts) == 2 && (idParts[0] == "" || idParts[1] == "")) {
 		resp.Diagnostics.AddError(
 			"Unexpected Import Identifier",
@@ -303,7 +497,6 @@ func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req re
 	}
 
 	// Read API call logic
-	tflog.Info(ctx, "Reading OrganizationMembership resource.")
 	response, err := r.client.GetOrganizationMembership(idParts[0], idParts[1])
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -312,18 +505,12 @@ func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req re
 
 	var data resource_organization_membership.OrganizationMembershipModel
 	// Data value setting
-	if response.ServiceAccount.ID != "" {
-		data.Id = types.StringValue(response.ServiceAccount.ID)
+	diag := r.buildData(ctx, &data, &response)
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
+		return
 	}
-	if response.User.ID != "" {
-		data.Id = types.StringValue(response.User.ID)
-	}
-	data.OrganizationId = types.StringValue(idParts[0])
-	data.Affiliation = types.StringValue(response.Affiliation)
-	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
-	data.IsActive = types.BoolValue(true)
+	data.OrganizationId = types.StringValue(response.Organisation.ID)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

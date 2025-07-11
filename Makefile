@@ -3,6 +3,10 @@
 terraform-provider-sys11iam:
 	go build -ldflags "-X github.com/syseleven/terraform-provider-sys11iam/tmp_main.Version=$(shell git describe --tags --always)"
 
+dev:
+	$(MAKE) terraform-provider-sys11iam
+	go install
+
 tf-generate:
 	tfplugingen-openapi generate --config ./generator_config.yml --output ./provider-code-spec.json ./openapi.json
 	tfplugingen-framework generate resources --input ./provider-code-spec.json --output ./internal

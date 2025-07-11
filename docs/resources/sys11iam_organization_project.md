@@ -1,4 +1,4 @@
-Project Resource
+# Project Resource
 
 The Project Resource manages a SysEleven IAM project in an Organization.
 
@@ -17,6 +17,7 @@ resource "sys11iam_project" "test_project" {
 ## Argument Reference
 
 The following arguments are supported for the resource "sys11iam_project":
+
 * **`name`** - The name of the project.
 * **`description`** - The description of the project.
 * **`tags`** - The tags of the project.
@@ -37,6 +38,7 @@ resource "sys11iam_project" "test_project" {
 }
 
 ```
+
 Then you execute:
 
 ```bash
@@ -62,5 +64,5 @@ resource "sys11iam_project" "test_project" {
 }
 
 ```
-Now the resource to be imported can be managed with `terraform plan/apply`.
 
+Now the resource to be imported can be managed with `terraform plan/apply`.
