@@ -1,27 +1,38 @@
-Organization Team Resource
+# Organization Team Resource
 
 The Organization Team Resource enables the management of a team in an Organization for SysEleven's IAM.
 
 ## Example Usage
 
 ```hcl
-resource "sys11iam_organization_team" "testorganization_team" {
-  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  name = "testteam"
-  description = "test team"
-  tags = ["testing2"]
-  editable_permissions = ["can_become_project_administrator_in_org"]
-  organization_id = data.sys11iam_organization.testorg.id
+resource "sys11iam_organization_team" "test" {
+  name        = "test-team"
+  organization_id = data.sys11iam_organization.test_org.id
+  description = "Test team for acceptance testing"
+  organization_permissions = ["can_become_project_administrator_in_org"]
+  tags = ["test", "acceptance-testing"]
+
+  projects = [
+    {
+      id = sys11iam_organization_project.test_project_1.id
+      project_permissions = ["can_become_administrator_in_project"]
+    },
+    {
+      id = sys11iam_organization_project.test_project_2.id
+      project_permissions = ["can_become_administrator_in_project"]
+    }
+  ]
 }
 ```
 
 ## Argument Reference
+
 The following arguments are supported for the resource "sys11iam_organization_team":
 
-* **`name`** - The name of the organization team.
-* **`description`** - The description of the organization team.
+* **`name`** - The name of the organization team. Must be between 3-62 characters and contain only lowercase letters, numbers, and hyphens.
+* **`description`** - The description of the organization team. Maximum 1000 characters.
 * **`tags`** - The tags of the organization team.
-* **`editable_permissions`** - The editable permissions of the organization team.
+* **`organization_permissions`** - The permissions of the team within the organization.
     Supported Permissions:
     * `can_become_project_administrator_in_org`
     * `can_create_projects_in_org`
@@ -34,27 +45,40 @@ The following arguments are supported for the resource "sys11iam_organization_te
     * `can_create_service_accounts_in_org`
 
 * **`organization_id`** - The UUID of the organization.
+* **`projects`** - A list of project configurations for the team.
+    * **`id`** - The UUID of the project.
+    * **`project_permissions`** - The permissions of the team within the project.Supported Project Permissions:
+        * `can_become_administrator_in_project`
+        * `can_create_projects_in_project`
+        * `can_invite_members_in_project`
+        * `can_crud_permissions_in_project`
+        * `can_read_members_in_project`
+        * `can_delete_members_in_project`
+        * `can_manage_contact_persons_in_project`
+        * `can_read_contact_persons_in_project`
+        * `can_create_service_accounts_in_project`
+
 * **`id`** - The UUID of the organization team. (read-only)
 
-## Importing Organization Service Accounts
+## Importing Organization Teams
 
-To import an organization service account, your configuration would look like the following:
+To import an organization team, your configuration would look like the following:
 
 ```hcl
-resource "sys11iam_organization_team" "testorganization_team" {
-  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+resource "sys11iam_organization_team" "test" {
   name = "<team name>"
   description = "<description>"
   tags = []
-  editable_permissions = []
-  organization_id = data.sys11iam_organization.testorg.id
+  organization_permissions = []
+  organization_id = data.sys11iam_organization.test_org.id
+  projects = []
 }
-
 ```
+
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_team.testorganization_team[0] <organization_id,team_id>
+terraform import sys11iam_organization_team.test <organization_id,team_id>
 ```
 
 Where `organization_id` is the ID of the organization and `team_id` is the ID of the team you want to import.
@@ -63,19 +87,18 @@ A programmatic alternative involves using the [import block](https://developer.h
 
 ```hcl
 import {
-    to = sys11iam_organization_team.testorganization_team[0] 
-    id = "<organization_id,team_id>"
+  to = sys11iam_organization_team.test
+  id = "<organization_id,team_id>"
 }
 
-resource "sys11iam_organization_team" "testorganization_team" {
-  count = data.sys11iam_organization.testorg.is_active ? 1 : 0
+resource "sys11iam_organization_team" "test" {
   name = "<team name>"
   description = "<description>"
   tags = []
-  editable_permissions = []
-  organization_id = data.sys11iam_organization.testorg.id
+  organization_permissions = []
+  organization_id = data.sys11iam_organization.test_org.id
+  projects = []
 }
-
 ```
-Now the resource to be imported can be managed with `terraform plan/apply`.
 
+Now the resource to be imported can be managed with `terraform plan/apply`.

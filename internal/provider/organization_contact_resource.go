@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -93,7 +92,6 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 	}
 
 	data.Id = types.StringValue(response.ID)
-	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 
 	// Save data into Terraform state
@@ -120,7 +118,6 @@ func (r *OrganizationContactResource) Read(ctx context.Context, req resource.Rea
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 
 	// Save updated data into Terraform state
@@ -160,7 +157,6 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 	data.Phone = types.StringValue(response.Phone)
 	data.Email = types.StringValue(response.Email)
 	data.Notes = types.StringValue(response.Notes)
-	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -216,7 +212,6 @@ func (r *OrganizationContactResource) ImportState(ctx context.Context, req resou
 	data.Phone = types.StringValue(response.Phone)
 	data.Email = types.StringValue(response.Email)
 	data.Notes = types.StringValue(response.Notes)
-	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 	data.OrganizationId = types.StringValue(idParts[0])
 

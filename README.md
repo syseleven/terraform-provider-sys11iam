@@ -21,9 +21,3 @@ file `main.tf` to run it against a live environment.
 ## Testing (unit)
 
 Run `make unit-test` to run the unit tests including the `keycloak` and `glue-api` client.
-
-## Demo
-
-See the plugin in action:
-
-![Demo](demo.gif)

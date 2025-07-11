@@ -1,6 +1,7 @@
 package iam
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,18 +9,18 @@ import (
 	"github.com/syseleven/terraform-provider-sys11iam/internal/errors"
 )
 
-const IAMOrganizationsEndpoint string = "/v1/orgs"
-const IAMOrganizationEndpoint string = "/v1/orgs/%s"
+const IAMOrganizationsEndpoint string = "/v2/orgs"
+const IAMOrganizationEndpoint string = "/v2/orgs/%s"
 
-const IAMProjectsEndpoint string = "/v1/orgs/%s/projects"
-const IAMProjectEndpoint string = "/v1/orgs/%s/projects/%s"
+const IAMProjectsEndpoint string = "/v2/orgs/%s/projects"
+const IAMProjectEndpoint string = "/v2/orgs/%s/projects/%s"
 
 const IAMOrganizationMembershipsEndpoint string = "/v2/orgs/%s/memberships"
 const IAMOrganizationMembershipEndpoint string = "/v2/orgs/%s/memberships/%s"
 const IAMOrganizationMembershipPermissionsEndpoint string = "/v2/orgs/%s/memberships/%s/permissions"
 
-const IAMOrganizationInvitationsEndpoint string = "/v1/orgs/%s/invitations"
-const IAMOrganizationInvitationEndpoint string = "/v1/orgs/%s/invitations/%s"
+const IAMOrganizationInvitationsEndpoint string = "/v2/orgs/%s/invitations"
+const IAMOrganizationInvitationEndpoint string = "/v2/orgs/%s/invitations/%s"
 
 const IAMProjectMembershipsEndpoint string = "/v2/orgs/%s/projects/%s/memberships"
 const IAMProjectMembershipEndpoint string = "/v2/orgs/%s/projects/%s/memberships/%s"
@@ -38,6 +39,8 @@ const IAMOrganizationContactEndpoint string = "/v2/orgs/%s/contacts/%s"
 
 const IAMProjectTeamPermissionsEndpoint string = "/v2/orgs/%s/projects/%s/teams/%s/permissions"
 
+const IAMTeamProjectsEndpoint string = "/v2/orgs/%s/teams/%s/projects"
+
 const IAMOrganizationTeamMembershipsEndpoint string = "/v2/orgs/%s/teams/%s/memberships"
 const IAMOrganizationTeamMembershipEndpoint string = "/v2/orgs/%s/teams/%s/memberships/%s"
 
@@ -49,6 +52,8 @@ const IAMProjectS3UsersEndpoint string = "/v2/orgs/%s/projects/%s/s3-users"
 const IAMProjectS3UserEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s"
 const IAMProjectS3UserKeysEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s/ec2-credentials"
 const IAMProjectS3UserKeyEndpoint string = "/v2/orgs/%s/projects/%s/s3-users/%s/ec2-credentials/%s"
+
+const IAMOrganizationTeamMembershipPermissionsEndpoint string = "/v2/orgs/%s/teams/%s/permissions/%s"
 
 type IAMOrganization struct {
 	// org id
@@ -114,6 +119,27 @@ type IAMProject struct {
 
 	// project name
 	Name string `json:"name"`
+
+	// project description
+	Description string `json:"description"`
+
+	// project tags
+	Tags []string `json:"tags"`
+
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	Status    string `json:"status"`
+}
+
+type IAMTeamProjectWithPermissions struct {
+	// project id
+	ID string `json:"id"`
+
+	// project name
+	Name string `json:"name"`
+
+	// project permissions
+	Permissions []string `json:"permissions"`
 
 	// project description
 	Description string `json:"description"`
@@ -217,6 +243,7 @@ type IAMProjectS3UserKey struct {
 	SecretKey string `json:"secret_key"`
 
 	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 type IAMOrganizationContact struct {
@@ -295,9 +322,9 @@ type IAMProjectMembership struct {
 	Permissions []string `json:"permissions,omitempty"`
 
 	MembershipType string                        `json:"membership_type,omitempty"`
-	ServiceAccount IAMOrganisationServiceAccount `json:"service_account"`
-	User           IAMOrganisationUser           `json:"user"`
-	Project        IAMProject                    `json:"project"`
+	ServiceAccount IAMOrganisationServiceAccount `json:"service_account,omitempty"`
+	User           IAMOrganisationUser           `json:"user,omitempty"`
+	Project        IAMProject                    `json:"project,omitempty"`
 }
 
 type IAMOrganizationServiceaccount struct {
@@ -316,6 +343,131 @@ type IAMOrganizationServiceaccount struct {
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
+
+type IAMOrganizationMembershipPermission struct {
+	MemberId       string                                             `json:"member_id"`
+	OrganizationId string                                             `json:"organization_id"`
+	ServiceAccount IAMOrganizationMembershipPermissionsServiceAccount `json:"service_account,omitempty"`
+	User           IAMOrganizationMembershipPermissionsUser           `json:"user,omitempty"`
+}
+
+type IAMOrganizationMembershipPermissionsUser struct {
+	Affiliation    string              `json:"affiliation"`
+	Permissions    []string            `json:"permissions,omitempty"`
+	Id             string              `json:"id"`
+	MembershipType string              `json:"membership_type"`
+	OrganizationId string              `json:"organization_id"`
+	User           IAMOrganisationUser `json:"user"`
+}
+
+type IAMOrganizationMembershipPermissionsServiceAccount struct {
+	Affiliation    string                        `json:"affiliation"`
+	Permissions    []string                      `json:"permissions,omitempty"`
+	Id             string                        `json:"id"`
+	MembershipType string                        `json:"membership_type"`
+	OrganizationId string                        `json:"organization_id"`
+	ServiceAccount IAMOrganisationServiceAccount `json:"service_account"`
+}
+
+type IAMOrganizationTeamPermission struct {
+	OrganizationId     string   `json:"org_id"`
+	TeamId             string   `json:"team_id"`
+	AddedPermissions   []string `json:"added_permissions,omitempty"`
+	RemovedPermissions []string `json:"removed_permissions,omitempty"`
+	UpdatedPermissions []string `json:"updated_permissions,omitempty"`
+}
+
+type IAMOrganizationTeamMembershipPermission struct {
+	MemberId           string   `json:"member_id"`
+	OrganizationId     string   `json:"org_id"`
+	TeamId             string   `json:"team_id"`
+	MemberType         string   `json:"member_type"`
+	AddedPermissions   []string `json:"added_permissions,omitempty"`
+	RemovedPermissions []string `json:"removed_permissions,omitempty"`
+	UpdatedPermissions []string `json:"updated_permissions,omitempty"`
+}
+type IAMClient interface {
+	GetOrganization(id string) (IAMOrganization, error)
+	GetOrganizationByName(name string) (IAMOrganization, error)
+	CreateOrganization(org IAMOrganization) (IAMOrganization, error)
+	UpdateOrganization(id string, org IAMOrganization) (IAMOrganization, error)
+	DeleteOrganization(id string) error
+
+	GetProject(org_id string, project_id string) (IAMProject, error)
+	CreateProject(org_id string, name string, description string, tags []string) (IAMProject, error)
+	UpdateProject(org_id string, id string, name string, description string, tags []string) (IAMProject, error)
+	DeleteProject(org_id string, id string) error
+
+	GetOrganizationMembershipByEmail(ctx context.Context, org_id string, email string) (IAMOrganizationMembership, error)
+	GetOrganizationMembership(org_id string, id string) (IAMOrganizationMembership, error)
+	CreateOrUpdateOrganizationMembership(org_id string, user_id string, affiliation string, membershipType string, permissions []string) (IAMOrganizationMembership, error)
+	DeleteOrganizationMembership(org_id string, id string) error
+
+	DeleteOrganizationMembershipPermission(org_id string, member_id string) error
+	CreateOrUpdateOrganizationMembershipPermission(member_id, org_id string, permissions []string) (IAMOrganizationMembershipPermission, error)
+
+	GetOrganizationInvitationByEmail(org_id string, email string) (IAMOrganizationInvitation, error)
+	CreateOrganizationInvitation(org_id string, email string, permissions []string) (IAMOrganizationInvitation, error)
+	DeleteOrganizationInvitation(org_id string, email string) error
+
+	GetProjectMembership(org_id string, project_id string, id string) (IAMProjectMembership, error)
+	GetProjectMembershipByEmail(org_id string, project_id string, email string) (IAMProjectMembership, error)
+	CreateProjectMembership(org_id string, project_id string, user_id string, membershipType string, permissions []string) (IAMProjectMembership, error)
+	UpdateProjectMembership(org_id string, project_id string, user_id string, membershipType string, permissions []string) (IAMProjectMembership, error)
+	DeleteProjectMembership(org_id string, project_id string, id string) error
+
+	GetOrganizationServiceaccount(org_id string, id string) (IAMOrganizationServiceaccount, error)
+	CreateOrganizationServiceaccount(org_id string, name string, description string) (IAMOrganizationServiceaccount, error)
+	UpdateOrganizationServiceaccount(org_id string, serviceaccount_id string, name string, description string) (IAMOrganizationServiceaccount, error)
+	DeleteOrganizationServiceaccount(org_id string, id string) error
+
+	GetOrganizationContact(org_id string, id string) (IAMOrganizationContact, error)
+	CreateOrganizationContact(org_id string, first_name string, last_name string, notes string, email string, phone string, roles []string) (IAMOrganizationContact, error)
+	UpdateOrganizationContact(org_id string, team_id string, first_name string, last_name string, notes string, email string, phone string, roles []string) (IAMOrganizationContact, error)
+	DeleteOrganizationContact(org_id string, id string) error
+
+	GetOrganizationTeam(org_id string, id string) (IAMOrganizationTeam, error)
+	CreateOrganizationTeam(org_id string, name string, description string, tags []string) (IAMOrganizationTeam, error)
+	UpdateOrganizationTeam(org_id string, team_id string, name string, description string, tags []string) (IAMOrganizationTeam, error)
+	DeleteOrganizationTeam(org_id string, id string) error
+
+	GetOrganizationTeamPermissions(org_id string, id string) ([]string, error)
+	CreateOrganizationTeamPermission(org_id string, team_id string, permissions []string) (IAMOrganizationTeamPermission, error)
+	UpdateOrganizationTeamPermission(org_id string, team_id string, permissions []string) (IAMOrganizationTeamPermission, error)
+	DeleteOrganizationTeamPermission(org_id string, team_id string) error
+
+	GetOrganizationTeamMembership(org_id string, team_id string, id string) (IAMOrganizationTeamMembership, error)
+	CreateOrganizationTeamMembership(org_id string, team_id string, member_id string) (IAMOrganizationTeamMembership, error)
+	UpdateOrganizationTeamMembership(org_id string, team_id string, member_id string) (IAMOrganizationTeamMembership, error)
+	DeleteOrganizationTeamMembership(org_id string, team_id string, id string) error
+
+	GrantOrganizationTeamMemberPermissions(org_id string, team_id string, member_id string, permissions []string) (IAMOrganizationTeamMembershipPermission, error)
+	RevokeOrganizationTeamMemberPermissions(org_id string, team_id string, member_id string, permissions []string) (IAMOrganizationTeamMembershipPermission, error)
+	UpdateOrganizationTeamMemberPermissions(org_id string, team_id string, member_id string, permissions []string) (IAMOrganizationTeamMembershipPermission, error)
+
+	GetTeamProjects(org_id string, team_id string) ([]IAMTeamProjectWithPermissions, error)
+
+	GetProjectTeamMembership(org_id string, project_id string, team_id string, id string) (IAMProjectTeamMembership, error)
+	CreateProjectTeamMembership(org_id string, project_id string, team_id string, member_id string, permissions []string) (IAMProjectTeamMembership, error)
+	UpdateProjectTeamMembership(org_id string, project_id string, team_id string, member_id string, permissions []string) (IAMProjectTeamMembership, error)
+	DeleteProjectTeamMembership(org_id string, project_id string, team_id string, member_id string) error
+
+	GetProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) ([]string, error)
+	CreateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error)
+	UpdateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error)
+	DeleteProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error)
+
+	GetProjectS3User(org_id string, project_id string, id string) (IAMProjectS3User, error)
+	CreateProjectS3User(org_id string, project_id, name string, description string) (IAMProjectS3User, error)
+	UpdateProjectS3User(org_id string, project_id string, s3user_id string, name string, description string) (IAMProjectS3User, error)
+	DeleteProjectS3User(org_id string, project_id string, id string) error
+
+	CreateProjectS3UserKey(org_id string, project_id string, s3user_id string) (IAMProjectS3UserKey, error)
+	DeleteProjectS3UserKey(org_id string, project_id string, s3user_id string, key_id string) error
+	GetProjectS3UserKey(org_id string, project_id string, s3user_id string, key_id string) (IAMProjectS3UserKey, error)
+}
+
+var _ IAMClient = (*Client)(nil)
 
 func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
 	path := fmt.Sprintf(IAMOrganizationEndpoint, id)
@@ -342,7 +494,7 @@ func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
 }
 
 func (c *Client) GetOrganizationByName(name string) (IAMOrganization, error) {
-	path := fmt.Sprintf(IAMOrganizationsEndpoint)
+	path := IAMOrganizationsEndpoint
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
 	if err != nil {
 		return IAMOrganization{}, errors.Trace(fmt.Errorf(GetOrganizationsError, err.Error()))
@@ -610,7 +762,7 @@ func (c *Client) GetOrganizationMembership(org_id string, id string) (IAMOrganiz
 	return iamOrganizationMembership, nil
 }
 
-func (c *Client) GetOrganizationMembershipByEmail(org_id string, email string) (IAMOrganizationMembership, error) {
+func (c *Client) GetOrganizationMembershipByEmail(ctx context.Context, org_id string, email string) (IAMOrganizationMembership, error) {
 	path := fmt.Sprintf(IAMOrganizationMembershipsEndpoint, org_id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
 	if err != nil {
@@ -640,7 +792,7 @@ func (c *Client) GetOrganizationMembershipByEmail(org_id string, email string) (
 	return IAMOrganizationMembership{}, fmt.Errorf("membership with that e-mail address was not found: %s", email)
 }
 
-func (c *Client) CreateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error) {
+func (c *Client) CreateOrUpdateOrganizationMembership(org_id string, user_id string, affiliation string, membershipType string, permissions []string) (IAMOrganizationMembership, error) {
 	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
@@ -650,7 +802,7 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, aff
 	type membership = map[string]interface{}
 	payload, err := json.Marshal(membership{
 		"affiliation":          affiliation,
-		"membership_type":      iamOrganizationMembership.MembershipType,
+		"membership_type":      membershipType,
 		"editable_permissions": permissions,
 	})
 	if err != nil {
@@ -681,7 +833,7 @@ func (c *Client) CreateOrganizationMembership(org_id string, user_id string, aff
 	return iamOrganizationMembership, nil
 }
 
-func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error) {
+func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, affiliation string, membershipType string, permissions []string) (IAMOrganizationMembership, error) {
 	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
@@ -691,7 +843,7 @@ func (c *Client) UpdateOrganizationMembership(org_id string, user_id string, aff
 	type membership = map[string]interface{}
 	payload, err := json.Marshal(membership{
 		"affiliation":          affiliation,
-		"membership_type":      iamOrganizationMembership.MembershipType,
+		"membership_type":      membershipType,
 		"editable_permissions": permissions,
 	})
 	if err != nil {
@@ -769,7 +921,8 @@ func (c *Client) GetOrganizationInvitationByEmail(org_id string, email string) (
 		}
 	}
 
-	return IAMOrganizationInvitation{}, fmt.Errorf("organization invitation with that e-mail address was not found: %s", email)
+	// no invitation. user has: 1. accepted the invitation, or 2. needs to be invited
+	return IAMOrganizationInvitation{}, nil
 }
 
 func (c *Client) CreateOrganizationInvitation(org_id string, email string, permissions []string) (IAMOrganizationInvitation, error) {
@@ -883,15 +1036,20 @@ func (c *Client) GetProjectMembershipByEmail(org_id string, project_id string, e
 	return IAMProjectMembership{}, fmt.Errorf("membership with that e-mail address was not found: %s", email)
 }
 
-func (c *Client) CreateProjectMembership(org_id string, project_id string, user_id string, permissions []string) (IAMProjectMembership, error) {
+func (c *Client) CreateProjectMembership(org_id string, project_id string, user_id string, membershipType string, permissions []string) (IAMProjectMembership, error) {
 	var iamProjectMembership IAMProjectMembership
-	path := fmt.Sprintf(IAMProjectMembershipPermissionsEndpoint, org_id, project_id, user_id)
-	payload, err := json.Marshal(permissions)
+	path := fmt.Sprintf(IAMProjectMembershipEndpoint, org_id, project_id, user_id)
+
+	body := map[string]any{
+		"membership_type": membershipType,
+		"permissions":     permissions,
+	}
+	payload, err := json.Marshal(body)
 	if err != nil {
 		return iamProjectMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPost, path).
+	response, err := c.client.NewRequest(http.MethodPatch, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
@@ -915,15 +1073,19 @@ func (c *Client) CreateProjectMembership(org_id string, project_id string, user_
 	return iamProjectMembership, nil
 }
 
-func (c *Client) UpdateProjectMembership(org_id string, project_id string, user_id string, permissions []string) (IAMProjectMembership, error) {
+func (c *Client) UpdateProjectMembership(org_id string, project_id string, user_id string, membershipType string, permissions []string) (IAMProjectMembership, error) {
 	var iamProjectMembership IAMProjectMembership
-	path := fmt.Sprintf(IAMProjectMembershipPermissionsEndpoint, org_id, project_id, user_id)
-	payload, err := json.Marshal(permissions)
+	path := fmt.Sprintf(IAMProjectMembershipEndpoint, org_id, project_id, user_id)
+
+	payload, err := json.Marshal(map[string]interface{}{
+		"membership_type": membershipType,
+		"permissions":     permissions,
+	})
 	if err != nil {
 		return iamProjectMembership, err
 	}
 
-	response, err := c.client.NewRequest(http.MethodPost, path).
+	response, err := c.client.NewRequest(http.MethodPatch, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
@@ -1105,25 +1267,25 @@ func (c *Client) GetOrganizationTeam(org_id string, id string) (IAMOrganizationT
 	return iamOrganizationTeam, nil
 }
 
-func (c *Client) GetOrganizationTeamPermissions(org_id string, id string) (IAMOrganizationTeamPermissions, error) {
+func (c *Client) GetOrganizationTeamPermissions(org_id string, id string) ([]string, error) {
 	path := fmt.Sprintf(IAMOrganizationTeamPermissionsEndpoint, org_id, id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
 	if err != nil {
-		return IAMOrganizationTeamPermissions{}, errors.Trace(fmt.Errorf(GetOrganizationTeamError, err.Error()))
+		return nil, errors.Trace(fmt.Errorf(GetOrganizationTeamError, err.Error()))
 	}
 	err = c.checkResponse(response)
 	if err != nil {
-		return IAMOrganizationTeamPermissions{}, errors.Trace(fmt.Errorf(GetOrganizationTeamError, err.Error()))
+		return nil, errors.Trace(fmt.Errorf(GetOrganizationTeamError, err.Error()))
 	}
 
-	var iamOrganizationTeamPermissions IAMOrganizationTeamPermissions
-	err = response.JSONUnmarshall(&iamOrganizationTeamPermissions.TeamPermissions)
+	var iamOrganizationTeamPermissions []string
+	err = response.JSONUnmarshall(&iamOrganizationTeamPermissions)
 	if err != nil {
 		body, respErr := response.StringBody()
 		if respErr != nil {
 			body = "unable to parse body"
 		}
-		return IAMOrganizationTeamPermissions{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+		return nil, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
 	}
 
 	return iamOrganizationTeamPermissions, nil
@@ -1339,7 +1501,7 @@ func (c *Client) DeleteOrganizationContact(org_id string, id string) error {
 
 // project team permissions
 
-func (c *Client) GetProjectTeamPermissions(org_id string, project_id string, team_id string) ([]string, error) {
+func (c *Client) GetProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) ([]string, error) {
 	path := fmt.Sprintf(IAMProjectTeamPermissionsEndpoint, org_id, project_id, team_id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
 	if err != nil {
@@ -1350,8 +1512,8 @@ func (c *Client) GetProjectTeamPermissions(org_id string, project_id string, tea
 		return []string{}, errors.Trace(fmt.Errorf(GetProjectTeamPermissionsError, err.Error()))
 	}
 
-	var permissions []string
-	err = response.JSONUnmarshall(&permissions)
+	var permissionsResponse []string
+	err = response.JSONUnmarshall(&permissionsResponse)
 	if err != nil {
 		body, respErr := response.StringBody()
 		if respErr != nil {
@@ -1359,7 +1521,7 @@ func (c *Client) GetProjectTeamPermissions(org_id string, project_id string, tea
 		}
 		return []string{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
 	}
-	return permissions, nil
+	return permissionsResponse, nil
 }
 
 func (c *Client) CreateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error) {
@@ -1391,44 +1553,65 @@ func (c *Client) CreateProjectTeamPermissions(org_id string, project_id string, 
 	return iamProjectTeamPermissions, nil
 }
 
-func (c *Client) UpdateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) ([]string, error) {
+func (c *Client) UpdateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error) {
+	var iamProjectTeamPermissions IAMProjectTeamPermissions
 	path := fmt.Sprintf(IAMProjectTeamPermissionsEndpoint, org_id, project_id, team_id)
 	payload, err := json.Marshal(permissions)
 	if err != nil {
-		return []string{}, err
+		return iamProjectTeamPermissions, err
 	}
 
 	response, err := c.client.NewRequest(http.MethodPost, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
-		return []string{}, err
+		return iamProjectTeamPermissions, err
 	}
 
 	err = c.checkResponse(response)
 	if err != nil {
-		return []string{}, fmt.Errorf(UpdateProjectTeamPermissionsError, err.Error())
+		return iamProjectTeamPermissions, fmt.Errorf(UpdateProjectTeamPermissionsError, err.Error())
 	}
-	return permissions, nil
+	err = response.JSONUnmarshall(&iamProjectTeamPermissions)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamProjectTeamPermissions, err
+	}
+	return iamProjectTeamPermissions, nil
 }
 
-func (c *Client) DeleteProjectTeamPermissions(org_id string, project_id string, team_id string) error {
+func (c *Client) DeleteProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error) {
+	var iamProjectTeamPermissions IAMProjectTeamPermissions
 	path := fmt.Sprintf(IAMProjectTeamPermissionsEndpoint, org_id, project_id, team_id)
+
 	payload, err := json.Marshal([]string{})
 	response, err := c.client.NewRequest(http.MethodPatch, path).
 		UseJSONPayload(payload).
 		Do()
 	if err != nil {
-		return err
+		return iamProjectTeamPermissions, err
 	}
 	if response.StatusCode == http.StatusNotFound {
-		return nil
+		return iamProjectTeamPermissions, nil
 	}
 	err = c.checkResponse(response)
 	if err != nil {
-		return fmt.Errorf(DeleteProjectTeamPermissionsError, err.Error())
+		return iamProjectTeamPermissions, fmt.Errorf(DeleteProjectTeamPermissionsError, err.Error())
 	}
-	return nil
+	err = response.JSONUnmarshall(&iamProjectTeamPermissions)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamProjectTeamPermissions, err
+	}
+	return iamProjectTeamPermissions, nil
 }
 
 // organization team memberships
@@ -1826,4 +2009,257 @@ func (c *Client) GetProjectS3UserKey(org_id string, project_id string, s3user_id
 	}
 
 	return iamProjectS3UserKey, nil
+}
+
+func (c *Client) CreateOrUpdateOrganizationMembershipPermission(member_id, org_id string, permissions []string) (IAMOrganizationMembershipPermission, error) {
+	var iamOrganizationMembershipPermission IAMOrganizationMembershipPermission
+	path := fmt.Sprintf(IAMOrganizationMembershipPermissionsEndpoint, org_id, member_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationMembershipPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPost, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationMembershipPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationMembershipPermission, fmt.Errorf(CreateOrganizationMembershipPermissionError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationMembershipPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationMembershipPermission, err
+	}
+	return iamOrganizationMembershipPermission, nil
+}
+
+func (c *Client) DeleteOrganizationMembershipPermission(org_id string, member_id string) error {
+	path := fmt.Sprintf(IAMOrganizationMembershipPermissionsEndpoint, org_id, member_id)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteOrganizationMembershipPermissionError, err.Error())
+	}
+	return nil
+}
+
+func (c *Client) CreateOrganizationTeamPermission(org_id string, team_id string, permissions []string) (IAMOrganizationTeamPermission, error) {
+	var iamOrganizationTeamPermission IAMOrganizationTeamPermission
+	path := fmt.Sprintf(IAMOrganizationTeamPermissionsEndpoint, org_id, team_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationTeamPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPost, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationTeamPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationTeamPermission, fmt.Errorf(CreateOrganizationTeamPermissionError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationTeamPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationTeamPermission, err
+	}
+	return iamOrganizationTeamPermission, nil
+}
+
+func (c *Client) UpdateOrganizationTeamPermission(org_id string, team_id string, permissions []string) (IAMOrganizationTeamPermission, error) {
+	var iamOrganizationTeamPermission IAMOrganizationTeamPermission
+	path := fmt.Sprintf(IAMOrganizationTeamPermissionsEndpoint, org_id, team_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationTeamPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPatch, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationTeamPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationTeamPermission, fmt.Errorf(UpdateOrganizationTeamPermissionError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationTeamPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationTeamPermission, err
+	}
+	return iamOrganizationTeamPermission, nil
+}
+
+func (c *Client) DeleteOrganizationTeamPermission(org_id string, team_id string) error {
+	path := fmt.Sprintf(IAMOrganizationTeamPermissionsEndpoint, org_id, team_id)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteOrganizationTeamPermissionError, err.Error())
+	}
+	return nil
+}
+
+// Organization Team Membership Permissions
+func (c *Client) GrantOrganizationTeamMemberPermissions(org_id string, team_id string, member_id string, permissions []string) (IAMOrganizationTeamMembershipPermission, error) {
+	var iamOrganizationTeamMembershipPermission IAMOrganizationTeamMembershipPermission
+	path := fmt.Sprintf(IAMOrganizationTeamMembershipPermissionsEndpoint, org_id, team_id, member_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPost, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, fmt.Errorf(GrantOrganizationTeamMemberPermissionsError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationTeamMembershipPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationTeamMembershipPermission, err
+	}
+	return iamOrganizationTeamMembershipPermission, nil
+}
+
+func (c *Client) UpdateOrganizationTeamMemberPermissions(org_id string, team_id string, member_id string, permissions []string) (IAMOrganizationTeamMembershipPermission, error) {
+	var iamOrganizationTeamMembershipPermission IAMOrganizationTeamMembershipPermission
+	path := fmt.Sprintf(IAMOrganizationTeamMembershipPermissionsEndpoint, org_id, team_id, member_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPatch, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, fmt.Errorf(UpdateOrganizationTeamMemberPermissionsError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationTeamMembershipPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationTeamMembershipPermission, err
+	}
+	return iamOrganizationTeamMembershipPermission, nil
+}
+
+func (c *Client) RevokeOrganizationTeamMemberPermissions(org_id string, team_id string, member_id string, permissions []string) (IAMOrganizationTeamMembershipPermission, error) {
+	var iamOrganizationTeamMembershipPermission IAMOrganizationTeamMembershipPermission
+	path := fmt.Sprintf(IAMOrganizationTeamMembershipPermissionsEndpoint, org_id, team_id, member_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationTeamMembershipPermission, fmt.Errorf(RevokeOrganizationTeamMemberPermissionsError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationTeamMembershipPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationTeamMembershipPermission, err
+	}
+	return iamOrganizationTeamMembershipPermission, nil
+}
+
+func (c *Client) GetTeamProjects(org_id string, team_id string) ([]IAMTeamProjectWithPermissions, error) {
+	var iamTeamProjects []IAMTeamProjectWithPermissions
+	path := fmt.Sprintf(IAMTeamProjectsEndpoint, org_id, team_id)
+
+	response, err := c.client.NewRequest(http.MethodGet, path).Do()
+	if err != nil {
+		return iamTeamProjects, errors.Trace(fmt.Errorf(GetTeamProjectsError, err.Error()))
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamTeamProjects, errors.Trace(fmt.Errorf(GetTeamProjectsError, err.Error()))
+	}
+
+	err = response.JSONUnmarshall(&iamTeamProjects)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		return iamTeamProjects, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
+	}
+
+	return iamTeamProjects, nil
 }

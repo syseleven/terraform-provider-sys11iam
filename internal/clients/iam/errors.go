@@ -51,6 +51,10 @@ const CreateOrganizationTeamMembershipError string = "could not create Organizat
 const UpdateOrganizationTeamMembershipError string = "could not update OrganizationTeamMembership: %s"
 const DeleteOrganizationTeamMembershipError string = "could not delete OrganizationTeamMembership: %s"
 
+const CreateOrganizationTeamPermissionError string = "could not create OrganizationTeamPermission: %s"
+const UpdateOrganizationTeamPermissionError string = "could not update OrganizationTeamPermission: %s"
+const DeleteOrganizationTeamPermissionError string = "could not delete OrganizationTeamPermission: %s"
+
 const GetProjectTeamMembershipError string = "could not get ProjectTeamMembership: %s"
 const CreateProjectTeamMembershipError string = "could not create ProjectTeamMembership: %s %s"
 const UpdateProjectTeamMembershipError string = "could not update ProjectTeamMembership: %s"
@@ -64,3 +68,14 @@ const DeleteProjectS3UserError string = "could not delete ProjectS3User: %s"
 const GetProjectS3UserKeyError string = "could not get ProjectS3UserKey: %s"
 const CreateProjectS3UserKeyError string = "could not create ProjectS3UserKey: %s %s"
 const DeleteProjectS3UserKeyError string = "could not delete ProjectS3UserKey: %s"
+
+const CreateOrganizationMembershipPermissionError string = "could not create OrganizationMembershipPermission: %s"
+const UpdateOrganizationMembershipPermissionError string = "could not update OrganizationMembershipPermission: %s"
+const DeleteOrganizationMembershipPermissionError string = "could not delete OrganizationMembershipPermission: %s"
+const ReadOrganizationMembershipPermissionError string = "could not read OrganizationMembershipPermission: %s"
+
+const GrantOrganizationTeamMemberPermissionsError string = "could not grant OrganizationTeamMemberPermissions: %s"
+const RevokeOrganizationTeamMemberPermissionsError string = "could not revoke OrganizationTeamMemberPermissions: %s"
+const UpdateOrganizationTeamMemberPermissionsError string = "could not update OrganizationTeamMemberPermissions: %s"
+
+const GetTeamProjectsError string = "could not get TeamProjects: %s"
