@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -104,14 +103,11 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
-	response, err := r.client.GetOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
+	_, err := r.client.GetOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
-
-	// Data value setting
-	sort.Sort(sort.StringSlice(response.TeamPermissions))
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -131,14 +127,14 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeamMembership resource.")
 
-	response, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
+	_, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	sort.Sort(sort.StringSlice(response.TeamPermissions))
+	// sort.Sort(sort.StringSlice(response.TeamPermissions))
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -176,7 +172,7 @@ func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, re
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
-	response, err := r.client.GetOrganizationTeamMembership(idParts[0], idParts[1], idParts[2])
+	_, err := r.client.GetOrganizationTeamMembership(idParts[0], idParts[1], idParts[2])
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -189,7 +185,6 @@ func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, re
 	data.TeamId = types.StringValue(idParts[1])
 	data.OrganizationId = types.StringValue(idParts[0])
 
-	sort.Sort(sort.StringSlice(response.TeamPermissions))
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

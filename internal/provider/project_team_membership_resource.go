@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -91,7 +90,6 @@ func (r *ProjectTeamMembershipResource) Create(ctx context.Context, req resource
 		return
 	}
 
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save data into Terraform state
@@ -117,7 +115,6 @@ func (r *ProjectTeamMembershipResource) Read(ctx context.Context, req resource.R
 	}
 
 	// Data value setting
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
@@ -151,7 +148,6 @@ func (r *ProjectTeamMembershipResource) Update(ctx context.Context, req resource
 	}
 
 	// Data value setting
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state

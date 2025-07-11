@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -104,6 +103,12 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 				data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Email.ValueString()))
 		return
 	}
+
+	// updates
+	// we need to check if the email/id is a member of the organization.
+	// 1. If an email is provided, check if the email is a member of the org by fetching all org memberships and looking for the email
+	//2 . if an ID is provided, check if the id is for a service account or a user, and if that service account/user belongs to the organization
+
 	if org_membership_response.ServiceAccount.ID != "" {
 		data.Id = types.StringValue(org_membership_response.ServiceAccount.ID)
 	}
@@ -126,7 +131,6 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 	}
 	data.ProjectId = types.StringValue(response.ProjectId)
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save data into Terraform state
@@ -160,7 +164,6 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 	}
 	data.ProjectId = types.StringValue(response.Project.ID)
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
@@ -209,7 +212,6 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 	}
 	data.ProjectId = types.StringValue(response.ProjectId)
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state
@@ -266,7 +268,6 @@ func (r *ProjectMembershipResource) ImportState(ctx context.Context, req resourc
 	data.ProjectId = types.StringValue(response.Project.ID)
 	data.OrganizationId = types.StringValue(idParts[0])
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 
 	// Save updated data into Terraform state

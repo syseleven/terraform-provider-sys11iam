@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -114,7 +113,6 @@ func (r *ProjectTeamResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	sort.Sort(sort.StringSlice(response))
 	data.Permissions, _ = types.ListValueFrom(ctx, types.StringType, response)
 
 	// Save updated data into Terraform state
@@ -192,7 +190,6 @@ func (r *ProjectTeamResource) ImportState(ctx context.Context, req resource.Impo
 
 	var data resource_project_team.ProjectTeamModel
 
-	sort.Sort(sort.StringSlice(response))
 	data.TeamId = types.StringValue(idParts[2])
 	data.ProjectId = types.StringValue(idParts[1])
 	data.OrganizationId = types.StringValue(idParts[0])

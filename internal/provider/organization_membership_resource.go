@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -135,7 +134,6 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		data.Email = types.StringValue(response.User.Email)
 	}
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 	//data.IsActive = types.BoolValue(true)
 
@@ -196,7 +194,6 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
 	data.Affiliation = types.StringValue(response.Affiliation)
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 	data.IsActive = types.BoolValue(true)
 
@@ -253,7 +250,6 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 	}
 	data.OrganizationId = types.StringValue(response.Organisation.ID)
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 	data.IsActive = types.BoolValue(true)
 
@@ -321,7 +317,6 @@ func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req re
 	data.OrganizationId = types.StringValue(idParts[0])
 	data.Affiliation = types.StringValue(response.Affiliation)
 	data.Email = types.StringValue(response.User.Email)
-	sort.Sort(sort.StringSlice(response.Permissions))
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response.Permissions)
 	data.IsActive = types.BoolValue(true)
 
