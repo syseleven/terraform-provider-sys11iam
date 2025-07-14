@@ -3,55 +3,72 @@ provider:
 resources:
   organization:
     create:
-      path: /v1/orgs
+      path: /v2/orgs
       method: POST
     read:
-      path: /v1/orgs/{organization_id}
+      path: /v2/orgs/{organization_id}
       method: GET
     update:
-      path: /v1/orgs/{organization_id}
+      path: /v2/orgs/{organization_id}
       method: PUT
     delete:
-      path: /v1/orgs/{organization_id}
+      path: /v2/orgs/{organization_id}
       method: DELETE
   project:
     create:
-      path: /v1/orgs/{organization_id}/projects
+      path: /v2/orgs/{organization_id}/projects
       method: POST
     read:
-      path: /v1/orgs/{organization_id}/projects/{project_id}
+      path: /v2/orgs/{organization_id}/projects/{project_id}
       method: GET
     update:
-      path: /v1/orgs/{organization_id}/projects/{project_id}
+      path: /v2/orgs/{organization_id}/projects/{project_id}
       method: PUT
     delete:
-      path: /v1/orgs/{organization_id}/projects/{project_id}
+      path: /v2/orgs/{organization_id}/projects/{project_id}
       method: DELETE
   organization_membership:
     create:
-      path: /v1/orgs/{organization_id}/memberships/{user_id}/permissions
-      method: PUT
+      path: /v2/orgs/{organization_id}/memberships/{member_id}
+      method: PATCH
     read:
-      path: /v1/orgs/{organization_id}/memberships/{user_id}
+      path: /v2/orgs/{organization_id}/memberships/{member_id}
       method: GET
-    update:
-      path: /v1/orgs/{organization_id}/memberships/{user_id}/permissions
-      method: PUT
     delete:
-      path: /v1/orgs/{organization_id}/memberships/{user_id}
+      path: /v2/orgs/{organization_id}/memberships/{member_id}
+      method: DELETE
+  organization_membership_permission:
+    create:
+      path: /v2/orgs/{organization_id}/memberships/{member_id}/permissions
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/memberships/{member_id}
+      method: GET
+    delete:
+      path: /v2/orgs/{organization_id}/memberships/{member_id}/permissions
       method: DELETE
   project_membership:
     create:
-      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}/permissions
-      method: PUT
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
+      method: PATCH
     read:
-      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
       method: GET
     update:
-      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}/permissions
-      method: PUT
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
+      method: PATCH
     delete:
-      path: /v1/orgs/{organization_id}/projects/{project_id}/memberships/{user_id}
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
+      method: DELETE
+  project_membership_permission:
+    create:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}/permissions
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
+      method: GET
+    delete:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}/permissions
       method: DELETE
   project_s3_user:
     create:

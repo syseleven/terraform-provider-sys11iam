@@ -4,26 +4,120 @@ package resource_organization
 
 import (
 	"context"
-	"regexp"
-
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"regexp"
+	"strings"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"company_info": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"accepted_tos": schema.BoolAttribute{
+						Required:            true,
+						Description:         "Whether the organization creator has accepted the terms of service.",
+						MarkdownDescription: "Whether the organization creator has accepted the terms of service.",
+					},
+					"city": schema.StringAttribute{
+						Required:            true,
+						Description:         "The city were the company resides.",
+						MarkdownDescription: "The city were the company resides.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+					"company_name": schema.StringAttribute{
+						Required:            true,
+						Description:         "The legal name of the company the organization belongs to.",
+						MarkdownDescription: "The legal name of the company the organization belongs to.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+					"country": schema.StringAttribute{
+						Required:            true,
+						Description:         "The country were the company resides.",
+						MarkdownDescription: "The country were the company resides.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+					"phone_number": schema.StringAttribute{
+						Optional:            true,
+						Computed:            true,
+						Description:         "The phone number of the organization.",
+						MarkdownDescription: "The phone number of the organization.",
+						Validators: []validator.String{
+							stringvalidator.RegexMatches(regexp.MustCompile("^\\+((1|7)\\d{4,14}|(20|27|30|31|32|33|34|36|39|40|41|43|44|45|46|47|48|49|51|52|53|54|55|56|57|58|60|61|62|63|64|65|66|76|77|81|82|84|86|90|91|92|93|94|95|98)\\d{4,13}|(211|212|213|216|218|220|221|222|223|224|225|226|227|228|229|230|231|232|233|234|235|236|237|238|239|240|241|242|243|244|245|246|248|249|250|251|252|253|254|255|256|257|258|260|261|262|263|264|265|266|267|268|269|291|297|298|299|350|351|352|353|354|355|356|357|358|359|370|371|372|373|374|375|376|377|378|380|381|382|383|385|386|387|389|420|421|423|500|501|502|503|504|505|506|507|508|509|590|591|592|593|594|595|596|597|598|670|672|673|674|675|676|677|678|679|680|681|682|683|685|686|687|688|689|690|691|692|850|852|853|855|856|880|886|960|961|962|963|964|965|966|967|968|970|971|972|973|974|975|976|977|992|993|994|995|996|998)\\d{4,12}|(1242|1246|1264|1268|1284|1340|1345|1441|1473|1649|1664|1670|1671|1684|1721|1758|1767|1784|1787|1809|1829|1849|1868|1869|1876|1939|4779|5999)\\d{4,11}|3906698\\d{4,9})$"), ""),
+						},
+					},
+					"preferred_billing_method": schema.StringAttribute{
+						Required:            true,
+						Description:         "The preferred billing method of the organization.",
+						MarkdownDescription: "The preferred billing method of the organization.",
+					},
+					"street": schema.StringAttribute{
+						Required:            true,
+						Description:         "The street were the company resides.",
+						MarkdownDescription: "The street were the company resides.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+					"street_number": schema.StringAttribute{
+						Required:            true,
+						Description:         "The street number of the companies address.",
+						MarkdownDescription: "The street number of the companies address.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+					"vat_id": schema.StringAttribute{
+						Required:            true,
+						Description:         "The VAT ID of the company.",
+						MarkdownDescription: "The VAT ID of the company.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+					"zip_code": schema.StringAttribute{
+						Required:            true,
+						Description:         "The zip code of the company.",
+						MarkdownDescription: "The zip code of the company.",
+						Validators: []validator.String{
+							stringvalidator.LengthAtMost(1000),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+						},
+					},
+				},
+				CustomType: CompanyInfoType{
+					ObjectType: types.ObjectType{
+						AttrTypes: CompanyInfoValue{}.AttributeTypes(ctx),
+					},
+				},
+				Required: true,
+			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
-				Description:         "The time the resource was created.",
-				MarkdownDescription: "The time the resource was created.",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Description:         "The time the customer entered a contract with SysEleven.",
+				MarkdownDescription: "The time the customer entered a contract with SysEleven.",
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
@@ -31,31 +125,33 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "A description for the organization.",
 				MarkdownDescription: "A description for the organization.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
+					stringvalidator.LengthAtMost(1000),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
 				},
 				Default: stringdefault.StaticString(""),
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
-				Optional:            true,
 				Description:         "The UUID of the organization",
 				MarkdownDescription: "The UUID of the organization",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"is_active": schema.BoolAttribute{
 				Computed:            true,
-				Default:             booldefault.StaticBool(false),
 				Description:         "Whether the organization is active or not.",
 				MarkdownDescription: "Whether the organization is active or not.",
-				PlanModifiers:       []planmodifier.Bool{UseStateForUnknown()},
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
 				Description:         "A unique name for the organization.",
 				MarkdownDescription: "A unique name for the organization.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+					stringvalidator.LengthBetween(3, 62),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[a-z0-9]+(?:-[a-z0-9]+)*$"), ""),
 				},
+			},
+			"organization_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
 			"tags": schema.ListAttribute{
 				ElementType:         types.StringType,
@@ -68,106 +164,838 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The time the resource was last updated.",
 				MarkdownDescription: "The time the resource was last updated.",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"company_info_street": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations street.",
-				MarkdownDescription: "The organizations street.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_street_number": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations street number.",
-				MarkdownDescription: "The organizations street number.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_zip_code": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations zip code.",
-				MarkdownDescription: "The organizations zip code.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_city": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations city.",
-				MarkdownDescription: "The organizations city.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_country": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations country.",
-				MarkdownDescription: "The organizations country.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_vat_id": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations vat ID.",
-				MarkdownDescription: "The organizations vat ID,",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_preferred_billing_method": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations preferred billing method.",
-				MarkdownDescription: "The organizations preferred billing method.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_phone": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations phone.",
-				MarkdownDescription: "The organizations phone.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
-			},
-			"company_info_accepted_tos": schema.BoolAttribute{
-				Required:            true,
-				Description:         "Whether the organization has accepted the terms of service or not.",
-				MarkdownDescription: "Whether the organization has accepted the terms of service or not.",
-				PlanModifiers:       []planmodifier.Bool{UseStateForUnknown()},
-			},
-			"company_info_company_name": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organizations company name.",
-				MarkdownDescription: "The organizations company name.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
-				},
 			},
 		},
 	}
 }
 
 type OrganizationModel struct {
-	CreatedAt                         types.String `tfsdk:"created_at"`
-	Description                       types.String `tfsdk:"description"`
-	Id                                types.String `tfsdk:"id"`
-	IsActive                          types.Bool   `tfsdk:"is_active"`
-	Name                              types.String `tfsdk:"name"`
-	Tags                              types.List   `tfsdk:"tags"`
-	UpdatedAt                         types.String `tfsdk:"updated_at"`
-	CompanyInfoStreet                 types.String `tfsdk:"company_info_street"`
-	CompanyInfoStreetNumber           types.String `tfsdk:"company_info_street_number"`
-	CompanyInfoZipCode                types.String `tfsdk:"company_info_zip_code"`
-	CompanyInfoCity                   types.String `tfsdk:"company_info_city"`
-	CompanyInfoCountry                types.String `tfsdk:"company_info_country"`
-	CompanyInfoVatID                  types.String `tfsdk:"company_info_vat_id"`
-	CompanyInfoPreferredBillingMethod types.String `tfsdk:"company_info_preferred_billing_method"`
-	CompanyInfoPhone                  types.String `tfsdk:"company_info_phone"`
-	CompanyInfoAcceptedTos            types.Bool   `tfsdk:"company_info_accepted_tos"`
-	CompanyInfoCompanyName            types.String `tfsdk:"company_info_company_name"`
+	CompanyInfo    CompanyInfoValue `tfsdk:"company_info"`
+	CreatedAt      types.String     `tfsdk:"created_at"`
+	Description    types.String     `tfsdk:"description"`
+	Id             types.String     `tfsdk:"id"`
+	IsActive       types.Bool       `tfsdk:"is_active"`
+	Name           types.String     `tfsdk:"name"`
+	OrganizationId types.String     `tfsdk:"organization_id"`
+	Tags           types.List       `tfsdk:"tags"`
+	UpdatedAt      types.String     `tfsdk:"updated_at"`
+}
+
+var _ basetypes.ObjectTypable = CompanyInfoType{}
+
+type CompanyInfoType struct {
+	basetypes.ObjectType
+}
+
+func (t CompanyInfoType) Equal(o attr.Type) bool {
+	other, ok := o.(CompanyInfoType)
+
+	if !ok {
+		return false
+	}
+
+	return t.ObjectType.Equal(other.ObjectType)
+}
+
+func (t CompanyInfoType) String() string {
+	return "CompanyInfoType"
+}
+
+func (t CompanyInfoType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributes := in.Attributes()
+
+	acceptedTosAttribute, ok := attributes["accepted_tos"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`accepted_tos is missing from object`)
+
+		return nil, diags
+	}
+
+	acceptedTosVal, ok := acceptedTosAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`accepted_tos expected to be basetypes.BoolValue, was: %T`, acceptedTosAttribute))
+	}
+
+	cityAttribute, ok := attributes["city"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`city is missing from object`)
+
+		return nil, diags
+	}
+
+	cityVal, ok := cityAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`city expected to be basetypes.StringValue, was: %T`, cityAttribute))
+	}
+
+	companyNameAttribute, ok := attributes["company_name"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`company_name is missing from object`)
+
+		return nil, diags
+	}
+
+	companyNameVal, ok := companyNameAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`company_name expected to be basetypes.StringValue, was: %T`, companyNameAttribute))
+	}
+
+	countryAttribute, ok := attributes["country"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`country is missing from object`)
+
+		return nil, diags
+	}
+
+	countryVal, ok := countryAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`country expected to be basetypes.StringValue, was: %T`, countryAttribute))
+	}
+
+	phoneNumberAttribute, ok := attributes["phone_number"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`phone_number is missing from object`)
+
+		return nil, diags
+	}
+
+	phoneNumberVal, ok := phoneNumberAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`phone_number expected to be basetypes.StringValue, was: %T`, phoneNumberAttribute))
+	}
+
+	preferredBillingMethodAttribute, ok := attributes["preferred_billing_method"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`preferred_billing_method is missing from object`)
+
+		return nil, diags
+	}
+
+	preferredBillingMethodVal, ok := preferredBillingMethodAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`preferred_billing_method expected to be basetypes.StringValue, was: %T`, preferredBillingMethodAttribute))
+	}
+
+	streetAttribute, ok := attributes["street"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`street is missing from object`)
+
+		return nil, diags
+	}
+
+	streetVal, ok := streetAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`street expected to be basetypes.StringValue, was: %T`, streetAttribute))
+	}
+
+	streetNumberAttribute, ok := attributes["street_number"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`street_number is missing from object`)
+
+		return nil, diags
+	}
+
+	streetNumberVal, ok := streetNumberAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`street_number expected to be basetypes.StringValue, was: %T`, streetNumberAttribute))
+	}
+
+	vatIdAttribute, ok := attributes["vat_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`vat_id is missing from object`)
+
+		return nil, diags
+	}
+
+	vatIdVal, ok := vatIdAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`vat_id expected to be basetypes.StringValue, was: %T`, vatIdAttribute))
+	}
+
+	zipCodeAttribute, ok := attributes["zip_code"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`zip_code is missing from object`)
+
+		return nil, diags
+	}
+
+	zipCodeVal, ok := zipCodeAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`zip_code expected to be basetypes.StringValue, was: %T`, zipCodeAttribute))
+	}
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return CompanyInfoValue{
+		AcceptedTos:            acceptedTosVal,
+		City:                   cityVal,
+		CompanyName:            companyNameVal,
+		Country:                countryVal,
+		PhoneNumber:            phoneNumberVal,
+		PreferredBillingMethod: preferredBillingMethodVal,
+		Street:                 streetVal,
+		StreetNumber:           streetNumberVal,
+		VatId:                  vatIdVal,
+		ZipCode:                zipCodeVal,
+		state:                  attr.ValueStateKnown,
+	}, diags
+}
+
+func NewCompanyInfoValueNull() CompanyInfoValue {
+	return CompanyInfoValue{
+		state: attr.ValueStateNull,
+	}
+}
+
+func NewCompanyInfoValueUnknown() CompanyInfoValue {
+	return CompanyInfoValue{
+		state: attr.ValueStateUnknown,
+	}
+}
+
+func NewCompanyInfoValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (CompanyInfoValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
+	ctx := context.Background()
+
+	for name, attributeType := range attributeTypes {
+		attribute, ok := attributes[name]
+
+		if !ok {
+			diags.AddError(
+				"Missing CompanyInfoValue Attribute Value",
+				"While creating a CompanyInfoValue value, a missing attribute value was detected. "+
+					"A CompanyInfoValue must contain values for all attributes, even if null or unknown. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("CompanyInfoValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+			)
+
+			continue
+		}
+
+		if !attributeType.Equal(attribute.Type(ctx)) {
+			diags.AddError(
+				"Invalid CompanyInfoValue Attribute Type",
+				"While creating a CompanyInfoValue value, an invalid attribute value was detected. "+
+					"A CompanyInfoValue must use a matching attribute type for the value. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("CompanyInfoValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("CompanyInfoValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+			)
+		}
+	}
+
+	for name := range attributes {
+		_, ok := attributeTypes[name]
+
+		if !ok {
+			diags.AddError(
+				"Extra CompanyInfoValue Attribute Value",
+				"While creating a CompanyInfoValue value, an extra attribute value was detected. "+
+					"A CompanyInfoValue must not contain values beyond the expected attribute types. "+
+					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
+					fmt.Sprintf("Extra CompanyInfoValue Attribute Name: %s", name),
+			)
+		}
+	}
+
+	if diags.HasError() {
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	acceptedTosAttribute, ok := attributes["accepted_tos"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`accepted_tos is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	acceptedTosVal, ok := acceptedTosAttribute.(basetypes.BoolValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`accepted_tos expected to be basetypes.BoolValue, was: %T`, acceptedTosAttribute))
+	}
+
+	cityAttribute, ok := attributes["city"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`city is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	cityVal, ok := cityAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`city expected to be basetypes.StringValue, was: %T`, cityAttribute))
+	}
+
+	companyNameAttribute, ok := attributes["company_name"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`company_name is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	companyNameVal, ok := companyNameAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`company_name expected to be basetypes.StringValue, was: %T`, companyNameAttribute))
+	}
+
+	countryAttribute, ok := attributes["country"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`country is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	countryVal, ok := countryAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`country expected to be basetypes.StringValue, was: %T`, countryAttribute))
+	}
+
+	phoneNumberAttribute, ok := attributes["phone_number"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`phone_number is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	phoneNumberVal, ok := phoneNumberAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`phone_number expected to be basetypes.StringValue, was: %T`, phoneNumberAttribute))
+	}
+
+	preferredBillingMethodAttribute, ok := attributes["preferred_billing_method"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`preferred_billing_method is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	preferredBillingMethodVal, ok := preferredBillingMethodAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`preferred_billing_method expected to be basetypes.StringValue, was: %T`, preferredBillingMethodAttribute))
+	}
+
+	streetAttribute, ok := attributes["street"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`street is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	streetVal, ok := streetAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`street expected to be basetypes.StringValue, was: %T`, streetAttribute))
+	}
+
+	streetNumberAttribute, ok := attributes["street_number"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`street_number is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	streetNumberVal, ok := streetNumberAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`street_number expected to be basetypes.StringValue, was: %T`, streetNumberAttribute))
+	}
+
+	vatIdAttribute, ok := attributes["vat_id"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`vat_id is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	vatIdVal, ok := vatIdAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`vat_id expected to be basetypes.StringValue, was: %T`, vatIdAttribute))
+	}
+
+	zipCodeAttribute, ok := attributes["zip_code"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`zip_code is missing from object`)
+
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	zipCodeVal, ok := zipCodeAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`zip_code expected to be basetypes.StringValue, was: %T`, zipCodeAttribute))
+	}
+
+	if diags.HasError() {
+		return NewCompanyInfoValueUnknown(), diags
+	}
+
+	return CompanyInfoValue{
+		AcceptedTos:            acceptedTosVal,
+		City:                   cityVal,
+		CompanyName:            companyNameVal,
+		Country:                countryVal,
+		PhoneNumber:            phoneNumberVal,
+		PreferredBillingMethod: preferredBillingMethodVal,
+		Street:                 streetVal,
+		StreetNumber:           streetNumberVal,
+		VatId:                  vatIdVal,
+		ZipCode:                zipCodeVal,
+		state:                  attr.ValueStateKnown,
+	}, diags
+}
+
+func NewCompanyInfoValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) CompanyInfoValue {
+	object, diags := NewCompanyInfoValue(attributeTypes, attributes)
+
+	if diags.HasError() {
+		// This could potentially be added to the diag package.
+		diagsStrings := make([]string, 0, len(diags))
+
+		for _, diagnostic := range diags {
+			diagsStrings = append(diagsStrings, fmt.Sprintf(
+				"%s | %s | %s",
+				diagnostic.Severity(),
+				diagnostic.Summary(),
+				diagnostic.Detail()))
+		}
+
+		panic("NewCompanyInfoValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+	}
+
+	return object
+}
+
+func (t CompanyInfoType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+	if in.Type() == nil {
+		return NewCompanyInfoValueNull(), nil
+	}
+
+	if !in.Type().Equal(t.TerraformType(ctx)) {
+		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
+	}
+
+	if !in.IsKnown() {
+		return NewCompanyInfoValueUnknown(), nil
+	}
+
+	if in.IsNull() {
+		return NewCompanyInfoValueNull(), nil
+	}
+
+	attributes := map[string]attr.Value{}
+
+	val := map[string]tftypes.Value{}
+
+	err := in.As(&val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range val {
+		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
+
+		if err != nil {
+			return nil, err
+		}
+
+		attributes[k] = a
+	}
+
+	return NewCompanyInfoValueMust(CompanyInfoValue{}.AttributeTypes(ctx), attributes), nil
+}
+
+func (t CompanyInfoType) ValueType(ctx context.Context) attr.Value {
+	return CompanyInfoValue{}
+}
+
+var _ basetypes.ObjectValuable = CompanyInfoValue{}
+
+type CompanyInfoValue struct {
+	AcceptedTos            basetypes.BoolValue   `tfsdk:"accepted_tos"`
+	City                   basetypes.StringValue `tfsdk:"city"`
+	CompanyName            basetypes.StringValue `tfsdk:"company_name"`
+	Country                basetypes.StringValue `tfsdk:"country"`
+	PhoneNumber            basetypes.StringValue `tfsdk:"phone_number"`
+	PreferredBillingMethod basetypes.StringValue `tfsdk:"preferred_billing_method"`
+	Street                 basetypes.StringValue `tfsdk:"street"`
+	StreetNumber           basetypes.StringValue `tfsdk:"street_number"`
+	VatId                  basetypes.StringValue `tfsdk:"vat_id"`
+	ZipCode                basetypes.StringValue `tfsdk:"zip_code"`
+	state                  attr.ValueState
+}
+
+func (v CompanyInfoValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+	attrTypes := make(map[string]tftypes.Type, 10)
+
+	var val tftypes.Value
+	var err error
+
+	attrTypes["accepted_tos"] = basetypes.BoolType{}.TerraformType(ctx)
+	attrTypes["city"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["company_name"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["country"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["phone_number"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["preferred_billing_method"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["street"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["street_number"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["vat_id"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["zip_code"] = basetypes.StringType{}.TerraformType(ctx)
+
+	objectType := tftypes.Object{AttributeTypes: attrTypes}
+
+	switch v.state {
+	case attr.ValueStateKnown:
+		vals := make(map[string]tftypes.Value, 10)
+
+		val, err = v.AcceptedTos.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["accepted_tos"] = val
+
+		val, err = v.City.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["city"] = val
+
+		val, err = v.CompanyName.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["company_name"] = val
+
+		val, err = v.Country.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["country"] = val
+
+		val, err = v.PhoneNumber.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["phone_number"] = val
+
+		val, err = v.PreferredBillingMethod.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["preferred_billing_method"] = val
+
+		val, err = v.Street.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["street"] = val
+
+		val, err = v.StreetNumber.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["street_number"] = val
+
+		val, err = v.VatId.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["vat_id"] = val
+
+		val, err = v.ZipCode.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["zip_code"] = val
+
+		if err := tftypes.ValidateValue(objectType, vals); err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		return tftypes.NewValue(objectType, vals), nil
+	case attr.ValueStateNull:
+		return tftypes.NewValue(objectType, nil), nil
+	case attr.ValueStateUnknown:
+		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
+	default:
+		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
+	}
+}
+
+func (v CompanyInfoValue) IsNull() bool {
+	return v.state == attr.ValueStateNull
+}
+
+func (v CompanyInfoValue) IsUnknown() bool {
+	return v.state == attr.ValueStateUnknown
+}
+
+func (v CompanyInfoValue) String() string {
+	return "CompanyInfoValue"
+}
+
+func (v CompanyInfoValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	attributeTypes := map[string]attr.Type{
+		"accepted_tos":             basetypes.BoolType{},
+		"city":                     basetypes.StringType{},
+		"company_name":             basetypes.StringType{},
+		"country":                  basetypes.StringType{},
+		"phone_number":             basetypes.StringType{},
+		"preferred_billing_method": basetypes.StringType{},
+		"street":                   basetypes.StringType{},
+		"street_number":            basetypes.StringType{},
+		"vat_id":                   basetypes.StringType{},
+		"zip_code":                 basetypes.StringType{},
+	}
+
+	if v.IsNull() {
+		return types.ObjectNull(attributeTypes), diags
+	}
+
+	if v.IsUnknown() {
+		return types.ObjectUnknown(attributeTypes), diags
+	}
+
+	objVal, diags := types.ObjectValue(
+		attributeTypes,
+		map[string]attr.Value{
+			"accepted_tos":             v.AcceptedTos,
+			"city":                     v.City,
+			"company_name":             v.CompanyName,
+			"country":                  v.Country,
+			"phone_number":             v.PhoneNumber,
+			"preferred_billing_method": v.PreferredBillingMethod,
+			"street":                   v.Street,
+			"street_number":            v.StreetNumber,
+			"vat_id":                   v.VatId,
+			"zip_code":                 v.ZipCode,
+		})
+
+	return objVal, diags
+}
+
+func (v CompanyInfoValue) Equal(o attr.Value) bool {
+	other, ok := o.(CompanyInfoValue)
+
+	if !ok {
+		return false
+	}
+
+	if v.state != other.state {
+		return false
+	}
+
+	if v.state != attr.ValueStateKnown {
+		return true
+	}
+
+	if !v.AcceptedTos.Equal(other.AcceptedTos) {
+		return false
+	}
+
+	if !v.City.Equal(other.City) {
+		return false
+	}
+
+	if !v.CompanyName.Equal(other.CompanyName) {
+		return false
+	}
+
+	if !v.Country.Equal(other.Country) {
+		return false
+	}
+
+	if !v.PhoneNumber.Equal(other.PhoneNumber) {
+		return false
+	}
+
+	if !v.PreferredBillingMethod.Equal(other.PreferredBillingMethod) {
+		return false
+	}
+
+	if !v.Street.Equal(other.Street) {
+		return false
+	}
+
+	if !v.StreetNumber.Equal(other.StreetNumber) {
+		return false
+	}
+
+	if !v.VatId.Equal(other.VatId) {
+		return false
+	}
+
+	if !v.ZipCode.Equal(other.ZipCode) {
+		return false
+	}
+
+	return true
+}
+
+func (v CompanyInfoValue) Type(ctx context.Context) attr.Type {
+	return CompanyInfoType{
+		basetypes.ObjectType{
+			AttrTypes: v.AttributeTypes(ctx),
+		},
+	}
+}
+
+func (v CompanyInfoValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+	return map[string]attr.Type{
+		"accepted_tos":             basetypes.BoolType{},
+		"city":                     basetypes.StringType{},
+		"company_name":             basetypes.StringType{},
+		"country":                  basetypes.StringType{},
+		"phone_number":             basetypes.StringType{},
+		"preferred_billing_method": basetypes.StringType{},
+		"street":                   basetypes.StringType{},
+		"street_number":            basetypes.StringType{},
+		"vat_id":                   basetypes.StringType{},
+		"zip_code":                 basetypes.StringType{},
+	}
 }

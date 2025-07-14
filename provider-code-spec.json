@@ -356,7 +356,7 @@
 						"name": "created_at",
 						"string": {
 							"computed_optional_required": "computed",
-							"description": "The time the resource was created."
+							"description": "The time the customer entered a contract with SysEleven."
 						}
 					},
 					{
@@ -394,51 +394,368 @@
 			"schema": {
 				"attributes": [
 					{
-						"name": "affiliation",
+						"name": "discriminator",
 						"string": {
-							"computed_optional_required": "computed",
-							"description": "The affiliation of the user to this organization. This is not to be understood as a role."
+							"computed_optional_required": "computed_optional",
+							"description": "The type of membership, either a user or a service account.",
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+											}
+										],
+										"schema_definition": "stringvalidator.OneOf(\n\"user\",\n\"service_account\",\n)"
+									}
+								}
+							]
 						}
 					},
 					{
-						"name": "editable_permissions",
-						"list": {
-							"computed_optional_required": "computed",
-							"element_type": {
-								"string": {}
-							},
-							"description": "The editable permissions of the user"
+						"name": "service_account",
+						"single_nested": {
+							"computed_optional_required": "computed_optional",
+							"attributes": [
+								{
+									"name": "affiliation",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"description": "The affiliation of the service account to this organization. This is not to be understood as a role.",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+														}
+													],
+													"schema_definition": "stringvalidator.OneOf(\n\"member\",\n\"admin\",\n)"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "editable_permissions",
+									"list": {
+										"computed_optional_required": "required",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the service account",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+														}
+													],
+													"schema_definition": "listvalidator.UniqueValues()"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"default": {
+											"static": "service_account"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The UUID of the service account"
+									}
+								},
+								{
+									"name": "non_editable_permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the service account"
+									}
+								},
+								{
+									"name": "organization",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the customer entered a contract with SysEleven."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "A description for the organization."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the organization"
+												}
+											},
+											{
+												"name": "is_active",
+												"bool": {
+													"computed_optional_required": "computed",
+													"description": "Whether the organization is active or not."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "A unique name for the organization."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the organization."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "service_account",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the service account."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the service account."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique name of the service account."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								}
+							]
 						}
 					},
 					{
-						"name": "email",
-						"string": {
-							"computed_optional_required": "computed",
-							"description": "The email of the user"
-						}
-					},
-					{
-						"name": "id",
-						"string": {
-							"computed_optional_required": "computed",
-							"description": "The UUID of the user"
-						}
-					},
-					{
-						"name": "non_editable_permissions",
-						"list": {
-							"computed_optional_required": "computed",
-							"element_type": {
-								"string": {}
-							},
-							"description": "The non-editable permissions of the user"
-						}
-					},
-					{
-						"name": "org_id",
-						"string": {
-							"computed_optional_required": "computed",
-							"description": "The UUID of the organization"
+						"name": "user",
+						"single_nested": {
+							"computed_optional_required": "computed_optional",
+							"attributes": [
+								{
+									"name": "affiliation",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"description": "The affiliation of the user to this organization. This is not to be understood as a role.",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+														}
+													],
+													"schema_definition": "stringvalidator.OneOf(\n\"owner\",\n\"member\",\n\"admin\",\n)"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "editable_permissions",
+									"list": {
+										"computed_optional_required": "computed_optional",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the user",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+														}
+													],
+													"schema_definition": "listvalidator.UniqueValues()"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"default": {
+											"static": "user"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The UUID of the user"
+									}
+								},
+								{
+									"name": "non_editable_permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the user"
+									}
+								},
+								{
+									"name": "organization",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the customer entered a contract with SysEleven."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "A description for the organization."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the organization"
+												}
+											},
+											{
+												"name": "is_active",
+												"bool": {
+													"computed_optional_required": "computed",
+													"description": "Whether the organization is active or not."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "A unique name for the organization."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the organization."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "user",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "email",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The email address of the user."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the user."
+												}
+											}
+										]
+									}
+								}
+							]
 						}
 					},
 					{
@@ -448,7 +765,331 @@
 						}
 					},
 					{
-						"name": "user_id",
+						"name": "member_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "organization_membership_permission",
+			"schema": {
+				"attributes": [
+					{
+						"name": "discriminator",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "The type of membership, either a user or a service account."
+						}
+					},
+					{
+						"name": "service_account",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "affiliation",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The affiliation of the service account to this organization. This is not to be understood as a role."
+									}
+								},
+								{
+									"name": "editable_permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the service account"
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The UUID of the service account"
+									}
+								},
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed",
+										"default": {
+											"static": "service_account"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "non_editable_permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the service account"
+									}
+								},
+								{
+									"name": "organization",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the customer entered a contract with SysEleven."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "A description for the organization."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the organization"
+												}
+											},
+											{
+												"name": "is_active",
+												"bool": {
+													"computed_optional_required": "computed",
+													"description": "Whether the organization is active or not."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "A unique name for the organization."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the organization."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "service_account",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the service account."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the service account."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique name of the service account."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "user",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "affiliation",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The affiliation of the user to this organization. This is not to be understood as a role."
+									}
+								},
+								{
+									"name": "editable_permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the user"
+									}
+								},
+								{
+									"name": "id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "The UUID of the user"
+									}
+								},
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed",
+										"default": {
+											"static": "user"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "non_editable_permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The editable permissions of the user"
+									}
+								},
+								{
+									"name": "organization",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the customer entered a contract with SysEleven."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "A description for the organization."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the organization"
+												}
+											},
+											{
+												"name": "is_active",
+												"bool": {
+													"computed_optional_required": "computed",
+													"description": "Whether the organization is active or not."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "A unique name for the organization."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the organization."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "user",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "email",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The email address of the user."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the user."
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "organization_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					},
+					{
+						"name": "member_id",
 						"string": {
 							"computed_optional_required": "computed_optional"
 						}
@@ -603,41 +1244,296 @@
 			"schema": {
 				"attributes": [
 					{
-						"name": "email",
+						"name": "discriminator",
 						"string": {
-							"computed_optional_required": "computed",
-							"description": "The email address of the user."
+							"computed_optional_required": "computed_optional",
+							"description": "The type of the membership.",
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+											}
+										],
+										"schema_definition": "stringvalidator.OneOf(\n\"user\",\n\"service_account\",\n)"
+									}
+								}
+							]
 						}
 					},
 					{
-						"name": "id",
-						"string": {
-							"computed_optional_required": "computed",
-							"description": "The UUID of the user."
+						"name": "service_account",
+						"single_nested": {
+							"computed_optional_required": "computed_optional",
+							"attributes": [
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"default": {
+											"static": "service_account"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "permissions",
+									"list": {
+										"computed_optional_required": "required",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The permissions of the service account",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+														}
+													],
+													"schema_definition": "listvalidator.UniqueValues()"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "project",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the project."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique identifier of the project, as inherited from OpenStack"
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The name of the project."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the project."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "service_account",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the service account."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the service account."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique name of the service account."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								}
+							]
 						}
 					},
 					{
-						"name": "permissions",
-						"list": {
-							"computed_optional_required": "computed",
-							"element_type": {
-								"string": {}
-							},
-							"description": "The permissions of the user"
-						}
-					},
-					{
-						"name": "project_id",
-						"string": {
-							"computed_optional_required": "computed",
-							"description": "The UUID of the project"
-						}
-					},
-					{
-						"name": "project_name",
-						"string": {
-							"computed_optional_required": "computed",
-							"description": "The name of the project"
+						"name": "user",
+						"single_nested": {
+							"computed_optional_required": "computed_optional",
+							"attributes": [
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed_optional",
+										"default": {
+											"static": "user"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "permissions",
+									"list": {
+										"computed_optional_required": "required",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The permissions of the user",
+										"validators": [
+											{
+												"custom": {
+													"imports": [
+														{
+															"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+														}
+													],
+													"schema_definition": "listvalidator.UniqueValues()"
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "project",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the project."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique identifier of the project, as inherited from OpenStack"
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The name of the project."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the project."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "project_id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "DEPRECATED: The UUID of the project"
+									}
+								},
+								{
+									"name": "project_name",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "DEPRECATED: The name of the project"
+									}
+								},
+								{
+									"name": "user",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "email",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The email address of the user."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the user."
+												}
+											}
+										]
+									}
+								}
+							]
 						}
 					},
 					{
@@ -647,7 +1543,367 @@
 						}
 					},
 					{
-						"name": "user_id",
+						"name": "project_id",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "regexp"
+											},
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+											}
+										],
+										"schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(\"^[a-f0-9]{8}[a-f0-9]{4}4[a-f0-9]{3}[89ab][a-f0-9]{3}[a-f0-9]{12}$\"), \"\")"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "member_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "project_membership_permission",
+			"schema": {
+				"attributes": [
+					{
+						"name": "service_account_permissions",
+						"list": {
+							"computed_optional_required": "computed_optional",
+							"element_type": {
+								"string": {}
+							},
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+											}
+										],
+										"schema_definition": "listvalidator.UniqueValues()"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "user_permissions",
+						"list": {
+							"computed_optional_required": "computed_optional",
+							"element_type": {
+								"string": {}
+							},
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+											}
+										],
+										"schema_definition": "listvalidator.UniqueValues()"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "discriminator",
+						"string": {
+							"computed_optional_required": "computed",
+							"description": "The type of the membership."
+						}
+					},
+					{
+						"name": "service_account",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed",
+										"default": {
+											"static": "service_account"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The permissions of the service account"
+									}
+								},
+								{
+									"name": "project",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the project."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique identifier of the project, as inherited from OpenStack"
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The name of the project."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the project."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "service_account",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the service account."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the service account."
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique name of the service account."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "user",
+						"single_nested": {
+							"computed_optional_required": "computed",
+							"attributes": [
+								{
+									"name": "membership_type",
+									"string": {
+										"computed_optional_required": "computed",
+										"default": {
+											"static": "user"
+										},
+										"description": "The type of the membership."
+									}
+								},
+								{
+									"name": "permissions",
+									"list": {
+										"computed_optional_required": "computed",
+										"element_type": {
+											"string": {}
+										},
+										"description": "The permissions of the user"
+									}
+								},
+								{
+									"name": "project",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "created_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was created."
+												}
+											},
+											{
+												"name": "description",
+												"string": {
+													"computed_optional_required": "computed",
+													"default": {
+														"static": ""
+													},
+													"description": "The description of the project."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The unique identifier of the project, as inherited from OpenStack"
+												}
+											},
+											{
+												"name": "name",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The name of the project."
+												}
+											},
+											{
+												"name": "tags",
+												"list": {
+													"computed_optional_required": "computed",
+													"element_type": {
+														"string": {}
+													},
+													"description": "The tags of the project."
+												}
+											},
+											{
+												"name": "updated_at",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The time the resource was last updated."
+												}
+											}
+										]
+									}
+								},
+								{
+									"name": "project_id",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "DEPRECATED: The UUID of the project"
+									}
+								},
+								{
+									"name": "project_name",
+									"string": {
+										"computed_optional_required": "computed",
+										"description": "DEPRECATED: The name of the project"
+									}
+								},
+								{
+									"name": "user",
+									"single_nested": {
+										"computed_optional_required": "computed",
+										"attributes": [
+											{
+												"name": "email",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The email address of the user."
+												}
+											},
+											{
+												"name": "id",
+												"string": {
+													"computed_optional_required": "computed",
+													"description": "The UUID of the user."
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "organization_id",
+						"string": {
+							"computed_optional_required": "computed_optional"
+						}
+					},
+					{
+						"name": "project_id",
+						"string": {
+							"computed_optional_required": "computed_optional",
+							"validators": [
+								{
+									"custom": {
+										"imports": [
+											{
+												"path": "regexp"
+											},
+											{
+												"path": "github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+											}
+										],
+										"schema_definition": "stringvalidator.RegexMatches(regexp.MustCompile(\"^[a-f0-9]{8}[a-f0-9]{4}4[a-f0-9]{3}[89ab][a-f0-9]{3}[a-f0-9]{12}$\"), \"\")"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "member_id",
 						"string": {
 							"computed_optional_required": "computed_optional"
 						}
@@ -752,16 +2008,10 @@
 											"computed_optional_required": "computed",
 											"description": "The time the resource was created."
 										}
-									},
-									{
-										"name": "secret_key",
-										"string": {
-											"computed_optional_required": "computed",
-											"description": "The user's secret key."
-										}
 									}
 								]
-							}
+							},
+							"description": "The user's S3 keys (access keys only)."
 						}
 					}
 				]
