@@ -8,18 +8,18 @@ import (
 	"github.com/syseleven/terraform-provider-sys11iam/internal/errors"
 )
 
-const IAMOrganizationsEndpoint string = "/v1/orgs"
-const IAMOrganizationEndpoint string = "/v1/orgs/%s"
+const IAMOrganizationsEndpoint string = "/v2/orgs"
+const IAMOrganizationEndpoint string = "/v2/orgs/%s"
 
-const IAMProjectsEndpoint string = "/v1/orgs/%s/projects"
-const IAMProjectEndpoint string = "/v1/orgs/%s/projects/%s"
+const IAMProjectsEndpoint string = "/v2/orgs/%s/projects"
+const IAMProjectEndpoint string = "/v2/orgs/%s/projects/%s"
 
 const IAMOrganizationMembershipsEndpoint string = "/v2/orgs/%s/memberships"
 const IAMOrganizationMembershipEndpoint string = "/v2/orgs/%s/memberships/%s"
 const IAMOrganizationMembershipPermissionsEndpoint string = "/v2/orgs/%s/memberships/%s/permissions"
 
-const IAMOrganizationInvitationsEndpoint string = "/v1/orgs/%s/invitations"
-const IAMOrganizationInvitationEndpoint string = "/v1/orgs/%s/invitations/%s"
+const IAMOrganizationInvitationsEndpoint string = "/v2/orgs/%s/invitations"
+const IAMOrganizationInvitationEndpoint string = "/v2/orgs/%s/invitations/%s"
 
 const IAMProjectMembershipsEndpoint string = "/v2/orgs/%s/projects/%s/memberships"
 const IAMProjectMembershipEndpoint string = "/v2/orgs/%s/projects/%s/memberships/%s"
@@ -315,6 +315,31 @@ type IAMOrganizationServiceaccount struct {
 
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+type IAMOrganizationMembershipPermission struct {
+	MemberId       string                                             `json:"member_id"`
+	OrganizationId string                                             `json:"organization_id"`
+	ServiceAccount IAMOrganizationMembershipPermissionsServiceAccount `json:"service_account,omitempty"`
+	User           IAMOrganizationMembershipPermissionsUser           `json:"user,omitempty"`
+}
+
+type IAMOrganizationMembershipPermissionsUser struct {
+	Affiliation            string              `json:"affiliation"`
+	Permissions    []string            `json:"permissions,omitempty"`
+	Id                     string              `json:"id"`
+	MembershipType         string              `json:"membership_type"`
+	OrganizationId         string              `json:"organization_id"`
+	User                   IAMOrganisationUser `json:"user"`
+}
+
+type IAMOrganizationMembershipPermissionsServiceAccount struct {
+	Affiliation            string                        `json:"affiliation"`
+	Permissions    []string            `json:"permissions,omitempty"`
+	Id                     string                        `json:"id"`
+	MembershipType         string                        `json:"membership_type"`
+	OrganizationId         string                        `json:"organization_id"`
+	ServiceAccount         IAMOrganisationServiceAccount `json:"service_account"`
 }
 
 func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
@@ -1826,4 +1851,54 @@ func (c *Client) GetProjectS3UserKey(org_id string, project_id string, s3user_id
 	}
 
 	return iamProjectS3UserKey, nil
+}
+
+func (c *Client) CreateOrUpdateOrganizationMembershipPermission(member_id, org_id string, permissions []string) (IAMOrganizationMembershipPermission, error) {
+	var iamOrganizationMembershipPermission IAMOrganizationMembershipPermission
+	path := fmt.Sprintf(IAMOrganizationMembershipPermissionsEndpoint, org_id, member_id)
+	payload, err := json.Marshal(permissions)
+	if err != nil {
+		return iamOrganizationMembershipPermission, err
+	}
+
+	response, err := c.client.NewRequest(http.MethodPost, path).
+		UseJSONPayload(payload).
+		Do()
+	if err != nil {
+		return iamOrganizationMembershipPermission, err
+	}
+
+	err = c.checkResponse(response)
+	if err != nil {
+		return iamOrganizationMembershipPermission, fmt.Errorf(CreateOrganizationMembershipPermissionError, err.Error())
+	}
+
+	err = response.JSONUnmarshall(&iamOrganizationMembershipPermission)
+	if err != nil {
+		body, respErr := response.StringBody()
+		if respErr != nil {
+			body = "unable to parse body"
+		}
+		err = fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+		return iamOrganizationMembershipPermission, err
+	}
+	return iamOrganizationMembershipPermission, nil
+}
+
+
+func (c *Client) DeleteOrganizationMembershipPermission(org_id string, member_id string) error {
+	path := fmt.Sprintf(IAMOrganizationMembershipPermissionsEndpoint, org_id, member_id)
+	response, err := c.client.NewRequest(http.MethodDelete, path).
+		Do()
+	if err != nil {
+		return err
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	err = c.checkResponse(response)
+	if err != nil {
+		return fmt.Errorf(DeleteOrganizationMembershipPermissionError, err.Error())
+	}
+	return nil
 }

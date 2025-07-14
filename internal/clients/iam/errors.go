@@ -64,3 +64,8 @@ const DeleteProjectS3UserError string = "could not delete ProjectS3User: %s"
 const GetProjectS3UserKeyError string = "could not get ProjectS3UserKey: %s"
 const CreateProjectS3UserKeyError string = "could not create ProjectS3UserKey: %s %s"
 const DeleteProjectS3UserKeyError string = "could not delete ProjectS3UserKey: %s"
+
+const CreateOrganizationMembershipPermissionError string = "could not create OrganizationMembershipPermission: %s"
+const UpdateOrganizationMembershipPermissionError string = "could not update OrganizationMembershipPermission: %s"
+const DeleteOrganizationMembershipPermissionError string = "could not delete OrganizationMembershipPermission: %s"
+const ReadOrganizationMembershipPermissionError string = "could not read OrganizationMembershipPermission: %s"
