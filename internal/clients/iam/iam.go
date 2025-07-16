@@ -665,7 +665,7 @@ func (c *Client) GetOrganizationMembershipByEmail(org_id string, email string) (
 	return IAMOrganizationMembership{}, fmt.Errorf("membership with that e-mail address was not found: %s", email)
 }
 
-func (c *Client) CreateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error) {
+func (c *Client) CreateOrUpdateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error) {
 	iamOrganizationMembership, err := c.GetOrganizationMembership(org_id, user_id)
 	if err != nil {
 		return iamOrganizationMembership, err
