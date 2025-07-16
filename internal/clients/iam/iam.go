@@ -342,6 +342,79 @@ type IAMOrganizationMembershipPermissionsServiceAccount struct {
 	ServiceAccount         IAMOrganisationServiceAccount `json:"service_account"`
 }
 
+type IAMClient interface {
+	GetOrganization(id string) (IAMOrganization, error)
+	GetOrganizationByName(name string) (IAMOrganization, error)
+	CreateOrganization(org IAMOrganization) (IAMOrganization, error)
+	UpdateOrganization(id string, org IAMOrganization) (IAMOrganization, error)
+	DeleteOrganization(id string) error
+
+	GetProject(org_id string, project_id string) (IAMProject, error)
+	CreateProject(org_id string, name string, description string, tags []string) (IAMProject, error)
+	UpdateProject(org_id string, id string, name string, description string, tags []string) (IAMProject, error)
+	DeleteProject(org_id string, id string) error 
+
+	GetOrganizationMembershipByEmail(org_id string, email string) (IAMOrganizationMembership, error)
+	GetOrganizationMembership(org_id string, id string) (IAMOrganizationMembership, error)
+	CreateOrUpdateOrganizationMembership(org_id string, user_id string, affiliation string, permissions []string) (IAMOrganizationMembership, error)
+	DeleteOrganizationMembership(org_id string, id string) error
+
+	DeleteOrganizationMembershipPermission(org_id string, member_id string) error
+	CreateOrUpdateOrganizationMembershipPermission(member_id, org_id string, permissions []string) (IAMOrganizationMembershipPermission, error)
+
+	GetOrganizationInvitationByEmail(org_id string, email string) (IAMOrganizationInvitation, error)
+	CreateOrganizationInvitation(org_id string, email string, permissions []string) (IAMOrganizationInvitation, error)
+	DeleteOrganizationInvitation(org_id string, email string) error
+	
+	GetProjectMembership(org_id string, project_id string, id string) (IAMProjectMembership, error)
+	GetProjectMembershipByEmail(org_id string, project_id string, email string) (IAMProjectMembership, error)
+	CreateProjectMembership(org_id string, project_id string, user_id string, permissions []string) (IAMProjectMembership, error)
+	UpdateProjectMembership(org_id string, project_id string, user_id string, permissions []string) (IAMProjectMembership, error)
+	DeleteProjectMembership(org_id string, project_id string, id string) error
+
+	GetOrganizationServiceaccount(org_id string, id string) (IAMOrganizationServiceaccount, error)
+	CreateOrganizationServiceaccount(org_id string, name string, description string) (IAMOrganizationServiceaccount, error)
+	UpdateOrganizationServiceaccount(org_id string, serviceaccount_id string, name string, description string) (IAMOrganizationServiceaccount, error)
+	DeleteOrganizationServiceaccount(org_id string, id string) error
+
+	GetOrganizationContact(org_id string, id string) (IAMOrganizationContact, error)
+	CreateOrganizationContact(org_id string, first_name string, last_name string, notes string, email string, phone string, roles []string) (IAMOrganizationContact, error)
+	UpdateOrganizationContact(org_id string, team_id string, first_name string, last_name string, notes string, email string, phone string, roles []string) (IAMOrganizationContact, error)
+	DeleteOrganizationContact(org_id string, id string) error
+
+	GetOrganizationTeam(org_id string, id string) (IAMOrganizationTeam, error)
+	GetOrganizationTeamPermissions(org_id string, id string) (IAMOrganizationTeamPermissions, error)
+	CreateOrganizationTeam(org_id string, name string, description string, tags []string) (IAMOrganizationTeam, error)
+	UpdateOrganizationTeam(org_id string, team_id string, name string, description string, tags []string) (IAMOrganizationTeam, error)
+	DeleteOrganizationTeam(org_id string, id string) error 
+
+	GetOrganizationTeamMembership(org_id string, team_id string, id string) (IAMOrganizationTeamMembership, error)
+	CreateOrganizationTeamMembership(org_id string, team_id string, member_id string) (IAMOrganizationTeamMembership, error)
+	UpdateOrganizationTeamMembership(org_id string, team_id string, member_id string) (IAMOrganizationTeamMembership, error)
+	DeleteOrganizationTeamMembership(org_id string, team_id string, id string) error
+
+	GetProjectTeamMembership(org_id string, project_id string, team_id string, id string) (IAMProjectTeamMembership, error)
+	CreateProjectTeamMembership(org_id string, project_id string, team_id string, member_id string, permissions []string) (IAMProjectTeamMembership, error)
+	UpdateProjectTeamMembership(org_id string, project_id string, team_id string, member_id string, permissions []string) (IAMProjectTeamMembership, error)
+	DeleteProjectTeamMembership(org_id string, project_id string, team_id string, member_id string) error
+
+	GetProjectTeamPermissions(org_id string, project_id string, team_id string) ([]string, error)
+	CreateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) (IAMProjectTeamPermissions, error)
+	UpdateProjectTeamPermissions(org_id string, project_id string, team_id string, permissions []string) ([]string, error)
+	DeleteProjectTeamPermissions(org_id string, project_id string, team_id string) error
+
+	GetProjectS3User(org_id string, project_id string, id string) (IAMProjectS3User, error)
+	CreateProjectS3User(org_id string, project_id, name string, description string) (IAMProjectS3User, error)
+	UpdateProjectS3User(org_id string, project_id string, s3user_id string, name string, description string) (IAMProjectS3User, error)
+	DeleteProjectS3User(org_id string, project_id string, id string) error
+
+	CreateProjectS3UserKey(org_id string, project_id string, s3user_id string) (IAMProjectS3UserKey, error)
+	DeleteProjectS3UserKey(org_id string, project_id string, s3user_id string, key_id string) error
+	GetProjectS3UserKey(org_id string, project_id string, s3user_id string, key_id string) (IAMProjectS3UserKey, error)
+}
+
+var _ IAMClient = (*Client)(nil)
+
 func (c *Client) GetOrganization(id string) (IAMOrganization, error) {
 	path := fmt.Sprintf(IAMOrganizationEndpoint, id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
