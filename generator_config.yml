@@ -14,7 +14,7 @@ resources:
     delete:
       path: /v2/orgs/{organization_id}
       method: DELETE
-  project:
+  organization_project:
     create:
       path: /v2/orgs/{organization_id}/projects
       method: POST
@@ -47,7 +47,7 @@ resources:
     delete:
       path: /v2/orgs/{organization_id}/memberships/{member_id}/permissions
       method: DELETE
-  project_membership:
+  organization_project_membership:
     create:
       path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
       method: PATCH
@@ -60,7 +60,7 @@ resources:
     delete:
       path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}
       method: DELETE
-  project_membership_permission:
+  organization_project_membership_permission:
     create:
       path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}/permissions
       method: POST
@@ -70,7 +70,7 @@ resources:
     delete:
       path: /v2/orgs/{organization_id}/projects/{project_id}/memberships/{member_id}/permissions
       method: DELETE
-  project_s3_user:
+  organization_project_s3_user:
     create:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users
       method: POST
@@ -80,7 +80,7 @@ resources:
     update:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}
       method: PUT
-  project_s3_user_key:
+  organization_project_s3_user_key:
     create:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials
       method: POST
@@ -90,4 +90,65 @@ resources:
     delete:
       path: /v2/orgs/{organization_id}/projects/{project_id}/s3-users/{s3_user_id}/ec2-credentials/{s3_access_key}
       method: DELETE
-
+  organization_team:
+    create:
+      path: /v2/orgs/{organization_id}/teams
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/teams/{team_id}
+      method: GET
+    update:
+      path: /v2/orgs/{organization_id}/teams/{team_id}
+      method: PUT
+    delete:
+      path: /v2/orgs/{organization_id}/teams/{team_id}
+      method: DELETE
+  organization_team_membership:
+    create:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/memberships/{member_id}
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/memberships/{member_id}
+      method: GET
+    delete:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/memberships/{member_id}
+      method: DELETE
+  organization_team_permission:
+    create:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions
+      method: GET
+    update:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions
+      method: PATCH
+    delete:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions
+      method: DELETE
+  organization_team_membership_permission:
+    create:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions/{member_id}
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/memberships/{member_id}
+      method: GET
+    update:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions/{member_id}
+      method: PATCH
+    delete:
+      path: /v2/orgs/{organization_id}/teams/{team_id}/permissions/{member_id}
+      method: DELETE
+  organization_team_project_permission:
+    create:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/teams/{team_id}/permissions
+      method: POST
+    read:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/teams/{team_id}/permissions
+      method: GET
+    update:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/teams/{team_id}/permissions
+      method: PATCH
+    delete:
+      path: /v2/orgs/{organization_id}/projects/{project_id}/teams/{team_id}/permissions
+      method: DELETE

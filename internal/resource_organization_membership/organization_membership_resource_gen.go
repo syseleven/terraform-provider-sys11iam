@@ -22,18 +22,6 @@ import (
 func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"discriminator": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "The type of membership, either a user or a service account.",
-				MarkdownDescription: "The type of membership, either a user or a service account.",
-				Validators: []validator.String{
-					stringvalidator.OneOf(
-						"user",
-						"service_account",
-					),
-				},
-			},
 			"member_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -42,7 +30,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 				Optional: true,
 				Computed: true,
 			},
-			"service_account": schema.SingleNestedAttribute{
+			"service_account_membership": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"affiliation": schema.StringAttribute{
 						Optional:            true,
@@ -167,15 +155,15 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 						Computed: true,
 					},
 				},
-				CustomType: ServiceAccountType{
+				CustomType: ServiceAccountMembershipType{
 					ObjectType: types.ObjectType{
-						AttrTypes: ServiceAccountValue{}.AttributeTypes(ctx),
+						AttrTypes: ServiceAccountMembershipValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional: true,
 				Computed: true,
 			},
-			"user": schema.SingleNestedAttribute{
+			"user_membership": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"affiliation": schema.StringAttribute{
 						Optional:            true,
@@ -286,9 +274,9 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 						Computed: true,
 					},
 				},
-				CustomType: UserType{
+				CustomType: UserMembershipType{
 					ObjectType: types.ObjectType{
-						AttrTypes: UserValue{}.AttributeTypes(ctx),
+						AttrTypes: UserMembershipValue{}.AttributeTypes(ctx),
 					},
 				},
 				Optional: true,
@@ -299,21 +287,20 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type OrganizationMembershipModel struct {
-	Discriminator  types.String        `tfsdk:"discriminator"`
-	MemberId       types.String        `tfsdk:"member_id"`
-	OrganizationId types.String        `tfsdk:"organization_id"`
-	ServiceAccount ServiceAccountValue `tfsdk:"service_account"`
-	User           UserValue           `tfsdk:"user"`
+	MemberId                 types.String                  `tfsdk:"member_id"`
+	OrganizationId           types.String                  `tfsdk:"organization_id"`
+	ServiceAccountMembership ServiceAccountMembershipValue `tfsdk:"service_account_membership"`
+	UserMembership           UserMembershipValue           `tfsdk:"user_membership"`
 }
 
-var _ basetypes.ObjectTypable = ServiceAccountType{}
+var _ basetypes.ObjectTypable = ServiceAccountMembershipType{}
 
-type ServiceAccountType struct {
+type ServiceAccountMembershipType struct {
 	basetypes.ObjectType
 }
 
-func (t ServiceAccountType) Equal(o attr.Type) bool {
-	other, ok := o.(ServiceAccountType)
+func (t ServiceAccountMembershipType) Equal(o attr.Type) bool {
+	other, ok := o.(ServiceAccountMembershipType)
 
 	if !ok {
 		return false
@@ -322,11 +309,11 @@ func (t ServiceAccountType) Equal(o attr.Type) bool {
 	return t.ObjectType.Equal(other.ObjectType)
 }
 
-func (t ServiceAccountType) String() string {
-	return "ServiceAccountType"
+func (t ServiceAccountMembershipType) String() string {
+	return "ServiceAccountMembershipType"
 }
 
-func (t ServiceAccountType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+func (t ServiceAccountMembershipType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	attributes := in.Attributes()
@@ -461,7 +448,7 @@ func (t ServiceAccountType) ValueFromObject(ctx context.Context, in basetypes.Ob
 		return nil, diags
 	}
 
-	return ServiceAccountValue{
+	return ServiceAccountMembershipValue{
 		Affiliation:            affiliationVal,
 		EditablePermissions:    editablePermissionsVal,
 		Id:                     idVal,
@@ -473,19 +460,19 @@ func (t ServiceAccountType) ValueFromObject(ctx context.Context, in basetypes.Ob
 	}, diags
 }
 
-func NewServiceAccountValueNull() ServiceAccountValue {
-	return ServiceAccountValue{
+func NewServiceAccountMembershipValueNull() ServiceAccountMembershipValue {
+	return ServiceAccountMembershipValue{
 		state: attr.ValueStateNull,
 	}
 }
 
-func NewServiceAccountValueUnknown() ServiceAccountValue {
-	return ServiceAccountValue{
+func NewServiceAccountMembershipValueUnknown() ServiceAccountMembershipValue {
+	return ServiceAccountMembershipValue{
 		state: attr.ValueStateUnknown,
 	}
 }
 
-func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (ServiceAccountValue, diag.Diagnostics) {
+func NewServiceAccountMembershipValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (ServiceAccountMembershipValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
@@ -496,11 +483,11 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 
 		if !ok {
 			diags.AddError(
-				"Missing ServiceAccountValue Attribute Value",
-				"While creating a ServiceAccountValue value, a missing attribute value was detected. "+
-					"A ServiceAccountValue must contain values for all attributes, even if null or unknown. "+
+				"Missing ServiceAccountMembershipValue Attribute Value",
+				"While creating a ServiceAccountMembershipValue value, a missing attribute value was detected. "+
+					"A ServiceAccountMembershipValue must contain values for all attributes, even if null or unknown. "+
 					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("ServiceAccountValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+					fmt.Sprintf("ServiceAccountMembershipValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
 			)
 
 			continue
@@ -508,12 +495,12 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 
 		if !attributeType.Equal(attribute.Type(ctx)) {
 			diags.AddError(
-				"Invalid ServiceAccountValue Attribute Type",
-				"While creating a ServiceAccountValue value, an invalid attribute value was detected. "+
-					"A ServiceAccountValue must use a matching attribute type for the value. "+
+				"Invalid ServiceAccountMembershipValue Attribute Type",
+				"While creating a ServiceAccountMembershipValue value, an invalid attribute value was detected. "+
+					"A ServiceAccountMembershipValue must use a matching attribute type for the value. "+
 					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("ServiceAccountValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
-					fmt.Sprintf("ServiceAccountValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+					fmt.Sprintf("ServiceAccountMembershipValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("ServiceAccountMembershipValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
 			)
 		}
 	}
@@ -523,17 +510,17 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 
 		if !ok {
 			diags.AddError(
-				"Extra ServiceAccountValue Attribute Value",
-				"While creating a ServiceAccountValue value, an extra attribute value was detected. "+
-					"A ServiceAccountValue must not contain values beyond the expected attribute types. "+
+				"Extra ServiceAccountMembershipValue Attribute Value",
+				"While creating a ServiceAccountMembershipValue value, an extra attribute value was detected. "+
+					"A ServiceAccountMembershipValue must not contain values beyond the expected attribute types. "+
 					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("Extra ServiceAccountValue Attribute Name: %s", name),
+					fmt.Sprintf("Extra ServiceAccountMembershipValue Attribute Name: %s", name),
 			)
 		}
 	}
 
 	if diags.HasError() {
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	affiliationAttribute, ok := attributes["affiliation"]
@@ -543,7 +530,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`affiliation is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	affiliationVal, ok := affiliationAttribute.(basetypes.StringValue)
@@ -561,7 +548,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`editable_permissions is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	editablePermissionsVal, ok := editablePermissionsAttribute.(basetypes.ListValue)
@@ -579,7 +566,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`id is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	idVal, ok := idAttribute.(basetypes.StringValue)
@@ -597,7 +584,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`membership_type is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	membershipTypeVal, ok := membershipTypeAttribute.(basetypes.StringValue)
@@ -615,7 +602,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`non_editable_permissions is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	nonEditablePermissionsVal, ok := nonEditablePermissionsAttribute.(basetypes.ListValue)
@@ -633,7 +620,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`organization is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	organizationVal, ok := organizationAttribute.(basetypes.ObjectValue)
@@ -651,7 +638,7 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 			"Attribute Missing",
 			`service_account is missing from object`)
 
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
 	serviceAccountVal, ok := serviceAccountAttribute.(basetypes.ObjectValue)
@@ -663,10 +650,10 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 	}
 
 	if diags.HasError() {
-		return NewServiceAccountValueUnknown(), diags
+		return NewServiceAccountMembershipValueUnknown(), diags
 	}
 
-	return ServiceAccountValue{
+	return ServiceAccountMembershipValue{
 		Affiliation:            affiliationVal,
 		EditablePermissions:    editablePermissionsVal,
 		Id:                     idVal,
@@ -678,8 +665,8 @@ func NewServiceAccountValue(attributeTypes map[string]attr.Type, attributes map[
 	}, diags
 }
 
-func NewServiceAccountValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) ServiceAccountValue {
-	object, diags := NewServiceAccountValue(attributeTypes, attributes)
+func NewServiceAccountMembershipValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) ServiceAccountMembershipValue {
+	object, diags := NewServiceAccountMembershipValue(attributeTypes, attributes)
 
 	if diags.HasError() {
 		// This could potentially be added to the diag package.
@@ -693,15 +680,15 @@ func NewServiceAccountValueMust(attributeTypes map[string]attr.Type, attributes 
 				diagnostic.Detail()))
 		}
 
-		panic("NewServiceAccountValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+		panic("NewServiceAccountMembershipValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
 	}
 
 	return object
 }
 
-func (t ServiceAccountType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+func (t ServiceAccountMembershipType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
 	if in.Type() == nil {
-		return NewServiceAccountValueNull(), nil
+		return NewServiceAccountMembershipValueNull(), nil
 	}
 
 	if !in.Type().Equal(t.TerraformType(ctx)) {
@@ -709,11 +696,11 @@ func (t ServiceAccountType) ValueFromTerraform(ctx context.Context, in tftypes.V
 	}
 
 	if !in.IsKnown() {
-		return NewServiceAccountValueUnknown(), nil
+		return NewServiceAccountMembershipValueUnknown(), nil
 	}
 
 	if in.IsNull() {
-		return NewServiceAccountValueNull(), nil
+		return NewServiceAccountMembershipValueNull(), nil
 	}
 
 	attributes := map[string]attr.Value{}
@@ -736,16 +723,16 @@ func (t ServiceAccountType) ValueFromTerraform(ctx context.Context, in tftypes.V
 		attributes[k] = a
 	}
 
-	return NewServiceAccountValueMust(ServiceAccountValue{}.AttributeTypes(ctx), attributes), nil
+	return NewServiceAccountMembershipValueMust(ServiceAccountMembershipValue{}.AttributeTypes(ctx), attributes), nil
 }
 
-func (t ServiceAccountType) ValueType(ctx context.Context) attr.Value {
-	return ServiceAccountValue{}
+func (t ServiceAccountMembershipType) ValueType(ctx context.Context) attr.Value {
+	return ServiceAccountMembershipValue{}
 }
 
-var _ basetypes.ObjectValuable = ServiceAccountValue{}
+var _ basetypes.ObjectValuable = ServiceAccountMembershipValue{}
 
-type ServiceAccountValue struct {
+type ServiceAccountMembershipValue struct {
 	Affiliation            basetypes.StringValue `tfsdk:"affiliation"`
 	EditablePermissions    basetypes.ListValue   `tfsdk:"editable_permissions"`
 	Id                     basetypes.StringValue `tfsdk:"id"`
@@ -756,7 +743,7 @@ type ServiceAccountValue struct {
 	state                  attr.ValueState
 }
 
-func (v ServiceAccountValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+func (v ServiceAccountMembershipValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
 	attrTypes := make(map[string]tftypes.Type, 7)
 
 	var val tftypes.Value
@@ -854,19 +841,19 @@ func (v ServiceAccountValue) ToTerraformValue(ctx context.Context) (tftypes.Valu
 	}
 }
 
-func (v ServiceAccountValue) IsNull() bool {
+func (v ServiceAccountMembershipValue) IsNull() bool {
 	return v.state == attr.ValueStateNull
 }
 
-func (v ServiceAccountValue) IsUnknown() bool {
+func (v ServiceAccountMembershipValue) IsUnknown() bool {
 	return v.state == attr.ValueStateUnknown
 }
 
-func (v ServiceAccountValue) String() string {
-	return "ServiceAccountValue"
+func (v ServiceAccountMembershipValue) String() string {
+	return "ServiceAccountMembershipValue"
 }
 
-func (v ServiceAccountValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+func (v ServiceAccountMembershipValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	var organization basetypes.ObjectValue
@@ -1016,8 +1003,8 @@ func (v ServiceAccountValue) ToObjectValue(ctx context.Context) (basetypes.Objec
 	return objVal, diags
 }
 
-func (v ServiceAccountValue) Equal(o attr.Value) bool {
-	other, ok := o.(ServiceAccountValue)
+func (v ServiceAccountMembershipValue) Equal(o attr.Value) bool {
+	other, ok := o.(ServiceAccountMembershipValue)
 
 	if !ok {
 		return false
@@ -1062,15 +1049,15 @@ func (v ServiceAccountValue) Equal(o attr.Value) bool {
 	return true
 }
 
-func (v ServiceAccountValue) Type(ctx context.Context) attr.Type {
-	return ServiceAccountType{
+func (v ServiceAccountMembershipValue) Type(ctx context.Context) attr.Type {
+	return ServiceAccountMembershipType{
 		basetypes.ObjectType{
 			AttrTypes: v.AttributeTypes(ctx),
 		},
 	}
 }
 
-func (v ServiceAccountValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+func (v ServiceAccountMembershipValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 	return map[string]attr.Type{
 		"affiliation": basetypes.StringType{},
 		"editable_permissions": basetypes.ListType{
@@ -2320,14 +2307,14 @@ func (v ServiceAccountValue) AttributeTypes(ctx context.Context) map[string]attr
 	}
 }
 
-var _ basetypes.ObjectTypable = UserType{}
+var _ basetypes.ObjectTypable = UserMembershipType{}
 
-type UserType struct {
+type UserMembershipType struct {
 	basetypes.ObjectType
 }
 
-func (t UserType) Equal(o attr.Type) bool {
-	other, ok := o.(UserType)
+func (t UserMembershipType) Equal(o attr.Type) bool {
+	other, ok := o.(UserMembershipType)
 
 	if !ok {
 		return false
@@ -2336,11 +2323,11 @@ func (t UserType) Equal(o attr.Type) bool {
 	return t.ObjectType.Equal(other.ObjectType)
 }
 
-func (t UserType) String() string {
-	return "UserType"
+func (t UserMembershipType) String() string {
+	return "UserMembershipType"
 }
 
-func (t UserType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
+func (t UserMembershipType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	attributes := in.Attributes()
@@ -2475,7 +2462,7 @@ func (t UserType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue)
 		return nil, diags
 	}
 
-	return UserValue{
+	return UserMembershipValue{
 		Affiliation:            affiliationVal,
 		EditablePermissions:    editablePermissionsVal,
 		Id:                     idVal,
@@ -2487,19 +2474,19 @@ func (t UserType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue)
 	}, diags
 }
 
-func NewUserValueNull() UserValue {
-	return UserValue{
+func NewUserMembershipValueNull() UserMembershipValue {
+	return UserMembershipValue{
 		state: attr.ValueStateNull,
 	}
 }
 
-func NewUserValueUnknown() UserValue {
-	return UserValue{
+func NewUserMembershipValueUnknown() UserMembershipValue {
+	return UserMembershipValue{
 		state: attr.ValueStateUnknown,
 	}
 }
 
-func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (UserValue, diag.Diagnostics) {
+func NewUserMembershipValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (UserMembershipValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
@@ -2510,11 +2497,11 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 
 		if !ok {
 			diags.AddError(
-				"Missing UserValue Attribute Value",
-				"While creating a UserValue value, a missing attribute value was detected. "+
-					"A UserValue must contain values for all attributes, even if null or unknown. "+
+				"Missing UserMembershipValue Attribute Value",
+				"While creating a UserMembershipValue value, a missing attribute value was detected. "+
+					"A UserMembershipValue must contain values for all attributes, even if null or unknown. "+
 					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("UserValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
+					fmt.Sprintf("UserMembershipValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
 			)
 
 			continue
@@ -2522,12 +2509,12 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 
 		if !attributeType.Equal(attribute.Type(ctx)) {
 			diags.AddError(
-				"Invalid UserValue Attribute Type",
-				"While creating a UserValue value, an invalid attribute value was detected. "+
-					"A UserValue must use a matching attribute type for the value. "+
+				"Invalid UserMembershipValue Attribute Type",
+				"While creating a UserMembershipValue value, an invalid attribute value was detected. "+
+					"A UserMembershipValue must use a matching attribute type for the value. "+
 					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("UserValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
-					fmt.Sprintf("UserValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
+					fmt.Sprintf("UserMembershipValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
+					fmt.Sprintf("UserMembershipValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
 			)
 		}
 	}
@@ -2537,17 +2524,17 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 
 		if !ok {
 			diags.AddError(
-				"Extra UserValue Attribute Value",
-				"While creating a UserValue value, an extra attribute value was detected. "+
-					"A UserValue must not contain values beyond the expected attribute types. "+
+				"Extra UserMembershipValue Attribute Value",
+				"While creating a UserMembershipValue value, an extra attribute value was detected. "+
+					"A UserMembershipValue must not contain values beyond the expected attribute types. "+
 					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("Extra UserValue Attribute Name: %s", name),
+					fmt.Sprintf("Extra UserMembershipValue Attribute Name: %s", name),
 			)
 		}
 	}
 
 	if diags.HasError() {
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	affiliationAttribute, ok := attributes["affiliation"]
@@ -2557,7 +2544,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`affiliation is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	affiliationVal, ok := affiliationAttribute.(basetypes.StringValue)
@@ -2575,7 +2562,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`editable_permissions is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	editablePermissionsVal, ok := editablePermissionsAttribute.(basetypes.ListValue)
@@ -2593,7 +2580,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`id is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	idVal, ok := idAttribute.(basetypes.StringValue)
@@ -2611,7 +2598,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`membership_type is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	membershipTypeVal, ok := membershipTypeAttribute.(basetypes.StringValue)
@@ -2629,7 +2616,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`non_editable_permissions is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	nonEditablePermissionsVal, ok := nonEditablePermissionsAttribute.(basetypes.ListValue)
@@ -2647,7 +2634,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`organization is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	organizationVal, ok := organizationAttribute.(basetypes.ObjectValue)
@@ -2665,7 +2652,7 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			"Attribute Missing",
 			`user is missing from object`)
 
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
 	userVal, ok := userAttribute.(basetypes.ObjectValue)
@@ -2677,10 +2664,10 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 	}
 
 	if diags.HasError() {
-		return NewUserValueUnknown(), diags
+		return NewUserMembershipValueUnknown(), diags
 	}
 
-	return UserValue{
+	return UserMembershipValue{
 		Affiliation:            affiliationVal,
 		EditablePermissions:    editablePermissionsVal,
 		Id:                     idVal,
@@ -2692,8 +2679,8 @@ func NewUserValue(attributeTypes map[string]attr.Type, attributes map[string]att
 	}, diags
 }
 
-func NewUserValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) UserValue {
-	object, diags := NewUserValue(attributeTypes, attributes)
+func NewUserMembershipValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) UserMembershipValue {
+	object, diags := NewUserMembershipValue(attributeTypes, attributes)
 
 	if diags.HasError() {
 		// This could potentially be added to the diag package.
@@ -2707,15 +2694,15 @@ func NewUserValueMust(attributeTypes map[string]attr.Type, attributes map[string
 				diagnostic.Detail()))
 		}
 
-		panic("NewUserValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
+		panic("NewUserMembershipValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
 	}
 
 	return object
 }
 
-func (t UserType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
+func (t UserMembershipType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
 	if in.Type() == nil {
-		return NewUserValueNull(), nil
+		return NewUserMembershipValueNull(), nil
 	}
 
 	if !in.Type().Equal(t.TerraformType(ctx)) {
@@ -2723,11 +2710,11 @@ func (t UserType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (att
 	}
 
 	if !in.IsKnown() {
-		return NewUserValueUnknown(), nil
+		return NewUserMembershipValueUnknown(), nil
 	}
 
 	if in.IsNull() {
-		return NewUserValueNull(), nil
+		return NewUserMembershipValueNull(), nil
 	}
 
 	attributes := map[string]attr.Value{}
@@ -2750,16 +2737,16 @@ func (t UserType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (att
 		attributes[k] = a
 	}
 
-	return NewUserValueMust(UserValue{}.AttributeTypes(ctx), attributes), nil
+	return NewUserMembershipValueMust(UserMembershipValue{}.AttributeTypes(ctx), attributes), nil
 }
 
-func (t UserType) ValueType(ctx context.Context) attr.Value {
-	return UserValue{}
+func (t UserMembershipType) ValueType(ctx context.Context) attr.Value {
+	return UserMembershipValue{}
 }
 
-var _ basetypes.ObjectValuable = UserValue{}
+var _ basetypes.ObjectValuable = UserMembershipValue{}
 
-type UserValue struct {
+type UserMembershipValue struct {
 	Affiliation            basetypes.StringValue `tfsdk:"affiliation"`
 	EditablePermissions    basetypes.ListValue   `tfsdk:"editable_permissions"`
 	Id                     basetypes.StringValue `tfsdk:"id"`
@@ -2770,7 +2757,7 @@ type UserValue struct {
 	state                  attr.ValueState
 }
 
-func (v UserValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
+func (v UserMembershipValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
 	attrTypes := make(map[string]tftypes.Type, 7)
 
 	var val tftypes.Value
@@ -2868,19 +2855,19 @@ func (v UserValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) 
 	}
 }
 
-func (v UserValue) IsNull() bool {
+func (v UserMembershipValue) IsNull() bool {
 	return v.state == attr.ValueStateNull
 }
 
-func (v UserValue) IsUnknown() bool {
+func (v UserMembershipValue) IsUnknown() bool {
 	return v.state == attr.ValueStateUnknown
 }
 
-func (v UserValue) String() string {
-	return "UserValue"
+func (v UserMembershipValue) String() string {
+	return "UserMembershipValue"
 }
 
-func (v UserValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
+func (v UserMembershipValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	var organization basetypes.ObjectValue
@@ -3030,8 +3017,8 @@ func (v UserValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, di
 	return objVal, diags
 }
 
-func (v UserValue) Equal(o attr.Value) bool {
-	other, ok := o.(UserValue)
+func (v UserMembershipValue) Equal(o attr.Value) bool {
+	other, ok := o.(UserMembershipValue)
 
 	if !ok {
 		return false
@@ -3076,15 +3063,15 @@ func (v UserValue) Equal(o attr.Value) bool {
 	return true
 }
 
-func (v UserValue) Type(ctx context.Context) attr.Type {
-	return UserType{
+func (v UserMembershipValue) Type(ctx context.Context) attr.Type {
+	return UserMembershipType{
 		basetypes.ObjectType{
 			AttrTypes: v.AttributeTypes(ctx),
 		},
 	}
 }
 
-func (v UserValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
+func (v UserMembershipValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 	return map[string]attr.Type{
 		"affiliation": basetypes.StringType{},
 		"editable_permissions": basetypes.ListType{
@@ -3106,689 +3093,7 @@ func (v UserValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 
 var _ basetypes.ObjectTypable = OrganizationType{}
 
-type OrganizationType struct {
-	basetypes.ObjectType
-}
-
-func (t OrganizationType) Equal(o attr.Type) bool {
-	other, ok := o.(OrganizationType)
-
-	if !ok {
-		return false
-	}
-
-	return t.ObjectType.Equal(other.ObjectType)
-}
-
-func (t OrganizationType) String() string {
-	return "OrganizationType"
-}
-
-func (t OrganizationType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue) (basetypes.ObjectValuable, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	attributes := in.Attributes()
-
-	createdAtAttribute, ok := attributes["created_at"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`created_at is missing from object`)
-
-		return nil, diags
-	}
-
-	createdAtVal, ok := createdAtAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`created_at expected to be basetypes.StringValue, was: %T`, createdAtAttribute))
-	}
-
-	descriptionAttribute, ok := attributes["description"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`description is missing from object`)
-
-		return nil, diags
-	}
-
-	descriptionVal, ok := descriptionAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`description expected to be basetypes.StringValue, was: %T`, descriptionAttribute))
-	}
-
-	idAttribute, ok := attributes["id"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`id is missing from object`)
-
-		return nil, diags
-	}
-
-	idVal, ok := idAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`id expected to be basetypes.StringValue, was: %T`, idAttribute))
-	}
-
-	isActiveAttribute, ok := attributes["is_active"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`is_active is missing from object`)
-
-		return nil, diags
-	}
-
-	isActiveVal, ok := isActiveAttribute.(basetypes.BoolValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`is_active expected to be basetypes.BoolValue, was: %T`, isActiveAttribute))
-	}
-
-	nameAttribute, ok := attributes["name"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`name is missing from object`)
-
-		return nil, diags
-	}
-
-	nameVal, ok := nameAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`name expected to be basetypes.StringValue, was: %T`, nameAttribute))
-	}
-
-	tagsAttribute, ok := attributes["tags"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`tags is missing from object`)
-
-		return nil, diags
-	}
-
-	tagsVal, ok := tagsAttribute.(basetypes.ListValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`tags expected to be basetypes.ListValue, was: %T`, tagsAttribute))
-	}
-
-	updatedAtAttribute, ok := attributes["updated_at"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`updated_at is missing from object`)
-
-		return nil, diags
-	}
-
-	updatedAtVal, ok := updatedAtAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`updated_at expected to be basetypes.StringValue, was: %T`, updatedAtAttribute))
-	}
-
-	if diags.HasError() {
-		return nil, diags
-	}
-
-	return OrganizationValue{
-		CreatedAt:   createdAtVal,
-		Description: descriptionVal,
-		Id:          idVal,
-		IsActive:    isActiveVal,
-		Name:        nameVal,
-		Tags:        tagsVal,
-		UpdatedAt:   updatedAtVal,
-		state:       attr.ValueStateKnown,
-	}, diags
-}
-
-func NewOrganizationValueNull() OrganizationValue {
-	return OrganizationValue{
-		state: attr.ValueStateNull,
-	}
-}
-
-func NewOrganizationValueUnknown() OrganizationValue {
-	return OrganizationValue{
-		state: attr.ValueStateUnknown,
-	}
-}
-
-func NewOrganizationValue(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) (OrganizationValue, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	// Reference: https://github.com/hashicorp/terraform-plugin-framework/issues/521
-	ctx := context.Background()
-
-	for name, attributeType := range attributeTypes {
-		attribute, ok := attributes[name]
-
-		if !ok {
-			diags.AddError(
-				"Missing OrganizationValue Attribute Value",
-				"While creating a OrganizationValue value, a missing attribute value was detected. "+
-					"A OrganizationValue must contain values for all attributes, even if null or unknown. "+
-					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("OrganizationValue Attribute Name (%s) Expected Type: %s", name, attributeType.String()),
-			)
-
-			continue
-		}
-
-		if !attributeType.Equal(attribute.Type(ctx)) {
-			diags.AddError(
-				"Invalid OrganizationValue Attribute Type",
-				"While creating a OrganizationValue value, an invalid attribute value was detected. "+
-					"A OrganizationValue must use a matching attribute type for the value. "+
-					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("OrganizationValue Attribute Name (%s) Expected Type: %s\n", name, attributeType.String())+
-					fmt.Sprintf("OrganizationValue Attribute Name (%s) Given Type: %s", name, attribute.Type(ctx)),
-			)
-		}
-	}
-
-	for name := range attributes {
-		_, ok := attributeTypes[name]
-
-		if !ok {
-			diags.AddError(
-				"Extra OrganizationValue Attribute Value",
-				"While creating a OrganizationValue value, an extra attribute value was detected. "+
-					"A OrganizationValue must not contain values beyond the expected attribute types. "+
-					"This is always an issue with the provider and should be reported to the provider developers.\n\n"+
-					fmt.Sprintf("Extra OrganizationValue Attribute Name: %s", name),
-			)
-		}
-	}
-
-	if diags.HasError() {
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	createdAtAttribute, ok := attributes["created_at"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`created_at is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	createdAtVal, ok := createdAtAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`created_at expected to be basetypes.StringValue, was: %T`, createdAtAttribute))
-	}
-
-	descriptionAttribute, ok := attributes["description"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`description is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	descriptionVal, ok := descriptionAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`description expected to be basetypes.StringValue, was: %T`, descriptionAttribute))
-	}
-
-	idAttribute, ok := attributes["id"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`id is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	idVal, ok := idAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`id expected to be basetypes.StringValue, was: %T`, idAttribute))
-	}
-
-	isActiveAttribute, ok := attributes["is_active"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`is_active is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	isActiveVal, ok := isActiveAttribute.(basetypes.BoolValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`is_active expected to be basetypes.BoolValue, was: %T`, isActiveAttribute))
-	}
-
-	nameAttribute, ok := attributes["name"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`name is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	nameVal, ok := nameAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`name expected to be basetypes.StringValue, was: %T`, nameAttribute))
-	}
-
-	tagsAttribute, ok := attributes["tags"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`tags is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	tagsVal, ok := tagsAttribute.(basetypes.ListValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`tags expected to be basetypes.ListValue, was: %T`, tagsAttribute))
-	}
-
-	updatedAtAttribute, ok := attributes["updated_at"]
-
-	if !ok {
-		diags.AddError(
-			"Attribute Missing",
-			`updated_at is missing from object`)
-
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	updatedAtVal, ok := updatedAtAttribute.(basetypes.StringValue)
-
-	if !ok {
-		diags.AddError(
-			"Attribute Wrong Type",
-			fmt.Sprintf(`updated_at expected to be basetypes.StringValue, was: %T`, updatedAtAttribute))
-	}
-
-	if diags.HasError() {
-		return NewOrganizationValueUnknown(), diags
-	}
-
-	return OrganizationValue{
-		CreatedAt:   createdAtVal,
-		Description: descriptionVal,
-		Id:          idVal,
-		IsActive:    isActiveVal,
-		Name:        nameVal,
-		Tags:        tagsVal,
-		UpdatedAt:   updatedAtVal,
-		state:       attr.ValueStateKnown,
-	}, diags
-}
-
-func NewOrganizationValueMust(attributeTypes map[string]attr.Type, attributes map[string]attr.Value) OrganizationValue {
-	object, diags := NewOrganizationValue(attributeTypes, attributes)
-
-	if diags.HasError() {
-		// This could potentially be added to the diag package.
-		diagsStrings := make([]string, 0, len(diags))
-
-		for _, diagnostic := range diags {
-			diagsStrings = append(diagsStrings, fmt.Sprintf(
-				"%s | %s | %s",
-				diagnostic.Severity(),
-				diagnostic.Summary(),
-				diagnostic.Detail()))
-		}
-
-		panic("NewOrganizationValueMust received error(s): " + strings.Join(diagsStrings, "\n"))
-	}
-
-	return object
-}
-
-func (t OrganizationType) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
-	if in.Type() == nil {
-		return NewOrganizationValueNull(), nil
-	}
-
-	if !in.Type().Equal(t.TerraformType(ctx)) {
-		return nil, fmt.Errorf("expected %s, got %s", t.TerraformType(ctx), in.Type())
-	}
-
-	if !in.IsKnown() {
-		return NewOrganizationValueUnknown(), nil
-	}
-
-	if in.IsNull() {
-		return NewOrganizationValueNull(), nil
-	}
-
-	attributes := map[string]attr.Value{}
-
-	val := map[string]tftypes.Value{}
-
-	err := in.As(&val)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for k, v := range val {
-		a, err := t.AttrTypes[k].ValueFromTerraform(ctx, v)
-
-		if err != nil {
-			return nil, err
-		}
-
-		attributes[k] = a
-	}
-
-	return NewOrganizationValueMust(OrganizationValue{}.AttributeTypes(ctx), attributes), nil
-}
-
-func (t OrganizationType) ValueType(ctx context.Context) attr.Value {
-	return OrganizationValue{}
-}
-
 var _ basetypes.ObjectValuable = OrganizationValue{}
-
-type OrganizationValue struct {
-	CreatedAt   basetypes.StringValue `tfsdk:"created_at"`
-	Description basetypes.StringValue `tfsdk:"description"`
-	Id          basetypes.StringValue `tfsdk:"id"`
-	IsActive    basetypes.BoolValue   `tfsdk:"is_active"`
-	Name        basetypes.StringValue `tfsdk:"name"`
-	Tags        basetypes.ListValue   `tfsdk:"tags"`
-	UpdatedAt   basetypes.StringValue `tfsdk:"updated_at"`
-	state       attr.ValueState
-}
-
-func (v OrganizationValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 7)
-
-	var val tftypes.Value
-	var err error
-
-	attrTypes["created_at"] = basetypes.StringType{}.TerraformType(ctx)
-	attrTypes["description"] = basetypes.StringType{}.TerraformType(ctx)
-	attrTypes["id"] = basetypes.StringType{}.TerraformType(ctx)
-	attrTypes["is_active"] = basetypes.BoolType{}.TerraformType(ctx)
-	attrTypes["name"] = basetypes.StringType{}.TerraformType(ctx)
-	attrTypes["tags"] = basetypes.ListType{
-		ElemType: types.StringType,
-	}.TerraformType(ctx)
-	attrTypes["updated_at"] = basetypes.StringType{}.TerraformType(ctx)
-
-	objectType := tftypes.Object{AttributeTypes: attrTypes}
-
-	switch v.state {
-	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 7)
-
-		val, err = v.CreatedAt.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["created_at"] = val
-
-		val, err = v.Description.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["description"] = val
-
-		val, err = v.Id.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["id"] = val
-
-		val, err = v.IsActive.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["is_active"] = val
-
-		val, err = v.Name.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["name"] = val
-
-		val, err = v.Tags.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["tags"] = val
-
-		val, err = v.UpdatedAt.ToTerraformValue(ctx)
-
-		if err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		vals["updated_at"] = val
-
-		if err := tftypes.ValidateValue(objectType, vals); err != nil {
-			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
-		}
-
-		return tftypes.NewValue(objectType, vals), nil
-	case attr.ValueStateNull:
-		return tftypes.NewValue(objectType, nil), nil
-	case attr.ValueStateUnknown:
-		return tftypes.NewValue(objectType, tftypes.UnknownValue), nil
-	default:
-		panic(fmt.Sprintf("unhandled Object state in ToTerraformValue: %s", v.state))
-	}
-}
-
-func (v OrganizationValue) IsNull() bool {
-	return v.state == attr.ValueStateNull
-}
-
-func (v OrganizationValue) IsUnknown() bool {
-	return v.state == attr.ValueStateUnknown
-}
-
-func (v OrganizationValue) String() string {
-	return "OrganizationValue"
-}
-
-func (v OrganizationValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, diag.Diagnostics) {
-	var diags diag.Diagnostics
-
-	var tagsVal basetypes.ListValue
-	switch {
-	case v.Tags.IsUnknown():
-		tagsVal = types.ListUnknown(types.StringType)
-	case v.Tags.IsNull():
-		tagsVal = types.ListNull(types.StringType)
-	default:
-		var d diag.Diagnostics
-		tagsVal, d = types.ListValue(types.StringType, v.Tags.Elements())
-		diags.Append(d...)
-	}
-
-	if diags.HasError() {
-		return types.ObjectUnknown(map[string]attr.Type{
-			"created_at":  basetypes.StringType{},
-			"description": basetypes.StringType{},
-			"id":          basetypes.StringType{},
-			"is_active":   basetypes.BoolType{},
-			"name":        basetypes.StringType{},
-			"tags": basetypes.ListType{
-				ElemType: types.StringType,
-			},
-			"updated_at": basetypes.StringType{},
-		}), diags
-	}
-
-	attributeTypes := map[string]attr.Type{
-		"created_at":  basetypes.StringType{},
-		"description": basetypes.StringType{},
-		"id":          basetypes.StringType{},
-		"is_active":   basetypes.BoolType{},
-		"name":        basetypes.StringType{},
-		"tags": basetypes.ListType{
-			ElemType: types.StringType,
-		},
-		"updated_at": basetypes.StringType{},
-	}
-
-	if v.IsNull() {
-		return types.ObjectNull(attributeTypes), diags
-	}
-
-	if v.IsUnknown() {
-		return types.ObjectUnknown(attributeTypes), diags
-	}
-
-	objVal, diags := types.ObjectValue(
-		attributeTypes,
-		map[string]attr.Value{
-			"created_at":  v.CreatedAt,
-			"description": v.Description,
-			"id":          v.Id,
-			"is_active":   v.IsActive,
-			"name":        v.Name,
-			"tags":        tagsVal,
-			"updated_at":  v.UpdatedAt,
-		})
-
-	return objVal, diags
-}
-
-func (v OrganizationValue) Equal(o attr.Value) bool {
-	other, ok := o.(OrganizationValue)
-
-	if !ok {
-		return false
-	}
-
-	if v.state != other.state {
-		return false
-	}
-
-	if v.state != attr.ValueStateKnown {
-		return true
-	}
-
-	if !v.CreatedAt.Equal(other.CreatedAt) {
-		return false
-	}
-
-	if !v.Description.Equal(other.Description) {
-		return false
-	}
-
-	if !v.Id.Equal(other.Id) {
-		return false
-	}
-
-	if !v.IsActive.Equal(other.IsActive) {
-		return false
-	}
-
-	if !v.Name.Equal(other.Name) {
-		return false
-	}
-
-	if !v.Tags.Equal(other.Tags) {
-		return false
-	}
-
-	if !v.UpdatedAt.Equal(other.UpdatedAt) {
-		return false
-	}
-
-	return true
-}
-
-func (v OrganizationValue) Type(ctx context.Context) attr.Type {
-	return OrganizationType{
-		basetypes.ObjectType{
-			AttrTypes: v.AttributeTypes(ctx),
-		},
-	}
-}
-
-func (v OrganizationValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
-	return map[string]attr.Type{
-		"created_at":  basetypes.StringType{},
-		"description": basetypes.StringType{},
-		"id":          basetypes.StringType{},
-		"is_active":   basetypes.BoolType{},
-		"name":        basetypes.StringType{},
-		"tags": basetypes.ListType{
-			ElemType: types.StringType,
-		},
-		"updated_at": basetypes.StringType{},
-	}
-}
 
 var _ basetypes.ObjectTypable = UserType{}
 
