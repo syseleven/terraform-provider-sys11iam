@@ -29,7 +29,7 @@ func OrganizationProjectS3UserResourceSchema(ctx context.Context) schema.Schema 
 				MarkdownDescription: "The description of the user.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtMost(1000),
-					stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 				},
 				Default: stringdefault.StaticString(""),
 			},
@@ -71,15 +71,27 @@ func OrganizationProjectS3UserResourceSchema(ctx context.Context) schema.Schema 
 					stringvalidator.RegexMatches(regexp.MustCompile("^[a-z0-9]+(?:-[a-z0-9]+)*$"), ""),
 				},
 			},
+			"organization_id": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The organization id.",
+				MarkdownDescription: "The organization id.",
+			},
+			"project_id": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The project id.",
+				MarkdownDescription: "The project id.",
+			},
 		},
 	}
 }
 
 type OrganizationProjectS3UserModel struct {
-	Description types.String `tfsdk:"description"`
-	Id          types.String `tfsdk:"id"`
-	Keys        types.List   `tfsdk:"keys"`
-	Name        types.String `tfsdk:"name"`
+	Description    types.String `tfsdk:"description"`
+	Id             types.String `tfsdk:"id"`
+	Keys           types.List   `tfsdk:"keys"`
+	Name           types.String `tfsdk:"name"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	ProjectId      types.String `tfsdk:"project_id"`
 }
 
 var _ basetypes.ObjectTypable = KeysType{}

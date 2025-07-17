@@ -23,7 +23,7 @@ func OrganizationTeamResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "A description for the organization team.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtMost(1000),
-					stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 				},
 				Default: stringdefault.StaticString(""),
 			},

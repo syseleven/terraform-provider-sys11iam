@@ -28,7 +28,7 @@ func OrganizationProjectResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The description of the project.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtMost(1000),
-					stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 				},
 				Default: stringdefault.StaticString(""),
 			},

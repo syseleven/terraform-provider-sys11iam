@@ -35,7 +35,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The city were the company resides.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 					"company_name": schema.StringAttribute{
@@ -44,7 +44,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The legal name of the company the organization belongs to.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 					"country": schema.StringAttribute{
@@ -53,7 +53,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The country were the company resides.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 					"phone_number": schema.StringAttribute{
@@ -76,7 +76,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The street were the company resides.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 					"street_number": schema.StringAttribute{
@@ -85,7 +85,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The street number of the companies address.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 					"vat_id": schema.StringAttribute{
@@ -94,7 +94,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The VAT ID of the company.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 					"zip_code": schema.StringAttribute{
@@ -103,7 +103,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						MarkdownDescription: "The zip code of the company.",
 						Validators: []validator.String{
 							stringvalidator.LengthAtMost(1000),
-							stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+							stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 						},
 					},
 				},
@@ -126,7 +126,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "A description for the organization.",
 				Validators: []validator.String{
 					stringvalidator.LengthAtMost(1000),
-					stringvalidator.RegexMatches(regexp.MustCompile("^[^\\u0000]*$"), ""),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 				},
 				Default: stringdefault.StaticString(""),
 			},
