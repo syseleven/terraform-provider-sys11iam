@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
-	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_project_s3_user_key"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_s3_user_key"
 )
 
 var _ resource.Resource = (*ProjectS3UserKeyResource)(nil)
@@ -24,11 +24,11 @@ type ProjectS3UserKeyResource struct {
 }
 
 func (r *ProjectS3UserKeyResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_project_s3user_key"
+	resp.TypeName = req.ProviderTypeName + "_organization_project_s3_user_key"
 }
 
 func (r *ProjectS3UserKeyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_project_s3_user_key.ProjectS3UserKeyResourceSchema(ctx)
+	resp.Schema = resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyResourceSchema(ctx)
 }
 
 func (r *ProjectS3UserKeyResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -51,7 +51,7 @@ func (r *ProjectS3UserKeyResource) Configure(_ context.Context, req resource.Con
 }
 
 func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_project_s3_user_key.ProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -91,7 +91,7 @@ func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.Crea
 }
 
 func (r *ProjectS3UserKeyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_project_s3_user_key.ProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -136,7 +136,7 @@ func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource
 		return
 	}
 
-	var data resource_project_s3_user_key.ProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
 
 	data.S3AccessKey = types.StringValue(response.AccessKey)
 	data.OrganizationId = types.StringValue(idParts[0])
@@ -149,7 +149,7 @@ func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource
 }
 
 func (r *ProjectS3UserKeyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_project_s3_user_key.ProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
 
 	// Read Terraform state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -169,7 +169,7 @@ func (r *ProjectS3UserKeyResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *ProjectS3UserKeyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_project_s3_user_key.ProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)

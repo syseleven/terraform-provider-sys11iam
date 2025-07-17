@@ -4,69 +4,67 @@ package resource_organization_team
 
 import (
 	"context"
-	"regexp"
-
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"regexp"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationTeamResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"editable_permissions": schema.ListAttribute{
-				ElementType:         types.StringType,
-				Required:            true,
-				Description:         "The editable permissions of the user",
-				MarkdownDescription: "The editable permissions of the user",
-			},
 			"description": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
-				Description:         "A description for the team.",
-				MarkdownDescription: "A description for the team.",
+				Description:         "A description for the organization team.",
+				MarkdownDescription: "A description for the organization team.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
+					stringvalidator.LengthAtMost(1000),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 				},
 				Default: stringdefault.StaticString(""),
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
-				Description:         "The UUID of the team",
-				MarkdownDescription: "The UUID of the team",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Description:         "The UUID of the organization team",
+				MarkdownDescription: "The UUID of the organization team",
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
-				Description:         "A unique name for the team.",
-				MarkdownDescription: "A unique name for the team.",
+				Description:         "A unique name for the organization team.",
+				MarkdownDescription: "A unique name for the organization team.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]{1,62}$"), ""),
+					stringvalidator.LengthBetween(3, 62),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[a-z0-9]+(?:-[a-z0-9]+)*$"), ""),
 				},
+			},
+			"organization_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
 			"tags": schema.ListAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
 				Computed:            true,
-				Description:         "The tags of the team.",
-				MarkdownDescription: "The tags of the team.",
+				Description:         "The tags of the organization team.",
+				MarkdownDescription: "The tags of the organization team.",
 			},
-			"organization_id": schema.StringAttribute{
-				Required: true,
+			"team_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
 		},
 	}
 }
 
 type OrganizationTeamModel struct {
-	EditablePermissions types.List   `tfsdk:"editable_permissions"`
-	Description         types.String `tfsdk:"description"`
-	Id                  types.String `tfsdk:"id"`
-	Name                types.String `tfsdk:"name"`
-	Tags                types.List   `tfsdk:"tags"`
-	OrganizationId      types.String `tfsdk:"organization_id"`
+	Description    types.String `tfsdk:"description"`
+	Id             types.String `tfsdk:"id"`
+	Name           types.String `tfsdk:"name"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	Tags           types.List   `tfsdk:"tags"`
+	TeamId         types.String `tfsdk:"team_id"`
 }

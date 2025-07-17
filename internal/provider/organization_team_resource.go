@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -93,7 +92,6 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	data.Id = types.StringValue(response.ID)
-	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save data into Terraform state
@@ -120,7 +118,6 @@ func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRe
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save updated data into Terraform state
@@ -155,7 +152,6 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save updated data into Terraform state
@@ -200,12 +196,6 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 		return
 	}
 
-	response_permissions, err := r.client.GetOrganizationTeamPermissions(idParts[0], idParts[1])
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
-		return
-	}
-
 	var data resource_organization_team.OrganizationTeamModel
 
 	// Data value setting
@@ -213,9 +203,7 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 	data.Name = types.StringValue(response.Name)
 	data.OrganizationId = types.StringValue(idParts[0])
 	data.Description = types.StringValue(response.Description)
-	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response_permissions.TeamPermissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
