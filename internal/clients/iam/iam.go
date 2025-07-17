@@ -295,9 +295,9 @@ type IAMProjectMembership struct {
 	Permissions []string `json:"permissions,omitempty"`
 
 	MembershipType string                        `json:"membership_type,omitempty"`
-	ServiceAccount IAMOrganisationServiceAccount `json:"service_account"`
-	User           IAMOrganisationUser           `json:"user"`
-	Project        IAMProject                    `json:"project"`
+	ServiceAccount IAMOrganisationServiceAccount `json:"service_account,omitempty"`
+	User           IAMOrganisationUser           `json:"user,omitempty"`
+	Project        IAMProject                    `json:"project,omitempty"`
 }
 
 type IAMOrganizationServiceaccount struct {
@@ -867,7 +867,8 @@ func (c *Client) GetOrganizationInvitationByEmail(org_id string, email string) (
 		}
 	}
 
-	return IAMOrganizationInvitation{}, fmt.Errorf("organization invitation with that e-mail address was not found: %s", email)
+	// no invitation. user has: 1. accepted the invitation, or 2. needs to be invited
+	return IAMOrganizationInvitation{}, nil
 }
 
 func (c *Client) CreateOrganizationInvitation(org_id string, email string, permissions []string) (IAMOrganizationInvitation, error) {

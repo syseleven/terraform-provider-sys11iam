@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_membership"
@@ -38,14 +37,12 @@ func (r *ProjectMembershipResource) createMembershipAttrTypes(membershipType str
 	memberAttrTypes := map[string]map[string]attr.Type{
 		user: {
 			"id":    types.StringType,
+			"name":  types.StringType,
 			"email": types.StringType,
 		},
 		serviceAccount: {
 			"id":          types.StringType,
 			"name":        types.StringType,
-			"description": types.StringType,
-			"created_at":  types.StringType,
-			"updated_at":  types.StringType,
 		},
 	}
 
@@ -183,7 +180,7 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 	var elements []string
 	var org_membership_response iam.IAMOrganizationMembership
 
-	if !data.UserMembership.IsNull() || !data.UserMembership.IsUnknown() {
+	if len(data.UserMembership.Permissions.Elements()) > 0 {
 		diags := data.UserMembership.Permissions.ElementsAs(ctx, &elements, false)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -191,22 +188,18 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 		}
 
 		// Is the e-mail already a member?
-		var user map[string]string
-		diags = data.UserMembership.User.As(ctx, &user, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+		user := data.UserMembership.User.Attributes()
 
-		email, ok := user["email"]
-		if !ok || email == "" {
+		email_attr, ok := user["email"]
+		if !ok {
 			resp.Diagnostics.AddError("InvalidUserEmailError",
 				"User email is not set or invalid. Please provide a valid user email.")
 			return
 		}
+		email := email_attr.String()
 
 		org_membership_response, err = r.client.GetOrganizationMembershipByEmail(data.OrganizationId.ValueString(), email)
-		if err != nil {
+		if err != nil && strings.Contains(err.Error(), "not found") {
 			// Is the e-mail at least invited?
 			_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), email)
 			if err != nil {
@@ -223,26 +216,22 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 					data.OrganizationId.ValueString(), data.ProjectId.ValueString(), email))
 			return
 		}
-	} else if !data.ServiceAccountMembership.IsNull() || !data.ServiceAccountMembership.IsUnknown() {
+	} else if len(data.ServiceAccountMembership.Permissions.Elements()) > 0 {
 		diags := data.ServiceAccountMembership.Permissions.ElementsAs(ctx, &elements, false)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		var serviceAccount map[string]string
-		diags = data.ServiceAccountMembership.ServiceAccount.As(ctx, &serviceAccount, basetypes.ObjectAsOptions{})
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+		serviceAccount := data.ServiceAccountMembership.ServiceAccount.Attributes()
 
-		id, ok := serviceAccount["id"]
-		if !ok || id == "" {
+		id_attr, ok := serviceAccount["id"]
+		if !ok {
 			resp.Diagnostics.AddError("InvalidServiceAccountIdError",
 				"Service account ID is not set or invalid. Please provide a valid service account ID.")
 			return
 		}
+		id := id_attr.String()
 
 		org_membership_response, err = r.client.GetOrganizationMembership(data.OrganizationId.ValueString(), id)
 		if err != nil {

@@ -57,6 +57,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 						},
 					},
 					"project": schema.SingleNestedAttribute{
+						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"created_at": schema.StringAttribute{
 								Computed:            true,
@@ -99,6 +100,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 						Computed: true,
 					},
 					"service_account": schema.SingleNestedAttribute{
+						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"created_at": schema.StringAttribute{
 								Computed:            true,
@@ -113,6 +115,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 							},
 							"id": schema.StringAttribute{
 								Computed:            true,
+								Optional:            true,
 								Description:         "The UUID of the service account.",
 								MarkdownDescription: "The UUID of the service account.",
 							},
@@ -162,6 +165,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 						},
 					},
 					"project": schema.SingleNestedAttribute{
+						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"created_at": schema.StringAttribute{
 								Computed:            true,
@@ -214,9 +218,11 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 						MarkdownDescription: "DEPRECATED: The name of the project",
 					},
 					"user": schema.SingleNestedAttribute{
+						Optional:            true,
 						Attributes: map[string]schema.Attribute{
 							"email": schema.StringAttribute{
 								Computed:            true,
+								Optional:            true,
 								Description:         "The email address of the user.",
 								MarkdownDescription: "The email address of the user.",
 							},
