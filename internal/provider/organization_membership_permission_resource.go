@@ -309,7 +309,7 @@ func (r *OrganizationMembershipPermissionResource) Delete(ctx context.Context, r
 	})
 
 	// Delete API call logic
-	err := r.client.DeleteOrganizationMembershipPermission(ctx, data.OrganizationId.String(), data.MemberId.String())
+	err := r.client.DeleteOrganizationMembershipPermission(data.OrganizationId.String(), data.MemberId.String())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Deleting Organization Membership Permission",

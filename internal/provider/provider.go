@@ -82,7 +82,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 	if config.IamUrl.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("iam_url"),
-			"Unknown NCS IAM API Url.",
+			"Unknown SysEleven IAM API Url.",
 			"The provider cannot create the IAM API client as there is an unknown configuration value for the IAM API url. "+
 				"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_IAM_URL environment variable.",
 		)
@@ -93,7 +93,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 			if config.OidcUrl.IsUnknown() {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("oidc_url"),
-					"Unknown NCS OIDC API Url",
+					"Unknown SysEleven OIDC API Url",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API url. "+
 						"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_OIDC_URL environment variable.",
 				)
@@ -102,7 +102,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 			if config.OidcClientSecret.IsUnknown() && config.OidcClientUsername.IsUnknown() || config.OidcClientPassword.IsUnknown() || config.OidcClientId.IsUnknown() || config.OidcClientScope.IsUnknown() {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("oidc_client"),
-					"Unknown NCS OIDC API client credentials. Provide username+password+id+secret combination (regular account).",
+					"Unknown SysEleven OIDC API client credentials. Provide username+password+id+secret combination (regular account).",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client. "+
 						"Set the client secret value in the configuration or use the SYS11IAM_OIDC_CLIENT_SECRET environment variable. "+
 						"If either is already set, ensure the value is not empty."+
@@ -119,7 +119,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 		} else {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("serviceaccount_secret"),
-				"Unknown NCS service account secret. Alternatively provide regular account authentication details as described below.",
+				"Unknown SysEleven IAM service account secret. Alternatively provide regular account authentication details as described below.",
 				"Set the client secret value in the configuration or use the SYS11IAM_SERVICEACCOUNT_SECRET environment variable. "+
 					"If either is already set, ensure the value is not empty.",
 			)
@@ -179,7 +179,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 	if iamUrl == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("iam_url"),
-			"Unknown NCS IAM API Url.",
+			"Unknown SysEleven IAM API Url.",
 			"The provider cannot create the IAM API client as there is an unknown configuration value for the IAM API url. "+
 				"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_IAM_URL environment variable.",
 		)
@@ -190,7 +190,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 			if oidcUrl == "" {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("oidc_url"),
-					"Unknown NCS OIDC API Url",
+					"Unknown SysEleven IAM OIDC API Url",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API url. "+
 						"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_OIDC_URL environment variable.",
 				)
@@ -199,7 +199,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 			if oidcClientSecret == "" && oidcClientUsername == "" || oidcClientPassword == "" || oidcClientId == "" || oidcClientScope == "" {
 				resp.Diagnostics.AddAttributeError(
 					path.Root("oidc_client"),
-					"Unknown NCS OIDC API client credentials. Provide username+password+id+secret combination (regular account).",
+					"Unknown SysEleven OIDC API client credentials. Provide username+password+id+secret combination (regular account).",
 					"The provider cannot create the OIDC API client as there is an unknown configuration value for the OIDC API client. "+
 						"Set the client secret value in the configuration or use the SYS11IAM_OIDC_CLIENT_SECRET environment variable. "+
 						"If either is already set, ensure the value is not empty."+
@@ -216,7 +216,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 		} else {
 			resp.Diagnostics.AddAttributeError(
 				path.Root("serviceaccount_secret"),
-				"Unknown NCS service account secret. Alternatively provide regular account authentication details as described below.",
+				"Unknown SysEleven IAM service account secret. Alternatively provide regular account authentication details as described below.",
 				"Set the client secret value in the configuration or use the SYS11IAM_SERVICEACCOUNT_SECRET environment variable. "+
 					"If either is already set, ensure the value is not empty.",
 			)
@@ -227,7 +227,7 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 		return
 	}
 
-	// Create a new NCS Keystone client using the configuration values
+	// Create a new SysEleven IAM Keystone client using the configuration values
 	client := iam.NewClient(iamUrl, 10)
 	if oidcClientId != "" {
 		keycloakClient := keycloak.NewClient(oidcUrl, 10).
@@ -238,12 +238,12 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 			return
 		}
 
-		// Create a new NCS IAM client using the configuration values
+		// Create a new SysEleven IAM client using the configuration values
 		client.WithBearerToken(token)
 	} else {
 		client.WithServiceAccountToken(serviceAccountSecret)
 	}
-	// Make the NCS IAM client available during DataSource and Resource
+	// Make the SysEleven IAM client available during DataSource and Resource
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
@@ -261,9 +261,17 @@ func (p *sys11IamProvider) DataSources(ctx context.Context) []func() datasource.
 
 func (p *sys11IamProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewOrganizationResource, NewProjectResource, NewOrganizationMembershipResource, NewProjectMembershipResource,
-		NewOrganizationServiceaccountResource, NewOrganizationContactResource, NewOrganizationTeamResource,
-		NewOrganizationTeamMembershipResource, NewProjectTeamMembershipResource, NewProjectS3UserResource,
-		NewProjectTeamResource, NewProjectS3UserKeyResource,
+		NewOrganizationResource, 
+		NewProjectResource, 
+		NewProjectMembershipResource,
+		NewOrganizationServiceaccountResource, 
+		NewOrganizationContactResource, 
+		NewOrganizationTeamResource,
+		NewOrganizationMembershipPermissionResource, 
+		NewProjectS3UserResource, 
+		NewProjectS3UserKeyResource, 
+		NewOrganizationMembershipResource, 
+		NewOrganizationTeamMembershipResource, 
+		NewOrganizationTeamProjectResource,
 	}
 }

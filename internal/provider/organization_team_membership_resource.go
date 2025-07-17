@@ -78,7 +78,7 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		return
 	}
 
-	_, err = r.client.CreateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
+	_, err = r.client.CreateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.MemberId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -103,7 +103,7 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
-	_, err := r.client.GetOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
+	_, err := r.client.GetOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.MemberId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -118,7 +118,7 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
+	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.MemberId)...)
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -127,7 +127,7 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeamMembership resource.")
 
-	_, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
+	_, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.MemberId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -152,7 +152,7 @@ func (r *OrganizationTeamMembershipResource) Delete(ctx context.Context, req res
 
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting OrganizationTeamMembership resource.")
-	err := r.client.DeleteOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamId.ValueString(), data.MemberId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -181,7 +181,7 @@ func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, re
 	var data resource_organization_team_membership.OrganizationTeamMembershipModel
 
 	// Data value setting
-	data.Id = types.StringValue(idParts[2])
+	data.MemberId = types.StringValue(idParts[2])
 	data.TeamId = types.StringValue(idParts[1])
 	data.OrganizationId = types.StringValue(idParts[0])
 

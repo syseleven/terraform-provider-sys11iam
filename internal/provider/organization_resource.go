@@ -90,14 +90,14 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 			Description: data.Description.ValueString(),
 			Tags:        elements,
 			CompanyInfo: iam.IAMOrganizationCompanyInfo{
-				Street:                 data.CompanyInfoStreet.ValueString(),
-				StreetNumber:           data.CompanyInfoStreetNumber.ValueString(),
-				ZipCode:                data.CompanyInfoZipCode.ValueString(),
-				City:                   data.CompanyInfoCity.ValueString(),
-				VatID:                  data.CompanyInfoVatID.ValueString(),
-				PreferredBillingMethod: data.CompanyInfoPreferredBillingMethod.ValueString(),
-				AcceptedTos:            data.CompanyInfoAcceptedTos.ValueBool(),
-				CompanyName:            data.CompanyInfoCompanyName.ValueString(),
+				Street:                 data.CompanyInfo.Street.ValueString(),
+				StreetNumber:           data.CompanyInfo.StreetNumber.ValueString(),
+				ZipCode:                data.CompanyInfo.ZipCode.ValueString(),
+				City:                   data.CompanyInfo.City.ValueString(),
+				VatID:                  data.CompanyInfo.VatId.ValueString(),
+				PreferredBillingMethod: data.CompanyInfo.PreferredBillingMethod.ValueString(),
+				AcceptedTos:            data.CompanyInfo.AcceptedTos.ValueBool(),
+				CompanyName:            data.CompanyInfo.CompanyName.ValueString(),
 			},
 		}
 		response, err := r.client.CreateOrganization(iAMOrganization)

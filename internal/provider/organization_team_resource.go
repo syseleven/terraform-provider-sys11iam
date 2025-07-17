@@ -196,12 +196,6 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 		return
 	}
 
-	response_permissions, err := r.client.GetOrganizationTeamPermissions(idParts[0], idParts[1])
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
-		return
-	}
-
 	var data resource_organization_team.OrganizationTeamModel
 
 	// Data value setting
@@ -210,7 +204,6 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 	data.OrganizationId = types.StringValue(idParts[0])
 	data.Description = types.StringValue(response.Description)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
-	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response_permissions.TeamPermissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

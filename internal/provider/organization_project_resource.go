@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
-	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_project"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project"
 )
 
 var _ resource.Resource = (*ProjectResource)(nil)
@@ -25,11 +25,11 @@ type ProjectResource struct {
 }
 
 func (r *ProjectResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_project"
+	resp.TypeName = req.ProviderTypeName + "_organization_project"
 }
 
 func (r *ProjectResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_project.ProjectResourceSchema(ctx)
+	resp.Schema = resource_organization_project.OrganizationProjectResourceSchema(ctx)
 }
 
 func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -52,7 +52,7 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 }
 
 func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -99,7 +99,7 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 }
 
 func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -126,7 +126,7 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 }
 
 func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -168,7 +168,7 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 }
 
 func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -205,7 +205,7 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 		return
 	}
 
-	var data resource_project.ProjectModel
+	var data resource_organization_project.OrganizationProjectModel
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
