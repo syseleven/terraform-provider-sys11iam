@@ -65,7 +65,7 @@ func (resp *Response) JSONUnmarshall(v interface{}) error {
 	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	decoder := json.NewDecoder(resp.Body)
-	decoder.DisallowUnknownFields()
+	//decoder.DisallowUnknownFields()
 	err := decoder.Decode(&v)
 	if err != nil {
 		return fmt.Errorf("Err: %s ; Body: %s ; From: %s %s", err.Error(), bodyString, resp.Request.Method, resp.Request.URL)
