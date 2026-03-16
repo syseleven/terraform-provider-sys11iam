@@ -1640,18 +1640,21 @@ func (c *Client) DeleteProjectTeamMembership(org_id string, project_id string, t
 // project s3user memberships
 
 func (c *Client) GetProjectS3User(org_id string, project_id string, id string) (IAMProjectS3User, error) {
-	path := fmt.Sprintf(IAMProjectS3UsersEndpoint, org_id, project_id)
+	path := fmt.Sprintf(IAMProjectS3UserEndpoint, org_id, project_id, id)
 	response, err := c.client.NewRequest(http.MethodGet, path).Do()
 	if err != nil {
 		return IAMProjectS3User{}, errors.Trace(fmt.Errorf(GetProjectS3UserError, err.Error()))
+	}
+	if response.StatusCode == http.StatusNotFound {
+		return IAMProjectS3User{}, nil
 	}
 	err = c.checkResponse(response)
 	if err != nil {
 		return IAMProjectS3User{}, errors.Trace(fmt.Errorf(GetProjectS3UserError, err.Error()))
 	}
 
-	var iamProjectS3Users []IAMProjectS3User
-	err = response.JSONUnmarshall(&iamProjectS3Users)
+	var iamProjectS3User IAMProjectS3User
+	err = response.JSONUnmarshall(&iamProjectS3User)
 	if err != nil {
 		body, respErr := response.StringBody()
 		if respErr != nil {
@@ -1660,13 +1663,7 @@ func (c *Client) GetProjectS3User(org_id string, project_id string, id string) (
 		return IAMProjectS3User{}, errors.Trace(fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body))
 	}
 
-	for _, ips := range iamProjectS3Users {
-		if ips.ID == id {
-			return ips, nil
-		}
-	}
-
-	return IAMProjectS3User{}, nil
+	return iamProjectS3User, nil
 }
 
 func (c *Client) CreateProjectS3User(org_id string, project_id, name string, description string) (IAMProjectS3User, error) {

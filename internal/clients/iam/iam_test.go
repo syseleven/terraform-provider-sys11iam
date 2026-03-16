@@ -972,10 +972,10 @@ func (suite *RestClientIAMTestSuite) TestGetProjectTeamMembershipSuccess() {
 
 func (suite *RestClientIAMTestSuite) TestGetProjectS3UserSuccess() {
 	method := http.MethodGet
-	url := "/v2/orgs/1/projects/1/s3-users"
+	url := "/v2/orgs/1/projects/1/s3-users/1"
 	status := http.StatusOK
 	expected := IAMProjectS3User(IAMProjectS3User{ID: "1"})
-	sampleResponse, err := json.Marshal([]IAMProjectS3User{expected})
+	sampleResponse, err := json.Marshal(expected)
 	mockServer := responses.NewMockServer(
 		&suite.Suite,
 		responses.Expect(method, url).
