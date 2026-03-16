@@ -10,7 +10,7 @@ resource "sys11iam_project" "test_project" {
   name = "testproject"
   description = "testdescription"
   tags = ["testing"]
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 ```
 
@@ -21,7 +21,7 @@ The following arguments are supported for the resource "sys11iam_project":
 * **`name`** - The name of the project.
 * **`description`** - The description of the project.
 * **`tags`** - The tags of the project.
-* **`organization_id`** - The UUID of the organization.
+* **`org_id`** - The UUID of the organization.
 * **`id`** - The UUID of the project. (read-only)
 
 ## Importing Organization Projects
@@ -34,7 +34,7 @@ resource "sys11iam_project" "test_project" {
   name = "<project name>"
   description = "<description>"
   tags = []
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 ```
@@ -42,17 +42,17 @@ resource "sys11iam_project" "test_project" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_project.test_project[0] <organization_id,project_id>
+terraform import sys11iam_project.test_project[0] <org_id,project_id>
 ```
 
-Where `organization_id` is the ID of the organization and `project_id` is the ID of the project you want to import.
+Where `org_id` is the ID of the organization and `project_id` is the ID of the project you want to import.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
     to = sys11iam_project.test_project[0] 
-    id = <organization_id,project_id>
+    id = <org_id,project_id>
 }
 
 resource "sys11iam_project" "test_project" {
@@ -60,7 +60,7 @@ resource "sys11iam_project" "test_project" {
   name = "<project name>"
   description = "<description>"
   tags = []
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 ```

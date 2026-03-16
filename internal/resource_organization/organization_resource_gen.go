@@ -5,6 +5,9 @@ package resource_organization
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -13,8 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"regexp"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -66,9 +67,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						},
 					},
 					"preferred_billing_method": schema.StringAttribute{
-						Required:            true,
-						Description:         "The preferred billing method of the organization.",
-						MarkdownDescription: "The preferred billing method of the organization.",
+						Required: true,
 					},
 					"street": schema.StringAttribute{
 						Required:            true,
@@ -112,12 +111,12 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 						AttrTypes: CompanyInfoValue{}.AttributeTypes(ctx),
 					},
 				},
-				Required: true,
+				Required:            true,
+				Description:         "Used for input data when creating onboarding information.",
+				MarkdownDescription: "Used for input data when creating onboarding information.",
 			},
 			"created_at": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The time the customer entered a contract with SysEleven.",
-				MarkdownDescription: "The time the customer entered a contract with SysEleven.",
+				Computed: true,
 			},
 			"description": schema.StringAttribute{
 				Optional:            true,
@@ -149,7 +148,7 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 					stringvalidator.RegexMatches(regexp.MustCompile("^[a-z0-9]+(?:-[a-z0-9]+)*$"), ""),
 				},
 			},
-			"organization_id": schema.StringAttribute{
+			"org_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
 			},
@@ -161,24 +160,22 @@ func OrganizationResourceSchema(ctx context.Context) schema.Schema {
 				MarkdownDescription: "The tags of the organization.",
 			},
 			"updated_at": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The time the resource was last updated.",
-				MarkdownDescription: "The time the resource was last updated.",
+				Computed: true,
 			},
 		},
 	}
 }
 
 type OrganizationModel struct {
-	CompanyInfo    CompanyInfoValue `tfsdk:"company_info"`
-	CreatedAt      types.String     `tfsdk:"created_at"`
-	Description    types.String     `tfsdk:"description"`
-	Id             types.String     `tfsdk:"id"`
-	IsActive       types.Bool       `tfsdk:"is_active"`
-	Name           types.String     `tfsdk:"name"`
-	OrganizationId types.String     `tfsdk:"organization_id"`
-	Tags           types.List       `tfsdk:"tags"`
-	UpdatedAt      types.String     `tfsdk:"updated_at"`
+	CompanyInfo CompanyInfoValue `tfsdk:"company_info"`
+	CreatedAt   types.String     `tfsdk:"created_at"`
+	Description types.String     `tfsdk:"description"`
+	Id          types.String     `tfsdk:"id"`
+	IsActive    types.Bool       `tfsdk:"is_active"`
+	Name        types.String     `tfsdk:"name"`
+	OrgId       types.String     `tfsdk:"org_id"`
+	Tags        types.List       `tfsdk:"tags"`
+	UpdatedAt   types.String     `tfsdk:"updated_at"`
 }
 
 var _ basetypes.ObjectTypable = CompanyInfoType{}

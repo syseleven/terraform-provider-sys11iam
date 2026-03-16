@@ -7,7 +7,7 @@ The Organization Team Resource enables the management of a team in an Organizati
 ```hcl
 resource "sys11iam_organization_team" "test" {
   name        = "test-team"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   description = "Test team for acceptance testing"
   organization_permissions = ["can_become_project_administrator_in_org"]
   tags = ["test", "acceptance-testing"]
@@ -44,7 +44,7 @@ The following arguments are supported for the resource "sys11iam_organization_te
     * `can_read_contact_persons_in_org`
     * `can_create_service_accounts_in_org`
 
-* **`organization_id`** - The UUID of the organization.
+* **`org_id`** - The UUID of the organization.
 * **`projects`** - A list of project configurations for the team.
     * **`id`** - The UUID of the project.
     * **`project_permissions`** - The permissions of the team within the project.Supported Project Permissions:
@@ -70,7 +70,7 @@ resource "sys11iam_organization_team" "test" {
   description = "<description>"
   tags = []
   organization_permissions = []
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   projects = []
 }
 ```
@@ -78,17 +78,17 @@ resource "sys11iam_organization_team" "test" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_team.test <organization_id,team_id>
+terraform import sys11iam_organization_team.test <org_id,team_id>
 ```
 
-Where `organization_id` is the ID of the organization and `team_id` is the ID of the team you want to import.
+Where `org_id` is the ID of the organization and `team_id` is the ID of the team you want to import.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
   to = sys11iam_organization_team.test
-  id = "<organization_id,team_id>"
+  id = "<org_id,team_id>"
 }
 
 resource "sys11iam_organization_team" "test" {
@@ -96,7 +96,7 @@ resource "sys11iam_organization_team" "test" {
   description = "<description>"
   tags = []
   organization_permissions = []
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   projects = []
 }
 ```

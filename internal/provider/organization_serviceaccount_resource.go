@@ -63,9 +63,9 @@ func (r *OrganizationServiceaccountResource) Create(ctx context.Context, req res
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationServiceaccount resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
 	// Is the organization active?
-	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
+	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -73,11 +73,11 @@ func (r *OrganizationServiceaccountResource) Create(ctx context.Context, req res
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create OrganizationServiceaccount in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrganizationId.ValueString()))
+				data.OrgId.ValueString()))
 		return
 	}
 
-	response, err := r.client.CreateOrganizationServiceaccount(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString())
+	response, err := r.client.CreateOrganizationServiceaccount(data.OrgId.ValueString(), data.Name.ValueString(), data.Description.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -85,8 +85,11 @@ func (r *OrganizationServiceaccountResource) Create(ctx context.Context, req res
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.ServiceAccountId = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -104,7 +107,7 @@ func (r *OrganizationServiceaccountResource) Read(ctx context.Context, req resou
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationServiceaccount resource.")
-	response, err := r.client.GetOrganizationServiceaccount(data.OrganizationId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetOrganizationServiceaccount(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -112,8 +115,11 @@ func (r *OrganizationServiceaccountResource) Read(ctx context.Context, req resou
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.ServiceAccountId = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -132,7 +138,7 @@ func (r *OrganizationServiceaccountResource) Update(ctx context.Context, req res
 
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationServiceaccount resource.")
-	response, err := r.client.UpdateOrganizationServiceaccount(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString())
+	response, err := r.client.UpdateOrganizationServiceaccount(data.OrgId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -140,8 +146,11 @@ func (r *OrganizationServiceaccountResource) Update(ctx context.Context, req res
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.ServiceAccountId = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -159,7 +168,7 @@ func (r *OrganizationServiceaccountResource) Delete(ctx context.Context, req res
 
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting OrganizationServiceaccount resource.")
-	err := r.client.DeleteOrganizationServiceaccount(data.OrganizationId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteOrganizationServiceaccount(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -189,9 +198,12 @@ func (r *OrganizationServiceaccountResource) ImportState(ctx context.Context, re
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(idParts[0])
+	data.ServiceAccountId = types.StringValue(response.ID)
+	data.OrgId = types.StringValue(idParts[0])
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

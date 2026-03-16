@@ -17,6 +17,10 @@ import (
 )
 
 func TestAccOrganizationProjectMembershipResourceUser(t *testing.T) {
+	if os.Getenv("MEMBER_ID") == "" || os.Getenv("MEMBER_EMAIL") == "" {
+		t.Skip("MEMBER_ID and MEMBER_EMAIL must be set for this acceptance test")
+	}
+
 	params := &testAccCheckOrganizationProjectMembershipResourceParams{
 		MemberType:           "user",
 		MemberId:             os.Getenv("MEMBER_ID"),
@@ -47,7 +51,7 @@ func TestAccOrganizationProjectMembershipResourceUser(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_project_membership.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -77,7 +81,7 @@ func TestAccOrganizationProjectMembershipResourceUser(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_project_membership.test")
 					}
-					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["project_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["project_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 			// Update testing
@@ -97,7 +101,7 @@ func TestAccOrganizationProjectMembershipResourceUser(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_project_membership.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -144,7 +148,7 @@ func TestAccOrganizationProjectMembershipResourceServiceAccount(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_project_membership.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -174,7 +178,7 @@ func TestAccOrganizationProjectMembershipResourceServiceAccount(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_project_membership.test")
 					}
-					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["project_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["project_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 			// Delete testing automatically occurs in TestCase
@@ -214,7 +218,7 @@ data "sys11iam_organization" "test_org" {
 }
 
 resource "sys11iam_organization_project" "test_project" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-user-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
@@ -225,7 +229,7 @@ import {
 resource "sys11iam_organization_membership" "test_user_membership" {
   count = data.sys11iam_organization.test_org.is_active ? 1 : 0
   id = "{{ .MemberId }}"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
 
   membership = {
 		user_membership = {
@@ -238,7 +242,7 @@ resource "sys11iam_organization_membership" "test_user_membership" {
 }
 
 resource "sys11iam_organization_project_membership" "test" {
-    organization_id = data.sys11iam_organization.test_org.id
+    org_id = data.sys11iam_organization.test_org.id
     project_id      = sys11iam_organization_project.test_project.id
 	project_name      = sys11iam_organization_project.test_project.name
     id              = sys11iam_organization_membership.test_user_membership[0].id #member id
@@ -282,18 +286,18 @@ resource "sys11iam_organization_serviceaccount" "test_serviceaccount" {
   count = data.sys11iam_organization.test_org.is_active ? 1 : 0
   name = "terraform-acceptance-test-serviceaccount"
   description = "test service account"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
 }
 
 resource "sys11iam_organization_project" "test_project" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-sa-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_membership" "test_service_account_membership" {
   count = data.sys11iam_organization.test_org.is_active ? 1 : 0
   id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   membership = {
 		service_account_membership = {
 			permissions = [{{ range $i, $perm := .OrgPermissions }}{{ if $i }}, {{ end }}"{{ $perm }}"{{ end }}]
@@ -306,7 +310,7 @@ resource "sys11iam_organization_membership" "test_service_account_membership" {
 }
 
 resource "sys11iam_organization_project_membership" "test" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   project_name      = sys11iam_organization_project.test_project.name
   project_id      = sys11iam_organization_project.test_project.id
   id              = sys11iam_organization_membership.test_service_account_membership[0].id #member id

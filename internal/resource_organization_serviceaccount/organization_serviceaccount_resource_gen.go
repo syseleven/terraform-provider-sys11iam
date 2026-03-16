@@ -5,41 +5,56 @@ package resource_organization_serviceaccount
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationServiceaccountResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"name": schema.StringAttribute{
-				Required:            true,
-				Description:         "The name of the service-account",
-				MarkdownDescription: "The name of the service-account",
+			"created_at": schema.StringAttribute{
+				Computed: true,
 			},
 			"description": schema.StringAttribute{
-				Required:            true,
-				Description:         "The description of the service-account",
-				MarkdownDescription: "The description of the service-account",
+				Optional:            true,
+				Computed:            true,
+				Description:         "The description of the service account.",
+				MarkdownDescription: "The description of the service account.",
+				Default:             stringdefault.StaticString(""),
 			},
 			"id": schema.StringAttribute{
 				Computed:            true,
-				Description:         "The UUID of the service-account",
-				MarkdownDescription: "The UUID of the service-account",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+				Description:         "The UUID of the service account.",
+				MarkdownDescription: "The UUID of the service account.",
 			},
-			"organization_id": schema.StringAttribute{
-				Required: true,
+			"name": schema.StringAttribute{
+				Required:            true,
+				Description:         "The unique name of the service account.",
+				MarkdownDescription: "The unique name of the service account.",
+			},
+			"org_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+			},
+			"service_account_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
+			},
+			"updated_at": schema.StringAttribute{
+				Computed: true,
 			},
 		},
 	}
 }
 
 type OrganizationServiceaccountModel struct {
-	Name           types.String `tfsdk:"name"`
-	Description    types.String `tfsdk:"description"`
-	Id             types.String `tfsdk:"id"`
-	OrganizationId types.String `tfsdk:"organization_id"`
+	CreatedAt        types.String `tfsdk:"created_at"`
+	Description      types.String `tfsdk:"description"`
+	Id               types.String `tfsdk:"id"`
+	Name             types.String `tfsdk:"name"`
+	OrgId            types.String `tfsdk:"org_id"`
+	ServiceAccountId types.String `tfsdk:"service_account_id"`
+	UpdatedAt        types.String `tfsdk:"updated_at"`
 }

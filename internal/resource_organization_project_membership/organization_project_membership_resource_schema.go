@@ -23,7 +23,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 				Description:         "The unique identifier of the member(user, service account) in the project.",
 				MarkdownDescription: "The unique identifier of the member(user, service account) in the project.",
 			},
-			"organization_id": schema.StringAttribute{
+			"org_id": schema.StringAttribute{
 				Required: true,
 			},
 			"project_id": schema.StringAttribute{
@@ -126,7 +126,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 
 type OrganizationProjectMembershipModel struct {
 	Id             types.String     `tfsdk:"id"`
-	OrganizationId types.String     `tfsdk:"organization_id"`
+	OrgId          types.String     `tfsdk:"org_id"`
 	ProjectId      types.String     `tfsdk:"project_id"`
 	ProjectName    types.String     `tfsdk:"project_name"`
 	Membership     *MembershipValue `tfsdk:"membership"`

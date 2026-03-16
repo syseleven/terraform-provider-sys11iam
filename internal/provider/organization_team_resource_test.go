@@ -23,6 +23,7 @@ func TestAccOrganizationTeamResource(t *testing.T) {
 		OrganizationPermissions: []string{"can_become_project_administrator_in_org"},
 		ProjectPermissions:      []string{"can_become_administrator_in_project"},
 		ServiceAccountSecret:    os.Getenv("SYS11IAM_SERVICEACCOUNT_SECRET"),
+		IAM_URL:                 os.Getenv("SYS11IAM_IAM_URL"),
 	}
 
 	resource.Test(t, resource.TestCase{
@@ -43,7 +44,7 @@ func TestAccOrganizationTeamResource(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_team.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 				},
@@ -62,7 +63,7 @@ func TestAccOrganizationTeamResource(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_team.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 				},
@@ -76,7 +77,7 @@ func TestAccOrganizationTeamResource(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_team.test")
 					}
-					return fmt.Sprintf("%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 		},
@@ -93,6 +94,7 @@ type testAccOrganizationTeamResourceParams struct {
 	ProjectPermissions      []string
 
 	ServiceAccountSecret string
+	IAM_URL              string
 }
 
 func testAccOrganizationTeamResourceConfig(t *testing.T, params *testAccOrganizationTeamResourceParams) string {
@@ -104,7 +106,7 @@ func testAccOrganizationTeamResourceConfig(t *testing.T, params *testAccOrganiza
 provider "sys11iam" {
   serviceaccount_secret = "{{ .ServiceAccountSecret }}"
 
-  iam_url = "https://iam.apis.syseleven.de"
+  iam_url = "{{ .IAM_URL }}"
 }
 
 data "sys11iam_organization" "test_org" {
@@ -113,43 +115,43 @@ data "sys11iam_organization" "test_org" {
 }
 
 resource "sys11iam_organization_project" "test_project_1" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_project" "test_project_2" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_project" "test_project_3" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_project" "test_project_4" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_project" "test_project_5" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_project" "test_project_6" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
   
 resource "sys11iam_organization_project" "test_project_7" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name = "terraform-test-project-`+fmt.Sprintf("%d", time.Now().UnixNano())+`"
 }
 
 resource "sys11iam_organization_team" "test" {
   name        = "{{ .TeamName }}"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   description = "Test team for acceptance testing"
   organization_permissions = ["{{ range $index, $perm := .OrganizationPermissions }}{{ if $index }}, {{ end }}{{ $perm }}{{ end }}"]
   tags = ["test", "acceptance-testing"]

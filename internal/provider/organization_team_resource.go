@@ -43,7 +43,7 @@ func (r *OrganizationTeamResource) Metadata(ctx context.Context, req resource.Me
 }
 
 func (r *OrganizationTeamResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_organization_team.OrganizationTeamResourceSchema(ctx)
+	resp.Schema = resource_organization_team.OrganizationTeamResourceSchemaFull(ctx)
 }
 
 func (r *OrganizationTeamResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -69,7 +69,7 @@ func (r *OrganizationTeamResource) processProjectPermissions(
 	ctx context.Context,
 	projects []*resource_organization_team.ProjectValue,
 	organizationId string,
-	projectPermissionsClientRequest func(org_id string, project_id string, team_id string, permissions []string) (iam.IAMProjectTeamPermissions, error),
+	projectPermissionsClientRequest func(org_id string, project_id string, team_id string, permissions []string) ([]iam.IAMPermissionEntry, error),
 	teamId string,
 	maxWorkers int,
 ) ([]*resource_organization_team.ProjectValue, []error) {
@@ -116,17 +116,7 @@ func (r *OrganizationTeamResource) processProjectPermissions(
 					continue
 				}
 
-				var permissions []string
-				if resp, ok := any(response).(iam.IAMProjectTeamPermissions); ok {
-					permissions = resp.UpdatedPermissions
-				} else if resp, ok := any(response).([]string); ok {
-					permissions = resp
-				} else {
-					mu.Lock()
-					errors = append(errors, fmt.Errorf("unexpected response type for project %s: %T", project.Id.ValueString(), response))
-					mu.Unlock()
-					continue
-				}
+				permissions := iam.FilterActiveDirectPermissions(response)
 
 				updatedProject := &resource_organization_team.ProjectValue{
 					Id: project.Id,
@@ -153,7 +143,7 @@ func (r *OrganizationTeamResource) processProjectPermissions(
 	return updatedProjects, errors
 }
 
-func (r *OrganizationTeamResource) buildData(ctx context.Context, data resource_organization_team.OrganizationTeamModel, response *iam.IAMOrganizationTeam, orgPermissionsResponse []string, teamProjectPermissionsResponse []iam.IAMTeamProjectWithPermissions) (resource_organization_team.OrganizationTeamModel, diag.Diagnostics) {
+func (r *OrganizationTeamResource) buildData(ctx context.Context, data resource_organization_team.OrganizationTeamModelFull, response *iam.IAMOrganizationTeam, orgPermissionsResponse []string, teamProjectPermissionsResponse []iam.IAMTeamProjectWithPermissions) (resource_organization_team.OrganizationTeamModelFull, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	data.Id = types.StringValue(response.ID)
@@ -227,7 +217,7 @@ func (r *OrganizationTeamResource) buildData(ctx context.Context, data resource_
 }
 
 func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_organization_team.OrganizationTeamModel
+	var data resource_organization_team.OrganizationTeamModelFull
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -238,7 +228,7 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationTeam resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
 
 	tags := make([]string, 0, len(data.Tags.Elements()))
 	diags := data.Tags.ElementsAs(ctx, &tags, false)
@@ -247,7 +237,7 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	response, err := r.client.CreateOrganizationTeam(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), tags)
+	response, err := r.client.CreateOrganizationTeam(data.OrgId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), tags)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -265,13 +255,13 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 			return
 		}
 
-		orgPermissionsResponse, err := r.client.CreateOrganizationTeamPermission(data.OrganizationId.ValueString(), response.ID, orgPermissions)
+		orgPermissionsResponse, err := r.client.CreateOrganizationTeamPermission(data.OrgId.ValueString(), response.ID, orgPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 
-		data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(orgPermissionsResponse.UpdatedPermissions, func(perm string) attr.Value {
+		data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(iam.FilterActiveDirectPermissions(orgPermissionsResponse), func(perm string) attr.Value {
 			return types.StringValue(perm)
 		}))
 	}
@@ -290,7 +280,7 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		updatedProjects, errors := r.processProjectPermissions(
 			ctx,
 			projects,
-			data.OrganizationId.ValueString(),
+			data.OrgId.ValueString(),
 			r.client.CreateProjectTeamPermissions,
 			response.ID,
 			MaxWorkers,
@@ -320,8 +310,38 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
+// readProjectPermissions fetches per-project team permissions for each project
+// known in state. The v3 API has no "list all projects for a team" endpoint, so
+// we re-read permissions for the projects the Terraform state already tracks.
+func (r *OrganizationTeamResource) readProjectPermissions(ctx context.Context, orgId string, teamId string, stateProjects basetypes.ListValue) ([]iam.IAMTeamProjectWithPermissions, error) {
+	if stateProjects.IsNull() || stateProjects.IsUnknown() || len(stateProjects.Elements()) == 0 {
+		return nil, nil
+	}
+
+	var projects []*resource_organization_team.ProjectValue
+	diags := stateProjects.ElementsAs(ctx, &projects, false)
+	if diags.HasError() {
+		return nil, fmt.Errorf("failed to extract projects from state")
+	}
+
+	var result []iam.IAMTeamProjectWithPermissions
+	for _, p := range projects {
+		projectId := p.Id.ValueString()
+		entries, err := r.client.GetProjectTeamPermissions(orgId, projectId, teamId)
+		if err != nil {
+			return nil, err
+		}
+		perms := iam.FilterActiveDirectPermissions(entries)
+		result = append(result, iam.IAMTeamProjectWithPermissions{
+			ID:          projectId,
+			Permissions: perms,
+		})
+	}
+	return result, nil
+}
+
 func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_organization_team.OrganizationTeamModel
+	var data resource_organization_team.OrganizationTeamModelFull
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -332,26 +352,27 @@ func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRe
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeam resource.")
-	response, err := r.client.GetOrganizationTeam(data.OrganizationId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetOrganizationTeam(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
-	orgPermissionsResponse, err := r.client.GetOrganizationTeamPermissions(data.OrganizationId.ValueString(), data.Id.ValueString())
+	orgPermissionsResponse, err := r.client.GetOrganizationTeamPermissions(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+	orgPermissions := iam.FilterActiveDirectPermissions(orgPermissionsResponse)
 
-	teamProjectPermissionsResponse, err := r.client.GetTeamProjects(data.OrganizationId.ValueString(), data.Id.ValueString())
+	teamProjectPermissionsResponse, err := r.readProjectPermissions(ctx, data.OrgId.ValueString(), data.Id.ValueString(), data.Projects)
 	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
+		resp.Diagnostics.AddError("", fmt.Sprintf("could not get TeamProjects: %s", err.Error()))
 		return
 	}
 
 	// Data value setting
-	data, diags := r.buildData(ctx, data, &response, orgPermissionsResponse, teamProjectPermissionsResponse)
+	data, diags := r.buildData(ctx, data, &response, orgPermissions, teamProjectPermissionsResponse)
 	resp.Diagnostics.Append(diags...)
 
 	// Save updated data into Terraform state
@@ -359,7 +380,7 @@ func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRe
 }
 
 func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_organization_team.OrganizationTeamModel
+	var data resource_organization_team.OrganizationTeamModelFull
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -378,7 +399,7 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	response, err := r.client.UpdateOrganizationTeam(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
+	response, err := r.client.UpdateOrganizationTeam(data.OrgId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -395,13 +416,13 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 			return
 		}
 
-		orgPermissionsResponse, err := r.client.UpdateOrganizationTeamPermission(data.OrganizationId.ValueString(), response.ID, orgPermissions)
+		orgPermissionsResponse, err := r.client.UpdateOrganizationTeamPermission(data.OrgId.ValueString(), response.ID, orgPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 
-		data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(orgPermissionsResponse.UpdatedPermissions, func(perm string) attr.Value {
+		data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(iam.FilterActiveDirectPermissions(orgPermissionsResponse), func(perm string) attr.Value {
 			return types.StringValue(perm)
 		}))
 	}
@@ -419,7 +440,7 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		updatedProjects, errors := r.processProjectPermissions(
 			ctx,
 			projects,
-			data.OrganizationId.ValueString(),
+			data.OrgId.ValueString(),
 			r.client.UpdateProjectTeamPermissions,
 			response.ID,
 			MaxWorkers,
@@ -460,7 +481,7 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 }
 
 func (r *OrganizationTeamResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_organization_team.OrganizationTeamModel
+	var data resource_organization_team.OrganizationTeamModelFull
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -471,7 +492,7 @@ func (r *OrganizationTeamResource) Delete(ctx context.Context, req resource.Dele
 
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting OrganizationTeam resource.")
-	err := r.client.DeleteOrganizationTeam(data.OrganizationId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteOrganizationTeam(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -502,18 +523,18 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+	orgPermissions := iam.FilterActiveDirectPermissions(orgPermissionsResponse)
 
-	teamProjectPermissionsResponse, err := r.client.GetTeamProjects(idParts[0], idParts[1])
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
-		return
-	}
+	// v3 API has no endpoint to list all projects for a team, so on import we
+	// start with an empty project list. A subsequent plan/apply that includes
+	// `projects` blocks will reconcile.
+	var teamProjectPermissionsResponse []iam.IAMTeamProjectWithPermissions
 
-	var data resource_organization_team.OrganizationTeamModel
+	var data resource_organization_team.OrganizationTeamModelFull
 
 	// Data value setting
-	data.OrganizationId = types.StringValue(idParts[0])
-	data, diags := r.buildData(ctx, data, &response, orgPermissionsResponse, teamProjectPermissionsResponse)
+	data.OrgId = types.StringValue(idParts[0])
+	data, diags := r.buildData(ctx, data, &response, orgPermissions, teamProjectPermissionsResponse)
 	resp.Diagnostics.Append(diags...)
 
 	// Save updated data into Terraform state

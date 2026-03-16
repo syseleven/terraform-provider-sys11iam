@@ -25,14 +25,14 @@ resource "sys11iam_organization_project" "test_project" {
   name = "testproject"
   description = "testdescription"
   tags = ["testing"]
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 # Create an SysEleven IAM organization membership
 resource "sys11iam_organization_membership" "test_membership" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   id = "user-uuid-here"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 
   membership = {
     user_membership = {
@@ -48,7 +48,7 @@ resource "sys11iam_organization_membership" "test_membership" {
 resource "sys11iam_organization_project_membership" "test_project_membership" {
   depends_on = [sys11iam_organization_project.test_project, sys11iam_organization_membership.test_membership]
   count = one(sys11iam_organization_membership.test_membership[*].is_active) == true ? 1 : 0
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project[0].id
   project_name = sys11iam_organization_project.test_project[0].name
   id = sys11iam_organization_membership.test_membership[0].id
@@ -69,7 +69,7 @@ resource "sys11iam_organization_serviceaccount" "test_serviceaccount" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "deploy"
   description = "deployment account"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 # Create an SysEleven IAM  organization contact
@@ -81,7 +81,7 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
   email = "test@syseleven.net"
   phone = "+491684941254823"
   roles = ["Technical"]
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 # Create an SysEleven IAM  organization team
@@ -91,7 +91,7 @@ resource "sys11iam_organization_team" "testorganization_team" {
   description = "test team"
   tags = ["testing2"]
   organization_permissions = ["can_become_project_administrator_in_org"]
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   
   project = [
     {
@@ -109,7 +109,7 @@ resource "sys11iam_organization_team_membership" "testorganization_team_membersh
   team_id = sys11iam_organization_team.testorganization_team[0].id
   team_name = sys11iam_organization_team.testorganization_team[0].name
   id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   membership_type = "service_account"
 
   membership = {
@@ -129,7 +129,7 @@ resource "sys11iam_organization_project_s3user" "test_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "tests3user"
   description = "test s3user"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project[0].id
 }
 
@@ -139,7 +139,7 @@ resource "sys11iam_organization_project_s3user" "test_terraform_project_s3user" 
   # count = 0
   name = "terraform-tests3user-new-name"
   description = "terraform test s3user- new description"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project[0].id
 }
 
@@ -148,7 +148,7 @@ resource "sys11iam_organization_project_s3user_key" "test_terraform_project_s3_u
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   # count = 0
   s3_user_id = sys11iam_organization_project_s3user.test_terraform_project_s3user[0].id
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project[0].id
 }
 

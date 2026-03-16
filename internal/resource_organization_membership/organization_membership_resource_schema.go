@@ -22,7 +22,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 				Optional: true,
 				Computed: true,
 			},
-			"organization_id": schema.StringAttribute{
+			"org_id": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
 			},
@@ -133,7 +133,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 
 type OrganizationMembershipModel struct {
 	Id             types.String          `tfsdk:"id"`
-	OrganizationId types.String          `tfsdk:"organization_id"`
+	OrgId          types.String          `tfsdk:"org_id"`
 	Membership     basetypes.ObjectValue `tfsdk:"membership"`
 }
 

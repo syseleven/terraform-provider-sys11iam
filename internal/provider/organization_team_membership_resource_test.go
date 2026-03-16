@@ -15,6 +15,10 @@ import (
 )
 
 func TestAccOrganizationTeamMembershipResource(t *testing.T) {
+	if os.Getenv("MEMBER_ID") == "" && os.Getenv("MEMBER_EMAIL") == "" {
+		t.Skip("MEMBER_ID or MEMBER_EMAIL must be set for this acceptance test")
+	}
+
 	params := &testAccOrganizationTeamMembershipResourceParams{
 		TeamPermissions:         []string{"can_manage_team_in_team"},
 		OrganizationPermissions: []string{"can_become_project_administrator_in_org"},
@@ -44,7 +48,7 @@ func TestAccOrganizationTeamMembershipResource(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_team_membership.user_membership_test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -71,7 +75,7 @@ func TestAccOrganizationTeamMembershipResource(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_team_membership.user_membership_test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -91,7 +95,7 @@ func TestAccOrganizationTeamMembershipResource(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_team_membership.user_membership_test")
 					}
-					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["team_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["team_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 			// ImportState testing - service account membership
@@ -104,7 +108,7 @@ func TestAccOrganizationTeamMembershipResource(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_team_membership.service_account_membership_test")
 					}
-					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["team_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["team_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 			{
@@ -150,23 +154,23 @@ resource "sys11iam_organization_serviceaccount" "test_serviceaccount" {
   count = data.sys11iam_organization.test_org.is_active ? 1 : 0
   name = "terraform-acceptance-test-serviceaccount"
   description = "test service account"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
 }
 
 resource "sys11iam_organization_team" "test_team" {
   name        = "team-team"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   description = "Test team for acceptance testing"
   organization_permissions = ["{{ range $index, $perm := .OrganizationPermissions }}{{ if $index }}, {{ end }}{{ $perm }}{{ end }}"]
   tags = ["test", "acceptance-testing"]
 
-  project = []
+  projects = []
 }
 
 resource "sys11iam_organization_team_membership" "user_membership_test" {
   team_id = sys11iam_organization_team.test_team.id
   id = "{{ .MemberId }}"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   membership_type = "user"
 
   membership = {
@@ -182,7 +186,7 @@ resource "sys11iam_organization_team_membership" "user_membership_test" {
 resource "sys11iam_organization_team_membership" "service_account_membership_test" {
   team_id = sys11iam_organization_team.test_team.id
   id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   membership_type = "service_account"
 
   membership = {

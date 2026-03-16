@@ -63,10 +63,10 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationContact resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
 
 	// Is the organization active?
-	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
+	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -74,7 +74,7 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create OrganizationContact in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrganizationId.ValueString()))
+				data.OrgId.ValueString()))
 		return
 	}
 
@@ -85,14 +85,21 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
-	response, err := r.client.CreateOrganizationContact(data.OrganizationId.ValueString(), data.FirstName.ValueString(), data.LastName.ValueString(), data.Notes.ValueString(), data.Email.ValueString(), data.Phone.ValueString(), elements)
+	response, err := r.client.CreateOrganizationContact(data.OrgId.ValueString(), data.FirstName.ValueString(), data.LastName.ValueString(), data.Notes.ValueString(), data.Email.ValueString(), data.Phone.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	data.Id = types.StringValue(response.ID)
+	data.FirstName = types.StringValue(response.FirstName)
+	data.LastName = types.StringValue(response.LastName)
+	data.Phone = types.StringValue(response.Phone)
+	data.Email = types.StringValue(response.Email)
+	data.Notes = types.StringValue(response.Notes)
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -110,7 +117,7 @@ func (r *OrganizationContactResource) Read(ctx context.Context, req resource.Rea
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationContact resource.")
-	response, err := r.client.GetOrganizationContact(data.OrganizationId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetOrganizationContact(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -118,7 +125,14 @@ func (r *OrganizationContactResource) Read(ctx context.Context, req resource.Rea
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.FirstName = types.StringValue(response.FirstName)
+	data.LastName = types.StringValue(response.LastName)
+	data.Phone = types.StringValue(response.Phone)
+	data.Email = types.StringValue(response.Email)
+	data.Notes = types.StringValue(response.Notes)
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -144,7 +158,7 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 		return
 	}
 
-	response, err := r.client.UpdateOrganizationContact(data.OrganizationId.ValueString(), data.Id.ValueString(), data.FirstName.ValueString(), data.LastName.ValueString(), data.Notes.ValueString(), data.Email.ValueString(), data.Phone.ValueString(), elements)
+	response, err := r.client.UpdateOrganizationContact(data.OrgId.ValueString(), data.Id.ValueString(), data.FirstName.ValueString(), data.LastName.ValueString(), data.Notes.ValueString(), data.Email.ValueString(), data.Phone.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -158,6 +172,8 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 	data.Email = types.StringValue(response.Email)
 	data.Notes = types.StringValue(response.Notes)
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -174,7 +190,7 @@ func (r *OrganizationContactResource) Delete(ctx context.Context, req resource.D
 
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting OrganizationContact resource.")
-	err := r.client.DeleteOrganizationContact(data.OrganizationId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteOrganizationContact(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -213,7 +229,9 @@ func (r *OrganizationContactResource) ImportState(ctx context.Context, req resou
 	data.Email = types.StringValue(response.Email)
 	data.Notes = types.StringValue(response.Notes)
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
-	data.OrganizationId = types.StringValue(idParts[0])
+	data.OrgId = types.StringValue(idParts[0])
+	data.CreatedAt = types.StringValue(response.CreatedAt)
+	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

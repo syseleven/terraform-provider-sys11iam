@@ -46,7 +46,7 @@ func TestAccOrganizationProjectResource(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_project.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -108,7 +108,7 @@ func TestAccOrganizationProjectResource(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_project.test",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 				},
@@ -122,7 +122,7 @@ func TestAccOrganizationProjectResource(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_project.test")
 					}
-					return fmt.Sprintf("%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 		},
@@ -158,7 +158,7 @@ func TestAccOrganizationProjectResourceMinimal(t *testing.T) {
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(
 						"sys11iam_organization_project.test_minimal",
-						tfjsonpath.New("organization_id"),
+						tfjsonpath.New("org_id"),
 						knownvalue.StringExact(params.OrganizationId),
 					),
 					statecheck.ExpectKnownValue(
@@ -192,7 +192,7 @@ func TestAccOrganizationProjectResourceMinimal(t *testing.T) {
 					if !ok {
 						return "", fmt.Errorf("not found: %s", "sys11iam_organization_project.test_minimal")
 					}
-					return fmt.Sprintf("%s,%s", rs.Primary.Attributes["organization_id"], rs.Primary.Attributes["id"]), nil
+					return fmt.Sprintf("%s,%s", rs.Primary.Attributes["org_id"], rs.Primary.Attributes["id"]), nil
 				},
 			},
 		},
@@ -238,7 +238,7 @@ data "sys11iam_organization" "test_org" {
 }
 
 resource "sys11iam_organization_project" "test" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name            = "{{ .ProjectName }}"
   description     = "{{ .ProjectDescription }}"
   tags            = [{{ range $index, $tag := .Tags }}{{ if $index }}, {{ end }}"{{ $tag }}"{{ end }}]
@@ -269,7 +269,7 @@ data "sys11iam_organization" "test_org" {
 }
 
 resource "sys11iam_organization_project" "test_minimal" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   name            = "{{ .ProjectName }}"
 }
 `).Execute(&result, params)

@@ -81,10 +81,12 @@ func getMembershipAttrTypes() map[string]attr.Type {
 	}
 }
 
-func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *resource_organization_membership.OrganizationMembershipModel, response *iam.IAMOrganizationMembership) diag.Diagnostics {
-	data.Id = types.StringValue(response.ID)
+// buildDataFromV3 populates the Terraform model from the v3 membership list entry.
+func (r *OrganizationMembershipResource) buildDataFromV3(ctx context.Context, data *resource_organization_membership.OrganizationMembershipModel, member *iam.IAMOrgMembershipV3) diag.Diagnostics {
+	data.Id = types.StringValue(member.ID)
 
-	permissionsAttrs := convertSliceToAttrValues(response.Permissions, func(s string) attr.Value {
+	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
+	permissionsAttrs := convertSliceToAttrValues(permissions, func(s string) attr.Value {
 		return types.StringValue(s)
 	})
 
@@ -98,7 +100,12 @@ func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *re
 		return diags
 	}
 
-	if response.User.ID != "" {
+	affiliation := ""
+	if member.OrgAffiliation != nil {
+		affiliation = *member.OrgAffiliation
+	}
+
+	if member.Type == "user" {
 		var userMembership resource_organization_membership.UserMembershipValue
 		diags = membership.Attributes()["user_membership"].(basetypes.ObjectValue).As(ctx, &userMembership, basetypes.ObjectAsOptions{})
 		if diags.HasError() {
@@ -110,10 +117,10 @@ func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *re
 		})
 
 		userMembershipValue := basetypes.NewObjectValueMust(userMembershipAttrTypes, map[string]attr.Value{
-			"id":              types.StringValue(response.User.ID),
-			"email":           types.StringValue(response.User.Email),
-			"affiliation":     types.StringValue(response.Affiliation),
-			"membership_type": types.StringValue(response.MembershipType),
+			"id":              types.StringValue(member.ID),
+			"email":           types.StringValue(member.DisplayName),
+			"affiliation":     types.StringValue(affiliation),
+			"membership_type": types.StringValue(member.Type),
 			"permissions":     types.ListValueMust(types.StringType, userMembershipPermissionsAttrs),
 		})
 
@@ -121,7 +128,7 @@ func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *re
 			"service_account_membership": basetypes.NewObjectNull(serviceAccountMembershipAttrTypes),
 			"user_membership":            userMembershipValue,
 		})
-	} else if response.ServiceAccount.ID != "" {
+	} else if member.Type == "service_account" {
 		var serviceAccountMembership resource_organization_membership.ServiceAccountMembershipValue
 		diags = membership.Attributes()["service_account_membership"].(basetypes.ObjectValue).As(ctx, &serviceAccountMembership, basetypes.ObjectAsOptions{})
 		if diags.HasError() {
@@ -133,10 +140,10 @@ func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *re
 		})
 
 		serviceAccountMembershipValue := basetypes.NewObjectValueMust(serviceAccountMembershipAttrTypes, map[string]attr.Value{
-			"id":              types.StringValue(response.ServiceAccount.ID),
-			"name":            types.StringValue(response.ServiceAccount.Name),
-			"affiliation":     types.StringValue(response.Affiliation),
-			"membership_type": types.StringValue(response.MembershipType),
+			"id":              types.StringValue(member.ID),
+			"name":            types.StringValue(member.DisplayName),
+			"affiliation":     types.StringValue(affiliation),
+			"membership_type": types.StringValue(member.Type),
 			"permissions":     types.ListValueMust(types.StringType, serviceAccountMembershipPermissionsAttrs),
 		})
 
@@ -147,6 +154,30 @@ func (r *OrganizationMembershipResource) buildData(ctx context.Context, data *re
 	}
 
 	return diags
+}
+
+// writeOrgPermissionsAndAffiliation writes permissions and affiliation via the v3 permission endpoints.
+func (r *OrganizationMembershipResource) writeOrgPermissionsAndAffiliation(org_id string, member_id string, membershipType string, permissions []string, affiliation string) error {
+	if membershipType == "user" {
+		_, err := r.client.PutUserOrgPermissions(org_id, member_id, permissions)
+		if err != nil {
+			return fmt.Errorf("failed to put user org permissions: %w", err)
+		}
+		_, err = r.client.PutUserOrgAffiliation(org_id, member_id, affiliation)
+		if err != nil {
+			return fmt.Errorf("failed to put user org affiliation: %w", err)
+		}
+	} else if membershipType == "service_account" {
+		_, err := r.client.PutServiceAccountOrgPermissions(org_id, member_id, permissions)
+		if err != nil {
+			return fmt.Errorf("failed to put service account org permissions: %w", err)
+		}
+		_, err = r.client.PutServiceAccountOrgAffiliation(org_id, member_id, affiliation)
+		if err != nil {
+			return fmt.Errorf("failed to put service account org affiliation: %w", err)
+		}
+	}
+	return nil
 }
 
 func (r *OrganizationMembershipResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -161,9 +192,9 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationMembership resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
 	// Is the organization active?
-	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
+	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -171,7 +202,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as it is not active. Organization activation is a manual step, please contact the SysEleven GmbH Sales Team <sales@syseleven.de>.\n This can also be done via https://dashboard.syseleven.de/dashboard",
-				data.OrganizationId.ValueString()))
+				data.OrgId.ValueString()))
 		return
 	}
 
@@ -208,13 +239,13 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		// Is the user already a member?
 		email := userMembership.Email.ValueString()
 
-		org_membership_response, err := r.client.GetOrganizationMembershipByEmail(ctx, data.OrganizationId.ValueString(), email)
+		org_membership_response, err := r.client.GetOrgMembershipV3ByEmail(data.OrgId.ValueString(), email)
 		if userMembership.Id.IsNull() || userMembership.Id.IsUnknown() && err != nil {
 			// Is the e-mail at least invited?
-			org_invitation_response, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), email)
+			org_invitation_response, err := r.client.GetOrganizationInvitationByEmail(data.OrgId.ValueString(), email)
 			if org_invitation_response.ID == "" || err != nil {
 				// Invite the e-mail
-				invitationResponse, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), email, permissions)
+				invitationResponse, err := r.client.CreateOrganizationInvitation(data.OrgId.ValueString(), email, permissions)
 				if err != nil {
 					resp.Diagnostics.AddError("", err.Error())
 					return
@@ -224,7 +255,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 			// The email is invited, but has to be activated manually
 			resp.Diagnostics.AddError("InvitationNotAccepted",
 				fmt.Sprintf("Can not create OrganizationMembership in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
-					data.OrganizationId.ValueString(), email))
+					data.OrgId.ValueString(), email))
 
 			// data value setting
 			if data.Id.IsNull() || data.Id.IsUnknown() {
@@ -280,20 +311,26 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 		}
 	}
 
-	response, err := r.client.CreateOrUpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), affiliation, membershipType, permissions)
+	// Write permissions and affiliation via v3 endpoints
+	err = r.writeOrgPermissionsAndAffiliation(data.OrgId.ValueString(), data.Id.ValueString(), membershipType, permissions, affiliation)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	// Read back the membership to populate state
+	member, err := r.client.GetOrgMembershipV3(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	diag = r.buildData(ctx, &data, &response)
+	diag = r.buildDataFromV3(ctx, &data, &member)
 	if diag.HasError() {
 		resp.Diagnostics.Append(diag...)
 		return
 	}
-
-	data.OrganizationId = types.StringValue(response.Organisation.ID)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -317,20 +354,18 @@ func (r *OrganizationMembershipResource) Read(ctx context.Context, req resource.
 		return
 	}
 
-	response, err := r.client.GetOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
+	member, err := r.client.GetOrgMembershipV3(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	diag := r.buildData(ctx, &data, &response)
+	diag := r.buildDataFromV3(ctx, &data, &member)
 	if diag.HasError() {
 		resp.Diagnostics.Append(diag...)
 		return
 	}
-
-	data.OrganizationId = types.StringValue(response.Organisation.ID)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -386,7 +421,7 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 		if userMembership.Id.ValueString() != "" && data.Id.ValueString() == "0" {
 			email := userMembership.Email.ValueString()
 
-			_, err := r.client.CreateOrganizationInvitation(data.OrganizationId.ValueString(), email, permissions)
+			_, err := r.client.CreateOrganizationInvitation(data.OrgId.ValueString(), email, permissions)
 			if err != nil {
 				resp.Diagnostics.AddError("", err.Error())
 				return
@@ -413,19 +448,26 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 		membershipType = serviceAccountMembership.MembershipType.ValueString()
 	}
 
-	response, err := r.client.UpdateOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString(), affiliation, membershipType, permissions)
+	// Write permissions and affiliation via v3 endpoints
+	err := r.writeOrgPermissionsAndAffiliation(data.OrgId.ValueString(), data.Id.ValueString(), membershipType, permissions, affiliation)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	// Read back the membership to populate state
+	member, err := r.client.GetOrgMembershipV3(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	diag = r.buildData(ctx, &data, &response)
+	diag = r.buildDataFromV3(ctx, &data, &member)
 	if diag.HasError() {
 		resp.Diagnostics.Append(diag...)
 		return
 	}
-	data.OrganizationId = types.StringValue(response.Organisation.ID)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -466,21 +508,45 @@ func (r *OrganizationMembershipResource) Delete(ctx context.Context, req resourc
 
 			email := userMembership.Email.ValueString()
 
-			_, err := r.client.GetOrganizationInvitationByEmail(data.OrganizationId.ValueString(), email)
+			_, err := r.client.GetOrganizationInvitationByEmail(data.OrgId.ValueString(), email)
 			if err != nil {
 				return
 			}
-			err = r.client.DeleteOrganizationInvitation(data.OrganizationId.ValueString(), email)
+			err = r.client.DeleteOrganizationInvitation(data.OrgId.ValueString(), email)
 			if err != nil {
 				resp.Diagnostics.AddError("", err.Error())
 				return
 			}
 		}
-	}
-	err := r.client.DeleteOrganizationMembership(data.OrganizationId.ValueString(), data.Id.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
 		return
+	}
+
+	// Determine membership type from state to call the correct endpoint
+	var membership basetypes.ObjectValue
+	diag := data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{
+		UnhandledNullAsEmpty:    true,
+		UnhandledUnknownAsEmpty: true,
+	})
+	if diag.HasError() {
+		resp.Diagnostics.Append(diag...)
+		return
+	}
+
+	orgId := data.OrgId.ValueString()
+	memberId := data.Id.ValueString()
+
+	if userMembershipAttr, ok := membership.Attributes()["user_membership"]; ok && !userMembershipAttr.IsNull() && !userMembershipAttr.IsUnknown() {
+		_, err := r.client.PutUserOrgPermissions(orgId, memberId, []string{})
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+	} else if serviceAccountMembershipAttr, ok := membership.Attributes()["service_account_membership"]; ok && !serviceAccountMembershipAttr.IsNull() && !serviceAccountMembershipAttr.IsUnknown() {
+		_, err := r.client.PutServiceAccountOrgPermissions(orgId, memberId, []string{})
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
 	}
 }
 
@@ -496,21 +562,53 @@ func (r *OrganizationMembershipResource) ImportState(ctx context.Context, req re
 		return
 	}
 
-	// Read API call logic
-	response, err := r.client.GetOrganizationMembership(idParts[0], idParts[1])
+	// Read membership via v3 list endpoint
+	member, err := r.client.GetOrgMembershipV3(idParts[0], idParts[1])
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	var data resource_organization_membership.OrganizationMembershipModel
+	data.OrgId = types.StringValue(idParts[0])
+
+	// Initialize the membership structure for buildDataFromV3
+	serviceAccountMembershipAttrTypes := getServiceAccountMembershipAttrTypes()
+	userMembershipAttrTypes := getUserMembershipAttrTypes()
+	membershipAttrTypes := getMembershipAttrTypes()
+
+	if member.Type == "user" {
+		userMembershipValue := basetypes.NewObjectValueMust(userMembershipAttrTypes, map[string]attr.Value{
+			"id":              types.StringValue(member.ID),
+			"email":           types.StringValue(member.DisplayName),
+			"affiliation":     types.StringValue(""),
+			"membership_type": types.StringValue(member.Type),
+			"permissions":     types.ListValueMust(types.StringType, []attr.Value{}),
+		})
+		data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+			"service_account_membership": basetypes.NewObjectNull(serviceAccountMembershipAttrTypes),
+			"user_membership":            userMembershipValue,
+		})
+	} else {
+		serviceAccountMembershipValue := basetypes.NewObjectValueMust(serviceAccountMembershipAttrTypes, map[string]attr.Value{
+			"id":              types.StringValue(member.ID),
+			"name":            types.StringValue(member.DisplayName),
+			"affiliation":     types.StringValue(""),
+			"membership_type": types.StringValue(member.Type),
+			"permissions":     types.ListValueMust(types.StringType, []attr.Value{}),
+		})
+		data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+			"service_account_membership": serviceAccountMembershipValue,
+			"user_membership":            basetypes.NewObjectNull(userMembershipAttrTypes),
+		})
+	}
+
 	// Data value setting
-	diag := r.buildData(ctx, &data, &response)
+	diag := r.buildDataFromV3(ctx, &data, &member)
 	if diag.HasError() {
 		resp.Diagnostics.Append(diag...)
 		return
 	}
-	data.OrganizationId = types.StringValue(response.Organisation.ID)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

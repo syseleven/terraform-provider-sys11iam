@@ -10,7 +10,7 @@ The Organization Membership Resource defines a way to manage the membership of a
 resource "sys11iam_organization_membership" "test_user_membership" {
   count = data.sys11iam_organization.test_org.is_active ? 1 : 0
   id = "user-uuid-here"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
 
   membership = {
     user_membership = {
@@ -29,7 +29,7 @@ resource "sys11iam_organization_membership" "test_user_membership" {
 resource "sys11iam_organization_membership" "test_service_account_membership" {
   count = data.sys11iam_organization.test_org.is_active ? 1 : 0
   id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   
   membership = {
     service_account_membership = {
@@ -46,7 +46,7 @@ resource "sys11iam_organization_membership" "test_service_account_membership" {
 The following arguments are supported for the resource "sys11iam_organization_membership":
 
 * **`id`** - The UUID of the user or service account. (Required)
-* **`organization_id`** - The UUID of the organization.
+* **`org_id`** - The UUID of the organization.
 * **`membership`** - The membership configuration block. (Required)
 
 ### Membership Block
@@ -87,7 +87,7 @@ To import an organization membership, your configuration would look like the fol
 resource "sys11iam_organization_membership" "test_membership" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   id = "user-uuid-here"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   
   membership = {
     user_membership = {
@@ -103,17 +103,17 @@ resource "sys11iam_organization_membership" "test_membership" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_membership.test_membership[0] <organization_id,member_id>
+terraform import sys11iam_organization_membership.test_membership[0] <org_id,member_id>
 ```
 
-Where `organization_id` is the ID of the organization and `member_id` is the ID of the organization member you want to import.
+Where `org_id` is the ID of the organization and `member_id` is the ID of the organization member you want to import.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
     to = sys11iam_organization_membership.test_membership[0]
-    id = "<organization_id,member_id>"
+    id = "<org_id,member_id>"
 }
 
 resource "sys11iam_organization_membership" "test_membership" {

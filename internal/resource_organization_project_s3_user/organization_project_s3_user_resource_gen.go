@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -49,9 +48,20 @@ func OrganizationProjectS3UserResourceSchema(ctx context.Context) schema.Schema 
 							MarkdownDescription: "The user's access key.",
 						},
 						"created_at": schema.StringAttribute{
+							Computed: true,
+						},
+						"created_by": schema.StringAttribute{
 							Computed:            true,
-							Description:         "The time the resource was created.",
-							MarkdownDescription: "The time the resource was created.",
+							Description:         "The Keycloak user ID who created the S3 key.",
+							MarkdownDescription: "The Keycloak user ID who created the S3 key.",
+						},
+						"secret_key": schema.StringAttribute{
+							Computed:            true,
+							Description:         "The user's secret key.",
+							MarkdownDescription: "The user's secret key.",
+						},
+						"updated_at": schema.StringAttribute{
+							Computed: true,
 						},
 					},
 					CustomType: KeysType{
@@ -60,18 +70,7 @@ func OrganizationProjectS3UserResourceSchema(ctx context.Context) schema.Schema 
 						},
 					},
 				},
-				Optional: true,
 				Computed: true,
-				Default: listdefault.StaticValue(types.ListValueMust(
-					KeysType{
-						ObjectType: types.ObjectType{
-							AttrTypes: KeysValue{}.AttributeTypes(ctx),
-						},
-					},
-					[]attr.Value{},
-				)),
-				Description:         "The user's S3 keys (access keys only).",
-				MarkdownDescription: "The user's S3 keys (access keys only).",
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -82,27 +81,33 @@ func OrganizationProjectS3UserResourceSchema(ctx context.Context) schema.Schema 
 					stringvalidator.RegexMatches(regexp.MustCompile("^[a-z0-9]+(?:-[a-z0-9]+)*$"), ""),
 				},
 			},
-			"organization_id": schema.StringAttribute{
-				Required:            true,
-				Description:         "The organization id.",
-				MarkdownDescription: "The organization id.",
+			"org_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
 			"project_id": schema.StringAttribute{
-				Required:            true,
-				Description:         "The project id.",
-				MarkdownDescription: "The project id.",
+				Optional: true,
+				Computed: true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(regexp.MustCompile("^[a-f0-9]{8}[a-f0-9]{4}4[a-f0-9]{3}[89ab][a-f0-9]{3}[a-f0-9]{12}$"), ""),
+				},
+			},
+			"s3_user_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
 		},
 	}
 }
 
 type OrganizationProjectS3UserModel struct {
-	Description    types.String `tfsdk:"description"`
-	Id             types.String `tfsdk:"id"`
-	Keys           types.List   `tfsdk:"keys"`
-	Name           types.String `tfsdk:"name"`
-	OrganizationId types.String `tfsdk:"organization_id"`
-	ProjectId      types.String `tfsdk:"project_id"`
+	Description types.String `tfsdk:"description"`
+	Id          types.String `tfsdk:"id"`
+	Keys        types.List   `tfsdk:"keys"`
+	Name        types.String `tfsdk:"name"`
+	OrgId       types.String `tfsdk:"org_id"`
+	ProjectId   types.String `tfsdk:"project_id"`
+	S3UserId    types.String `tfsdk:"s3_user_id"`
 }
 
 var _ basetypes.ObjectTypable = KeysType{}
@@ -166,6 +171,60 @@ func (t KeysType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue)
 			fmt.Sprintf(`created_at expected to be basetypes.StringValue, was: %T`, createdAtAttribute))
 	}
 
+	createdByAttribute, ok := attributes["created_by"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`created_by is missing from object`)
+
+		return nil, diags
+	}
+
+	createdByVal, ok := createdByAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`created_by expected to be basetypes.StringValue, was: %T`, createdByAttribute))
+	}
+
+	secretKeyAttribute, ok := attributes["secret_key"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`secret_key is missing from object`)
+
+		return nil, diags
+	}
+
+	secretKeyVal, ok := secretKeyAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`secret_key expected to be basetypes.StringValue, was: %T`, secretKeyAttribute))
+	}
+
+	updatedAtAttribute, ok := attributes["updated_at"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`updated_at is missing from object`)
+
+		return nil, diags
+	}
+
+	updatedAtVal, ok := updatedAtAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`updated_at expected to be basetypes.StringValue, was: %T`, updatedAtAttribute))
+	}
+
 	if diags.HasError() {
 		return nil, diags
 	}
@@ -173,6 +232,9 @@ func (t KeysType) ValueFromObject(ctx context.Context, in basetypes.ObjectValue)
 	return KeysValue{
 		AccessKey: accessKeyVal,
 		CreatedAt: createdAtVal,
+		CreatedBy: createdByVal,
+		SecretKey: secretKeyVal,
+		UpdatedAt: updatedAtVal,
 		state:     attr.ValueStateKnown,
 	}, diags
 }
@@ -276,6 +338,60 @@ func NewKeysValue(attributeTypes map[string]attr.Type, attributes map[string]att
 			fmt.Sprintf(`created_at expected to be basetypes.StringValue, was: %T`, createdAtAttribute))
 	}
 
+	createdByAttribute, ok := attributes["created_by"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`created_by is missing from object`)
+
+		return NewKeysValueUnknown(), diags
+	}
+
+	createdByVal, ok := createdByAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`created_by expected to be basetypes.StringValue, was: %T`, createdByAttribute))
+	}
+
+	secretKeyAttribute, ok := attributes["secret_key"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`secret_key is missing from object`)
+
+		return NewKeysValueUnknown(), diags
+	}
+
+	secretKeyVal, ok := secretKeyAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`secret_key expected to be basetypes.StringValue, was: %T`, secretKeyAttribute))
+	}
+
+	updatedAtAttribute, ok := attributes["updated_at"]
+
+	if !ok {
+		diags.AddError(
+			"Attribute Missing",
+			`updated_at is missing from object`)
+
+		return NewKeysValueUnknown(), diags
+	}
+
+	updatedAtVal, ok := updatedAtAttribute.(basetypes.StringValue)
+
+	if !ok {
+		diags.AddError(
+			"Attribute Wrong Type",
+			fmt.Sprintf(`updated_at expected to be basetypes.StringValue, was: %T`, updatedAtAttribute))
+	}
+
 	if diags.HasError() {
 		return NewKeysValueUnknown(), diags
 	}
@@ -283,6 +399,9 @@ func NewKeysValue(attributeTypes map[string]attr.Type, attributes map[string]att
 	return KeysValue{
 		AccessKey: accessKeyVal,
 		CreatedAt: createdAtVal,
+		CreatedBy: createdByVal,
+		SecretKey: secretKeyVal,
+		UpdatedAt: updatedAtVal,
 		state:     attr.ValueStateKnown,
 	}, diags
 }
@@ -357,23 +476,29 @@ var _ basetypes.ObjectValuable = KeysValue{}
 type KeysValue struct {
 	AccessKey basetypes.StringValue `tfsdk:"access_key"`
 	CreatedAt basetypes.StringValue `tfsdk:"created_at"`
+	CreatedBy basetypes.StringValue `tfsdk:"created_by"`
+	SecretKey basetypes.StringValue `tfsdk:"secret_key"`
+	UpdatedAt basetypes.StringValue `tfsdk:"updated_at"`
 	state     attr.ValueState
 }
 
 func (v KeysValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) {
-	attrTypes := make(map[string]tftypes.Type, 2)
+	attrTypes := make(map[string]tftypes.Type, 5)
 
 	var val tftypes.Value
 	var err error
 
 	attrTypes["access_key"] = basetypes.StringType{}.TerraformType(ctx)
 	attrTypes["created_at"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["created_by"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["secret_key"] = basetypes.StringType{}.TerraformType(ctx)
+	attrTypes["updated_at"] = basetypes.StringType{}.TerraformType(ctx)
 
 	objectType := tftypes.Object{AttributeTypes: attrTypes}
 
 	switch v.state {
 	case attr.ValueStateKnown:
-		vals := make(map[string]tftypes.Value, 2)
+		vals := make(map[string]tftypes.Value, 5)
 
 		val, err = v.AccessKey.ToTerraformValue(ctx)
 
@@ -390,6 +515,30 @@ func (v KeysValue) ToTerraformValue(ctx context.Context) (tftypes.Value, error) 
 		}
 
 		vals["created_at"] = val
+
+		val, err = v.CreatedBy.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["created_by"] = val
+
+		val, err = v.SecretKey.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["secret_key"] = val
+
+		val, err = v.UpdatedAt.ToTerraformValue(ctx)
+
+		if err != nil {
+			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
+		}
+
+		vals["updated_at"] = val
 
 		if err := tftypes.ValidateValue(objectType, vals); err != nil {
 			return tftypes.NewValue(objectType, tftypes.UnknownValue), err
@@ -423,6 +572,9 @@ func (v KeysValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, di
 	attributeTypes := map[string]attr.Type{
 		"access_key": basetypes.StringType{},
 		"created_at": basetypes.StringType{},
+		"created_by": basetypes.StringType{},
+		"secret_key": basetypes.StringType{},
+		"updated_at": basetypes.StringType{},
 	}
 
 	if v.IsNull() {
@@ -438,6 +590,9 @@ func (v KeysValue) ToObjectValue(ctx context.Context) (basetypes.ObjectValue, di
 		map[string]attr.Value{
 			"access_key": v.AccessKey,
 			"created_at": v.CreatedAt,
+			"created_by": v.CreatedBy,
+			"secret_key": v.SecretKey,
+			"updated_at": v.UpdatedAt,
 		})
 
 	return objVal, diags
@@ -466,6 +621,18 @@ func (v KeysValue) Equal(o attr.Value) bool {
 		return false
 	}
 
+	if !v.CreatedBy.Equal(other.CreatedBy) {
+		return false
+	}
+
+	if !v.SecretKey.Equal(other.SecretKey) {
+		return false
+	}
+
+	if !v.UpdatedAt.Equal(other.UpdatedAt) {
+		return false
+	}
+
 	return true
 }
 
@@ -481,5 +648,8 @@ func (v KeysValue) AttributeTypes(ctx context.Context) map[string]attr.Type {
 	return map[string]attr.Type{
 		"access_key": basetypes.StringType{},
 		"created_at": basetypes.StringType{},
+		"created_by": basetypes.StringType{},
+		"secret_key": basetypes.StringType{},
+		"updated_at": basetypes.StringType{},
 	}
 }
