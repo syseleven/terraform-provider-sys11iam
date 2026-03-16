@@ -7,94 +7,94 @@ import (
 	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationContactResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The UUID of the contact",
-				MarkdownDescription: "The UUID of the contact",
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
+			"contact_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
-			"first_name": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "A first name for the contact.",
-				MarkdownDescription: "A first name for the contact.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
-				},
-				Default: stringdefault.StaticString(""),
-			},
-			"last_name": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "A last name for the contact.",
-				MarkdownDescription: "A last name for the contact.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
-				},
-				Default: stringdefault.StaticString(""),
-			},
-			"notes": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "Notes about the contact.",
-				MarkdownDescription: "Notes about the contact.",
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
-				},
-				Default: stringdefault.StaticString(""),
+			"created_at": schema.StringAttribute{
+				Computed: true,
 			},
 			"email": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "An e-mail for the contact.",
-				MarkdownDescription: "An e-mail for the contact.",
+				Required:            true,
+				Description:         "The email of the contact person.",
+				MarkdownDescription: "The email of the contact person.",
+			},
+			"first_name": schema.StringAttribute{
+				Required:            true,
+				Description:         "The first name of the contact person.",
+				MarkdownDescription: "The first name of the contact person.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
+					stringvalidator.LengthAtMost(1000),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
 				},
-				Default: stringdefault.StaticString(""),
+			},
+			"id": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The ID of the contact person.",
+				MarkdownDescription: "The ID of the contact person.",
+			},
+			"last_name": schema.StringAttribute{
+				Required:            true,
+				Description:         "The surname of the contact person.",
+				MarkdownDescription: "The surname of the contact person.",
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(1000),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
+				},
+			},
+			"notes": schema.StringAttribute{
+				Required:            true,
+				Description:         "Notes about the contact person.",
+				MarkdownDescription: "Notes about the contact person.",
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(1000),
+					stringvalidator.RegexMatches(regexp.MustCompile("^[^\u0000]*$"), ""),
+				},
+			},
+			"org_id": schema.StringAttribute{
+				Optional: true,
+				Computed: true,
 			},
 			"phone": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Description:         "A phone number for the contact.",
-				MarkdownDescription: "A phone number for the contact.",
+				Required:            true,
+				Description:         "The phone number of the contact person.",
+				MarkdownDescription: "The phone number of the contact person.",
 				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile("^[ -~]*$"), ""),
+					stringvalidator.RegexMatches(regexp.MustCompile("^\\+((1|7)\\d{4,14}|(20|27|30|31|32|33|34|36|39|40|41|43|44|45|46|47|48|49|51|52|53|54|55|56|57|58|60|61|62|63|64|65|66|76|77|81|82|84|86|90|91|92|93|94|95|98)\\d{4,13}|(211|212|213|216|218|220|221|222|223|224|225|226|227|228|229|230|231|232|233|234|235|236|237|238|239|240|241|242|243|244|245|246|248|249|250|251|252|253|254|255|256|257|258|260|261|262|263|264|265|266|267|268|269|291|297|298|299|350|351|352|353|354|355|356|357|358|359|370|371|372|373|374|375|376|377|378|380|381|382|383|385|386|387|389|420|421|423|500|501|502|503|504|505|506|507|508|509|590|591|592|593|594|595|596|597|598|670|672|673|674|675|676|677|678|679|680|681|682|683|685|686|687|688|689|690|691|692|850|852|853|855|856|880|886|960|961|962|963|964|965|966|967|968|970|971|972|973|974|975|976|977|992|993|994|995|996|998)\\d{4,12}|(1242|1246|1264|1268|1284|1340|1345|1441|1473|1649|1664|1670|1671|1684|1721|1758|1767|1784|1787|1809|1829|1849|1868|1869|1876|1939|4779|5999)\\d{4,11}|3906698\\d{4,9})$"), ""),
 				},
-				Default: stringdefault.StaticString(""),
 			},
 			"roles": schema.ListAttribute{
 				ElementType:         types.StringType,
-				Optional:            true,
-				Computed:            true,
-				Description:         "The roles of the contact.",
-				MarkdownDescription: "The roles of the contact.",
+				Required:            true,
+				Description:         "The role(s) of the contact person. Determine the alert categories the contact person is notified about.",
+				MarkdownDescription: "The role(s) of the contact person. Determine the alert categories the contact person is notified about.",
 			},
-			"organization_id": schema.StringAttribute{
-				Required: true,
+			"updated_at": schema.StringAttribute{
+				Computed: true,
 			},
 		},
 	}
 }
 
 type OrganizationContactModel struct {
-	Id             types.String `tfsdk:"id"`
-	FirstName      types.String `tfsdk:"first_name"`
-	LastName       types.String `tfsdk:"last_name"`
-	Phone          types.String `tfsdk:"phone"`
-	Email          types.String `tfsdk:"email"`
-	Notes          types.String `tfsdk:"notes"`
-	Roles          types.List   `tfsdk:"roles"`
-	OrganizationId types.String `tfsdk:"organization_id"`
+	ContactId types.String `tfsdk:"contact_id"`
+	CreatedAt types.String `tfsdk:"created_at"`
+	Email     types.String `tfsdk:"email"`
+	FirstName types.String `tfsdk:"first_name"`
+	Id        types.String `tfsdk:"id"`
+	LastName  types.String `tfsdk:"last_name"`
+	Notes     types.String `tfsdk:"notes"`
+	OrgId     types.String `tfsdk:"org_id"`
+	Phone     types.String `tfsdk:"phone"`
+	Roles     types.List   `tfsdk:"roles"`
+	UpdatedAt types.String `tfsdk:"updated_at"`
 }

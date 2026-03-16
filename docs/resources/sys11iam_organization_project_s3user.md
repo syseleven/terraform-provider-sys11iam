@@ -9,7 +9,7 @@ resource "sys11iam_organization_project_s3_user" "test_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "tests3user"
   description = "test s3user"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project.id
 }
 ```
@@ -19,7 +19,7 @@ resource "sys11iam_organization_project_s3_user" "test_project_s3user" {
 The following arguments are supported for the resource "sys11iam_organization_project_s3_user":
 * **`name`** - The name of the S3 User.
 * **`description`** - The description of the S3 User.
-* **`organization_id`** - The UUID of the organization.
+* **`org_id`** - The UUID of the organization.
 * **`project_id`** - The UUID of the project.
 
 ## Importing Organization Project Memberships
@@ -31,7 +31,7 @@ resource "sys11iam_organization_project_s3_user" "test_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "<name>"
   description = "<description>"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project.id
 }
 
@@ -39,24 +39,24 @@ resource "sys11iam_organization_project_s3_user" "test_project_s3user" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_project_s3_user.test_project_s3user[0] <organization_id,project_id,s3_user_id>
+terraform import sys11iam_organization_project_s3_user.test_project_s3user[0] <org_id,project_id,s3_user_id>
 ```
 
-Where `organization_id` is the ID of the organization, `project_id` is the ID of the project you want to import, and `s3_user_id` is the ID of the S3 user to be imported.
+Where `org_id` is the ID of the organization, `project_id` is the ID of the project you want to import, and `s3_user_id` is the ID of the S3 user to be imported.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
     to = sys11iam_organization_project_s3_user.test_project_s3user[0]
-    id = "<organization_id,project_id,s3_user_id>"
+    id = "<org_id,project_id,s3_user_id>"
 }
 
 resource "sys11iam_organization_project_s3_user" "test_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "<name>"
   description = "<description>"
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project.id
 }
 

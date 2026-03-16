@@ -54,7 +54,7 @@ func (r *ProjectResource) Configure(_ context.Context, req resource.ConfigureReq
 func (r *ProjectResource) buildData(ctx context.Context, data *resource_organization_project.OrganizationProjectModel, response *iam.IAMProject, organizationId string) {
 	data.Id = types.StringValue(response.ID)
 	data.ProjectId = types.StringValue(response.ID)
-	data.OrganizationId = types.StringValue(organizationId)
+	data.OrgId = types.StringValue(organizationId)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.Status = types.StringValue(response.Status)
@@ -75,8 +75,8 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating Project resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
-	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
+	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -84,7 +84,7 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create project in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrganizationId.ValueString()))
+				data.OrgId.ValueString()))
 		return
 	}
 
@@ -96,14 +96,14 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 			return
 		}
 	}
-	response, err := r.client.CreateProject(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
+	response, err := r.client.CreateProject(data.OrgId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	r.buildData(ctx, &data, &response, data.OrganizationId.ValueString())
+	r.buildData(ctx, &data, &response, data.OrgId.ValueString())
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -121,14 +121,14 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading Project resource.")
-	response, err := r.client.GetProject(data.OrganizationId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetProject(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	r.buildData(ctx, &data, &response, data.OrganizationId.ValueString())
+	r.buildData(ctx, &data, &response, data.OrgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -165,14 +165,14 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 		}
 	}
 
-	response, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
+	response, err := r.client.UpdateProject(data.OrgId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	// Data value setting
-	r.buildData(ctx, &data, &response, data.OrganizationId.ValueString())
+	r.buildData(ctx, &data, &response, data.OrgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -190,7 +190,7 @@ func (r *ProjectResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting Project resource.")
-	err := r.client.DeleteProject(data.OrganizationId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteProject(data.OrgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return

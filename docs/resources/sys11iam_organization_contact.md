@@ -13,7 +13,7 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
   email = "test@example.com"
   phone = "+491684941254823"
   roles = ["Technical"]
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 ```
@@ -28,7 +28,7 @@ The following arguments are supported:
 * **`email`** - The email of the organization contact.
 * **`phone`** - The phone number of the organization contact.
 * **`roles`** - The roles of the organization contact.
-* **`organization_id`** - The UUID of the organization.
+* **`org_id`** - The UUID of the organization.
 * **`id`** - The UUID of the organization contact. (read-only)
 
 ## Importing Contacts
@@ -44,24 +44,24 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
   email = "<email>"
   phone = "<phone>"
   roles = []
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 ```
 
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_contact.testorganization_contact[0] <organization_id,contact_id>
+terraform import sys11iam_organization_contact.testorganization_contact[0] <org_id,contact_id>
 ```
 
-Where `organization_id` is the ID of the organization and `contact_id` is the ID of the contact you want to import.
+Where `org_id` is the ID of the organization and `contact_id` is the ID of the contact you want to import.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
   to = sys11iam_organization_contact.testorganization_contact[0] 
-  id = "<organization_id,contact_id>"
+  id = "<org_id,contact_id>"
 }
 
 resource "sys11iam_organization_contact" "testorganization_contact" {
@@ -72,7 +72,7 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
   email = "<email>"
   phone = "<phone>"
   roles = []
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
 }
 
 ```

@@ -4,10 +4,11 @@ package resource_organization_project_s3_user_key
 
 import (
 	"context"
+	"regexp"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -15,7 +16,7 @@ import (
 func OrganizationProjectS3UserKeyResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"organization_id": schema.StringAttribute{
+			"org_id": schema.StringAttribute{
 				Required: true,
 			},
 			"project_id": schema.StringAttribute{

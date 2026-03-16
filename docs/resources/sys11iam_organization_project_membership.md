@@ -8,7 +8,7 @@ The Organization Project Membership Resource manages an organization project's m
 
 ```hcl
 resource "sys11iam_organization_project_membership" "test_user_membership" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   project_id      = sys11iam_organization_project.test_project.id
   id              = sys11iam_organization_membership.test_user_membership[0].id
 
@@ -28,7 +28,7 @@ resource "sys11iam_organization_project_membership" "test_user_membership" {
 
 ```hcl
 resource "sys11iam_organization_project_membership" "test_service_account_membership" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   project_id      = sys11iam_organization_project.test_project.id
   id              = sys11iam_organization_membership.test_service_account_membership[0].id
 
@@ -48,7 +48,7 @@ resource "sys11iam_organization_project_membership" "test_service_account_member
 
 The following arguments are supported for the resource "sys11iam_organization_project_membership":
 
-* **`organization_id`** - The UUID of the organization. (Required)
+* **`org_id`** - The UUID of the organization. (Required)
 * **`project_id`** - The UUID of the project.
 * **`id`** - The unique identifier of the member (user or service account) in the project.
 * **`membership`** - The membership configuration block.
@@ -77,7 +77,7 @@ To import an organization project membership, your configuration would look like
 
 ```hcl
 resource "sys11iam_organization_project_membership" "test_membership" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   project_id      = "project-uuid"
   id              = "member-uuid"
   
@@ -96,21 +96,21 @@ resource "sys11iam_organization_project_membership" "test_membership" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_project_membership.test_membership <organization_id,project_id,member_id>
+terraform import sys11iam_organization_project_membership.test_membership <org_id,project_id,member_id>
 ```
 
-Where `organization_id` is the ID of the organization, `project_id` is the ID of the project you want to import, and `member_id` is the ID of the member (user/service account) to be imported.
+Where `org_id` is the ID of the organization, `project_id` is the ID of the project you want to import, and `member_id` is the ID of the member (user/service account) to be imported.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
     to = sys11iam_organization_project_membership.test_membership
-    id = "<organization_id,project_id,member_id>"
+    id = "<org_id,project_id,member_id>"
 }
 
 resource "sys11iam_organization_project_membership" "test_membership" {
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   project_id      = "project-uuid"
   id              = "member-uuid"
   

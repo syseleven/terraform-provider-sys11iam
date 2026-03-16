@@ -13,7 +13,7 @@ data "sys11iam_organization" "testorg" {
 # now the data source can be used with any resource
 resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  organization_id = data.sys11iam_organization.testorg.id
+  org_id = data.sys11iam_organization.testorg.id
   # ...
 }
 ```

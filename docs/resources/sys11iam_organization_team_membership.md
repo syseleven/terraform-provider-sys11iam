@@ -10,7 +10,7 @@ The Organization Team Membership Resource enables the management of user and ser
 resource "sys11iam_organization_team_membership" "user_membership_test" {
   team_id = sys11iam_organization_team.test_team.id
   id = "user-uuid-here"
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   membership_type = "user"
 
   membership = {
@@ -30,7 +30,7 @@ resource "sys11iam_organization_team_membership" "user_membership_test" {
 resource "sys11iam_organization_team_membership" "service_account_membership_test" {
   team_id = sys11iam_organization_team.test_team.id
   id = sys11iam_organization_serviceaccount.test_serviceaccount[0].id
-  organization_id = data.sys11iam_organization.test_org.id
+  org_id = data.sys11iam_organization.test_org.id
   membership_type = "service_account"
 
   membership = {
@@ -47,7 +47,7 @@ The following arguments are supported for the resource "sys11iam_organization_te
 
 * **`team_id`** - The UUID of the team. (Required)
 * **`id`** - The UUID of the user or service account. (Required)
-* **`organization_id`** - The UUID of the organization. (Required)
+* **`org_id`** - The UUID of the organization. (Required)
 * **`membership_type`** - The type of the membership.
 * **`membership`** - The membership configuration block. (Required)
 
@@ -74,7 +74,7 @@ To import an organization team membership, your configuration would look like th
 resource "sys11iam_organization_team_membership" "test_membership" {
   team_id = "team-uuid-here"
   id = "member-uuid-here"
-  organization_id = "organization-uuid-here"
+  org_id = "organization-uuid-here"
   membership_type = "user"
 
   membership = {
@@ -92,23 +92,23 @@ resource "sys11iam_organization_team_membership" "test_membership" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_organization_team_membership.test_membership <organization_id,team_id,member_id>
+terraform import sys11iam_organization_team_membership.test_membership <org_id,team_id,member_id>
 ```
 
-Where `organization_id` is the ID of the organization, `team_id` is the ID of the team, and `member_id` is the ID of the team member you want to import.
+Where `org_id` is the ID of the organization, `team_id` is the ID of the team, and `member_id` is the ID of the team member you want to import.
 
 A programmatic alternative involves using the [import block](https://developer.hashicorp.com/terraform/language/import#syntax):
 
 ```hcl
 import {
     to = sys11iam_organization_team_membership.test_membership
-    id = "<organization_id,team_id,member_id>"
+    id = "<org_id,team_id,member_id>"
 }
 
 resource "sys11iam_organization_team_membership" "test_membership" {
   team_id = "team-uuid-here"
   id = "member-uuid-here"
-  organization_id = "organization-uuid-here"
+  org_id = "organization-uuid-here"
   membership_type = "user"
 
   membership = {

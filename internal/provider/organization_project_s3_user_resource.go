@@ -63,10 +63,10 @@ func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateR
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating ProjectS3User resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
 
 	// Is the organization active?
-	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
+	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -74,11 +74,11 @@ func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateR
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create ProjectS3User in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrganizationId.ValueString()))
+				data.OrgId.ValueString()))
 		return
 	}
 
-	response, err := r.client.CreateProjectS3User(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Name.ValueString(), data.Description.ValueString())
+	response, err := r.client.CreateProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Name.ValueString(), data.Description.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -102,7 +102,7 @@ func (r *ProjectS3UserResource) Read(ctx context.Context, req resource.ReadReque
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading ProjectS3User resource.")
-	response, err := r.client.GetProjectS3User(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -129,7 +129,7 @@ func (r *ProjectS3UserResource) Update(ctx context.Context, req resource.UpdateR
 	// Update API call logic
 	tflog.Info(ctx, "Updating ProjectS3User resource.")
 
-	response, err := r.client.UpdateProjectS3User(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString())
+	response, err := r.client.UpdateProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -154,7 +154,7 @@ func (r *ProjectS3UserResource) Delete(ctx context.Context, req resource.DeleteR
 
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting ProjectS3User resource.")
-	err := r.client.DeleteProjectS3User(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -184,7 +184,7 @@ func (r *ProjectS3UserResource) ImportState(ctx context.Context, req resource.Im
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
 	data.ProjectId = types.StringValue(idParts[1])
-	data.OrganizationId = types.StringValue(idParts[0])
+	data.OrgId = types.StringValue(idParts[0])
 	data.Description = types.StringValue(response.Description)
 	data.Name = types.StringValue(response.Name)
 

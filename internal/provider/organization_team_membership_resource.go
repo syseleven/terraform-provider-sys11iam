@@ -54,15 +54,9 @@ func (r *OrganizationTeamMembershipResource) Configure(_ context.Context, req re
 	r.client = client
 }
 
-func (r *OrganizationTeamMembershipResource) buildData(data resource_organization_team_membership.OrganizationTeamMembershipModel, response *iam.IAMOrganizationTeamMembership, teamPermissions []string) resource_organization_team_membership.OrganizationTeamMembershipModel {
-	if len(teamPermissions) <= 0 {
-		teamPermissions = response.TeamPermissions
-	}
-
-	data.TeamID = types.StringValue(response.Team.ID)
-	data.TeamName = types.StringValue(response.Team.Name)
-	data.OrganizationId = types.StringValue(response.Organisation.ID)
-	data.MembershipType = types.StringValue(response.MembershipType)
+// buildDataFromV3 populates the Terraform model from the v3 team membership list entry.
+func (r *OrganizationTeamMembershipResource) buildDataFromV3(data resource_organization_team_membership.OrganizationTeamMembershipModel, member *iam.IAMTeamMembershipV3, teamPermissions []string) resource_organization_team_membership.OrganizationTeamMembershipModel {
+	data.MembershipType = types.StringValue(member.Type)
 
 	serviceAccountMembershipAttrTypes := map[string]attr.Type{
 		"team_permissions": types.ListType{ElemType: types.StringType},
@@ -86,14 +80,14 @@ func (r *OrganizationTeamMembershipResource) buildData(data resource_organizatio
 		return types.StringValue(permission)
 	})
 
-	if response.User.ID != "" {
-		data.Id = types.StringValue(response.User.ID)
+	if member.Type == "user" {
+		data.Id = types.StringValue(member.ID)
 
 		userMembershipValue := basetypes.NewObjectValueMust(userMembershipAttrTypes, map[string]attr.Value{
 			"user": basetypes.NewObjectValueMust(map[string]attr.Type{
 				"email": types.StringType,
 			}, map[string]attr.Value{
-				"email": types.StringValue(response.User.Email),
+				"email": types.StringValue(member.DisplayName),
 			}),
 			"team_permissions": types.ListValueMust(types.StringType, teamPermissionAttrValues),
 		})
@@ -102,8 +96,8 @@ func (r *OrganizationTeamMembershipResource) buildData(data resource_organizatio
 			"service_account_team_membership": basetypes.NewObjectNull(serviceAccountMembershipAttrTypes),
 			"user_team_membership":            userMembershipValue,
 		})
-	} else if response.ServiceAccount.ID != "" {
-		data.Id = types.StringValue(response.ServiceAccount.ID)
+	} else if member.Type == "service_account" {
+		data.Id = types.StringValue(member.ID)
 
 		serviceAccountMembershipValue := basetypes.NewObjectValueMust(serviceAccountMembershipAttrTypes, map[string]attr.Value{
 			"team_permissions": types.ListValueMust(types.StringType, teamPermissionAttrValues),
@@ -175,6 +169,17 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		return
 	}
 
+	// For Optional+Computed attributes on a new resource, the plan may mark id
+	// as unknown even when the user supplies a value in the configuration.
+	// Fall back to the config value so the member ID is available for API calls.
+	if data.Id.IsNull() || data.Id.IsUnknown() || data.Id.ValueString() == "" {
+		var configId types.String
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("id"), &configId)...)
+		if !resp.Diagnostics.HasError() && !configId.IsNull() && !configId.IsUnknown() && configId.ValueString() != "" {
+			data.Id = configId
+		}
+	}
+
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationTeamMembership resource.")
 	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
@@ -190,9 +195,12 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		return
 	}
 
-	// Access email through the Attributes map
+	var membershipType string
+
+	// Resolve member ID from email if needed
 	if userTeamMembershipAttr, ok := membership.Attributes()["user_team_membership"]; ok {
 		if !userTeamMembershipAttr.IsNull() && !userTeamMembershipAttr.IsUnknown() {
+			membershipType = "user"
 			userTeamMembershipObj := userTeamMembershipAttr.(basetypes.ObjectValue)
 
 			var userMembership resource_organization_team_membership.UserTeamMembershipValue
@@ -213,26 +221,52 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 				if !emailAttr.IsNull() && !emailAttr.IsUnknown() {
 					email := emailAttr.(basetypes.StringValue).ValueString()
 					if email != "" {
-						org_membership_response, err := r.client.GetOrganizationMembershipByEmail(ctx, data.OrganizationId.ValueString(), email)
+						orgMember, err := r.client.GetOrgMembershipV3ByEmail(data.OrganizationId.ValueString(), email)
 						if err != nil {
 							resp.Diagnostics.AddError("", err.Error())
 							return
 						}
 
-						if data.Id.IsNull() || data.Id.IsUnknown() {
-							data.Id = types.StringValue(org_membership_response.User.ID)
+						if data.Id.IsNull() || data.Id.IsUnknown() || data.Id.ValueString() == "" {
+							data.Id = types.StringValue(orgMember.ID)
 						}
 					}
 				}
 			}
-
 		}
 	}
 
-	response, err := r.client.CreateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
-		return
+	// If the user_team_membership block was not recognized above (e.g. because it
+	// was null/unknown) but a membership_type is given in config, use that.
+	if membershipType == "" {
+		var configMembershipType types.String
+		_ = req.Config.GetAttribute(ctx, path.Root("membership_type"), &configMembershipType)
+		if !configMembershipType.IsNull() && !configMembershipType.IsUnknown() && configMembershipType.ValueString() != "" {
+			membershipType = configMembershipType.ValueString()
+		}
+	}
+
+	// If the member ID is still unresolved and the membership is for a user,
+	// try reading the email directly from the configuration. The plan may mark
+	// deeply nested Optional+Computed attributes as unknown during Create,
+	// which prevents the plan-based extraction above from finding the email.
+	if (data.Id.IsNull() || data.Id.IsUnknown() || data.Id.ValueString() == "") && membershipType == "user" {
+		emailPath := path.Root("membership").AtName("user_team_membership").AtName("user").AtName("email")
+		var configEmail types.String
+		configDiags := req.Config.GetAttribute(ctx, emailPath, &configEmail)
+		if !configDiags.HasError() && !configEmail.IsNull() && !configEmail.IsUnknown() && configEmail.ValueString() != "" {
+			tflog.Info(ctx, fmt.Sprintf("Resolving member ID from config email: %s", configEmail.ValueString()))
+			orgMember, err := r.client.GetOrgMembershipV3ByEmail(data.OrganizationId.ValueString(), configEmail.ValueString())
+			if err != nil {
+				resp.Diagnostics.AddError("", err.Error())
+				return
+			}
+			data.Id = types.StringValue(orgMember.ID)
+		}
+	}
+
+	if membershipType == "" {
+		membershipType = "service_account"
 	}
 
 	teamPermissions, diag := r.getTeamPermissions(ctx, data)
@@ -241,16 +275,69 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		return
 	}
 
-	if len(teamPermissions) > 0 {
-		_, err := r.client.GrantOrganizationTeamMemberPermissions(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString(), teamPermissions)
+	// Add member to team first (v3 requires membership before setting permissions)
+	orgId := data.OrganizationId.ValueString()
+	teamId := data.TeamID.ValueString()
+	memberId := data.Id.ValueString()
+
+	if memberId == "" {
+		resp.Diagnostics.AddError("",
+			fmt.Sprintf("member ID is empty: provide a valid 'id' or 'email' so the member can be resolved "+
+				"(id null=%v unknown=%v, membershipType=%q)",
+				data.Id.IsNull(), data.Id.IsUnknown(), membershipType))
+		return
+	}
+
+	if membershipType == "user" {
+		err := r.client.AddUserToTeam(orgId, teamId, memberId)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+	} else {
+		err := r.client.AddServiceAccountToTeam(orgId, teamId, memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 	}
 
+	// Write team permissions via v3 endpoints
+	if membershipType == "user" {
+		_, err := r.client.PutUserTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+	} else {
+		_, err := r.client.PutServiceAccountTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
+	}
+
+	// Read back to populate state
+	member, err := r.client.GetTeamMembershipV3(orgId, teamId, memberId)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
+	data.TeamID = types.StringValue(teamId)
+	data.OrganizationId = types.StringValue(orgId)
+
+	// Fetch team name
+	team, err := r.client.GetOrganizationTeam(orgId, teamId)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+	data.TeamName = types.StringValue(team.Name)
+
 	// Data value setting
-	data = r.buildData(data, &response, teamPermissions)
+	data = r.buildDataFromV3(data, &member, permissions)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -268,23 +355,25 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
-	response, err := r.client.GetOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
+	member, err := r.client.GetTeamMembershipV3(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
+
+	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
 
 	teamPermissions, diag := r.getTeamPermissions(ctx, data)
 	if diag.HasError() {
 		resp.Diagnostics.Append(diag...)
 		return
 	}
-	teamPermissions = MergeSlices(teamPermissions, response.TeamPermissions, func(p string) string {
+	teamPermissions = MergeSlices(teamPermissions, permissions, func(p string) string {
 		return p
 	})
 
 	// Data value setting
-	data = r.buildData(data, &response, teamPermissions)
+	data = r.buildDataFromV3(data, &member, teamPermissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -310,34 +399,37 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 		return
 	}
 
-	response, err := r.client.UpdateOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
-	if err != nil {
-		if strings.Contains(err.Error(), "409") {
-			response, err = r.client.GetOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
-			if err != nil {
-				resp.Diagnostics.AddError("", err.Error())
-				return
-			}
-		} else {
-			resp.Diagnostics.AddError("", err.Error())
-			return
-		}
-	}
+	orgId := data.OrganizationId.ValueString()
+	teamId := data.TeamID.ValueString()
+	memberId := data.Id.ValueString()
 
-	if len(teamPermissions) > 0 {
-		teamPermissionsResponse, err := r.client.UpdateOrganizationTeamMemberPermissions(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString(), teamPermissions)
+	// Write team permissions via v3 endpoints
+	membershipType := data.MembershipType.ValueString()
+	if membershipType == "user" {
+		_, err := r.client.PutUserTeamPermissions(orgId, teamId, memberId, teamPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
-
-		teamPermissions = MergeSlices(teamPermissions, teamPermissionsResponse.UpdatedPermissions, func(p string) string {
-			return p
-		})
+	} else {
+		_, err := r.client.PutServiceAccountTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
 	}
 
+	// Read back to populate state
+	member, err := r.client.GetTeamMembershipV3(orgId, teamId, memberId)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
+
 	// Data value setting
-	data = r.buildData(data, &response, teamPermissions)
+	data = r.buildDataFromV3(data, &member, permissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -353,28 +445,26 @@ func (r *OrganizationTeamMembershipResource) Delete(ctx context.Context, req res
 		return
 	}
 
-	// Delete API call logic
-	// Remove a member (user, service account) from a team in an organization, or only revoke the passed-in permissions if any
+	// Delete API call logic — remove member from team
 	tflog.Info(ctx, "Deleting OrganizationTeamMembership resource.")
 
-	teamPermissions, diag := r.getTeamPermissions(ctx, data)
-	if diag.HasError() {
-		resp.Diagnostics.Append(diag...)
-		return
-	}
+	orgId := data.OrganizationId.ValueString()
+	teamId := data.TeamID.ValueString()
+	memberId := data.Id.ValueString()
 
-	if len(teamPermissions) > 0 {
-		_, err := r.client.RevokeOrganizationTeamMemberPermissions(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString(), teamPermissions)
+	membershipType := data.MembershipType.ValueString()
+	if membershipType == "user" {
+		err := r.client.RemoveUserFromTeam(orgId, teamId, memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
-	}
-
-	err := r.client.DeleteOrganizationTeamMembership(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
-	if err != nil {
-		resp.Diagnostics.AddError("", err.Error())
-		return
+	} else {
+		err := r.client.RemoveServiceAccountFromTeam(orgId, teamId, memberId)
+		if err != nil {
+			resp.Diagnostics.AddError("", err.Error())
+			return
+		}
 	}
 }
 
@@ -389,9 +479,18 @@ func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, re
 		return
 	}
 
-	// Read API call logic
+	// Read API call logic via v3
 	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
-	response, err := r.client.GetOrganizationTeamMembership(idParts[0], idParts[1], idParts[2])
+	member, err := r.client.GetTeamMembershipV3(idParts[0], idParts[1], idParts[2])
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
+	}
+
+	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
+
+	// Fetch team name
+	team, err := r.client.GetOrganizationTeam(idParts[0], idParts[1])
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -399,7 +498,10 @@ func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, re
 
 	// Data value setting
 	var data resource_organization_team_membership.OrganizationTeamMembershipModel
-	data = r.buildData(data, &response, nil)
+	data.TeamID = types.StringValue(idParts[1])
+	data.TeamName = types.StringValue(team.Name)
+	data.OrganizationId = types.StringValue(idParts[0])
+	data = r.buildDataFromV3(data, &member, permissions)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
