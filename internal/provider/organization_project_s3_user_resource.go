@@ -10,11 +10,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_s3_user"
 )
 
 var _ resource.Resource = (*ProjectS3UserResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectS3UserResource)(nil)
+var _ resource.ResourceWithUpgradeState = (*ProjectS3UserResource)(nil)
 
 func NewProjectS3UserResource() resource.Resource {
 	return &ProjectS3UserResource{}
@@ -29,7 +31,13 @@ func (r *ProjectS3UserResource) Metadata(ctx context.Context, req resource.Metad
 }
 
 func (r *ProjectS3UserResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_organization_project_s3_user.OrganizationProjectS3UserResourceSchema(ctx)
+	resp.Schema = resource_organization_project_s3_user.OrganizationProjectS3UserResourceSchemaFull(ctx)
+}
+
+func (r *ProjectS3UserResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: compat.OrgIdStateUpgrader(),
+	}
 }
 
 func (r *ProjectS3UserResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -52,7 +60,7 @@ func (r *ProjectS3UserResource) Configure(_ context.Context, req resource.Config
 }
 
 func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_organization_project_s3_user.OrganizationProjectS3UserModel
+	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -61,12 +69,14 @@ func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateR
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Create API call logic
 	tflog.Info(ctx, "Creating ProjectS3User resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", orgId.ValueString()))
 
 	// Is the organization active?
-	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
+	org_response, err := r.client.GetOrganization(orgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -74,24 +84,25 @@ func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateR
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create ProjectS3User in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrgId.ValueString()))
+				orgId.ValueString()))
 		return
 	}
 
-	response, err := r.client.CreateProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Name.ValueString(), data.Description.ValueString())
+	response, err := r.client.CreateProjectS3User(orgId.ValueString(), data.ProjectId.ValueString(), data.Name.ValueString(), data.Description.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
 	data.Id = types.StringValue(response.ID)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectS3UserResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_organization_project_s3_user.OrganizationProjectS3UserModel
+	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -100,9 +111,11 @@ func (r *ProjectS3UserResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Read API call logic
 	tflog.Info(ctx, "Reading ProjectS3User resource.")
-	response, err := r.client.GetProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetProjectS3User(orgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -110,13 +123,14 @@ func (r *ProjectS3UserResource) Read(ctx context.Context, req resource.ReadReque
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectS3UserResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_organization_project_s3_user.OrganizationProjectS3UserModel
+	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -126,10 +140,12 @@ func (r *ProjectS3UserResource) Update(ctx context.Context, req resource.UpdateR
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Update API call logic
 	tflog.Info(ctx, "Updating ProjectS3User resource.")
 
-	response, err := r.client.UpdateProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString())
+	response, err := r.client.UpdateProjectS3User(orgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -137,13 +153,14 @@ func (r *ProjectS3UserResource) Update(ctx context.Context, req resource.UpdateR
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectS3UserResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_organization_project_s3_user.OrganizationProjectS3UserModel
+	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -152,9 +169,11 @@ func (r *ProjectS3UserResource) Delete(ctx context.Context, req resource.DeleteR
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting ProjectS3User resource.")
-	err := r.client.DeleteProjectS3User(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteProjectS3User(orgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -180,11 +199,11 @@ func (r *ProjectS3UserResource) ImportState(ctx context.Context, req resource.Im
 		return
 	}
 
-	var data resource_organization_project_s3_user.OrganizationProjectS3UserModel
+	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
 	data.ProjectId = types.StringValue(idParts[1])
-	data.OrgId = types.StringValue(idParts[0])
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(idParts[0])
 	data.Description = types.StringValue(response.Description)
 	data.Name = types.StringValue(response.Name)
 

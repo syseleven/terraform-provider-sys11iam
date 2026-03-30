@@ -11,12 +11,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:            true,
@@ -24,8 +26,10 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 				MarkdownDescription: "The unique identifier of the member(user, service account) in the project.",
 			},
 			"org_id": schema.StringAttribute{
-				Required: true,
+				Optional: true,
+				Computed: true,
 			},
+			"organization_id": compat.DeprecatedOrganizationIdAttribute(),
 			"project_id": schema.StringAttribute{
 				Required: true,
 				Validators: []validator.String{
@@ -127,6 +131,7 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 type OrganizationProjectMembershipModel struct {
 	Id             types.String     `tfsdk:"id"`
 	OrgId          types.String     `tfsdk:"org_id"`
+	OrganizationId types.String     `tfsdk:"organization_id"`
 	ProjectId      types.String     `tfsdk:"project_id"`
 	ProjectName    types.String     `tfsdk:"project_name"`
 	Membership     *MembershipValue `tfsdk:"membership"`

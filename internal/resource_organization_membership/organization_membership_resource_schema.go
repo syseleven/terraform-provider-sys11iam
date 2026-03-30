@@ -11,12 +11,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional: true,
@@ -26,6 +28,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 				Optional: true,
 				Computed: true,
 			},
+			"organization_id": compat.DeprecatedOrganizationIdAttribute(),
 			"membership": schema.SingleNestedAttribute{
 				Validators: []validator.Object{
 					objectvalidator.AtLeastOneOf(path.MatchRelative().AtName("user_membership"), path.MatchRelative().AtName("service_account_membership")),
@@ -134,6 +137,7 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 type OrganizationMembershipModel struct {
 	Id             types.String          `tfsdk:"id"`
 	OrgId          types.String          `tfsdk:"org_id"`
+	OrganizationId types.String          `tfsdk:"organization_id"`
 	Membership     basetypes.ObjectValue `tfsdk:"membership"`
 }
 

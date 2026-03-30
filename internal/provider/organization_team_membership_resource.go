@@ -13,11 +13,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_team_membership"
 )
 
 var _ resource.Resource = (*OrganizationTeamMembershipResource)(nil)
 var _ resource.ResourceWithConfigure = (*OrganizationTeamMembershipResource)(nil)
+var _ resource.ResourceWithUpgradeState = (*OrganizationTeamMembershipResource)(nil)
+var _ resource.ResourceWithValidateConfig = (*OrganizationTeamMembershipResource)(nil)
 
 func NewOrganizationTeamMembershipResource() resource.Resource {
 	return &OrganizationTeamMembershipResource{}
@@ -52,6 +55,16 @@ func (r *OrganizationTeamMembershipResource) Configure(_ context.Context, req re
 	}
 
 	r.client = client
+}
+
+func (r *OrganizationTeamMembershipResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	compat.ValidateOrgId(ctx, req.Config, resp)
+}
+
+func (r *OrganizationTeamMembershipResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: compat.OrgIdStateUpgrader(),
+	}
 }
 
 // buildDataFromV3 populates the Terraform model from the v3 team membership list entry.
@@ -180,9 +193,11 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		}
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationTeamMembership resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", orgId.ValueString()))
 
 	var membership basetypes.ObjectValue
 	var diag diag.Diagnostics
@@ -221,7 +236,7 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 				if !emailAttr.IsNull() && !emailAttr.IsUnknown() {
 					email := emailAttr.(basetypes.StringValue).ValueString()
 					if email != "" {
-						orgMember, err := r.client.GetOrgMembershipV3ByEmail(data.OrganizationId.ValueString(), email)
+						orgMember, err := r.client.GetOrgMembershipV3ByEmail(orgId.ValueString(), email)
 						if err != nil {
 							resp.Diagnostics.AddError("", err.Error())
 							return
@@ -256,7 +271,7 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 		configDiags := req.Config.GetAttribute(ctx, emailPath, &configEmail)
 		if !configDiags.HasError() && !configEmail.IsNull() && !configEmail.IsUnknown() && configEmail.ValueString() != "" {
 			tflog.Info(ctx, fmt.Sprintf("Resolving member ID from config email: %s", configEmail.ValueString()))
-			orgMember, err := r.client.GetOrgMembershipV3ByEmail(data.OrganizationId.ValueString(), configEmail.ValueString())
+			orgMember, err := r.client.GetOrgMembershipV3ByEmail(orgId.ValueString(), configEmail.ValueString())
 			if err != nil {
 				resp.Diagnostics.AddError("", err.Error())
 				return
@@ -276,7 +291,6 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 	}
 
 	// Add member to team first (v3 requires membership before setting permissions)
-	orgId := data.OrganizationId.ValueString()
 	teamId := data.TeamID.ValueString()
 	memberId := data.Id.ValueString()
 
@@ -289,13 +303,13 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 	}
 
 	if membershipType == "user" {
-		err := r.client.AddUserToTeam(orgId, teamId, memberId)
+		err := r.client.AddUserToTeam(orgId.ValueString(), teamId, memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 	} else {
-		err := r.client.AddServiceAccountToTeam(orgId, teamId, memberId)
+		err := r.client.AddServiceAccountToTeam(orgId.ValueString(), teamId, memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -304,13 +318,13 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 
 	// Write team permissions via v3 endpoints
 	if membershipType == "user" {
-		_, err := r.client.PutUserTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		_, err := r.client.PutUserTeamPermissions(orgId.ValueString(), teamId, memberId, teamPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 	} else {
-		_, err := r.client.PutServiceAccountTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		_, err := r.client.PutServiceAccountTeamPermissions(orgId.ValueString(), teamId, memberId, teamPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -318,7 +332,7 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 	}
 
 	// Read back to populate state
-	member, err := r.client.GetTeamMembershipV3(orgId, teamId, memberId)
+	member, err := r.client.GetTeamMembershipV3(orgId.ValueString(), teamId, memberId)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -326,10 +340,10 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 
 	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
 	data.TeamID = types.StringValue(teamId)
-	data.OrganizationId = types.StringValue(orgId)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Fetch team name
-	team, err := r.client.GetOrganizationTeam(orgId, teamId)
+	team, err := r.client.GetOrganizationTeam(orgId.ValueString(), teamId)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -353,9 +367,11 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeamMembership resource.")
-	member, err := r.client.GetTeamMembershipV3(data.OrganizationId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
+	member, err := r.client.GetTeamMembershipV3(orgId.ValueString(), data.TeamID.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -375,6 +391,8 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 	// Data value setting
 	data = r.buildDataFromV3(data, &member, teamPermissions)
 
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
+
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -390,6 +408,8 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeamMembership resource.")
 
@@ -399,20 +419,19 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 		return
 	}
 
-	orgId := data.OrganizationId.ValueString()
 	teamId := data.TeamID.ValueString()
 	memberId := data.Id.ValueString()
 
 	// Write team permissions via v3 endpoints
 	membershipType := data.MembershipType.ValueString()
 	if membershipType == "user" {
-		_, err := r.client.PutUserTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		_, err := r.client.PutUserTeamPermissions(orgId.ValueString(), teamId, memberId, teamPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 	} else {
-		_, err := r.client.PutServiceAccountTeamPermissions(orgId, teamId, memberId, teamPermissions)
+		_, err := r.client.PutServiceAccountTeamPermissions(orgId.ValueString(), teamId, memberId, teamPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -420,7 +439,7 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 	}
 
 	// Read back to populate state
-	member, err := r.client.GetTeamMembershipV3(orgId, teamId, memberId)
+	member, err := r.client.GetTeamMembershipV3(orgId.ValueString(), teamId, memberId)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -430,6 +449,8 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 
 	// Data value setting
 	data = r.buildDataFromV3(data, &member, permissions)
+
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -448,19 +469,19 @@ func (r *OrganizationTeamMembershipResource) Delete(ctx context.Context, req res
 	// Delete API call logic — remove member from team
 	tflog.Info(ctx, "Deleting OrganizationTeamMembership resource.")
 
-	orgId := data.OrganizationId.ValueString()
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
 	teamId := data.TeamID.ValueString()
 	memberId := data.Id.ValueString()
 
 	membershipType := data.MembershipType.ValueString()
 	if membershipType == "user" {
-		err := r.client.RemoveUserFromTeam(orgId, teamId, memberId)
+		err := r.client.RemoveUserFromTeam(orgId.ValueString(), teamId, memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
 	} else {
-		err := r.client.RemoveServiceAccountFromTeam(orgId, teamId, memberId)
+		err := r.client.RemoveServiceAccountFromTeam(orgId.ValueString(), teamId, memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -500,7 +521,7 @@ func (r *OrganizationTeamMembershipResource) ImportState(ctx context.Context, re
 	var data resource_organization_team_membership.OrganizationTeamMembershipModel
 	data.TeamID = types.StringValue(idParts[1])
 	data.TeamName = types.StringValue(team.Name)
-	data.OrganizationId = types.StringValue(idParts[0])
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(idParts[0])
 	data = r.buildDataFromV3(data, &member, permissions)
 
 	// Save updated data into Terraform state
