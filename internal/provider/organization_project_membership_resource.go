@@ -11,11 +11,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_membership"
 )
 
 var _ resource.Resource = (*ProjectMembershipResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectMembershipResource)(nil)
+var _ resource.ResourceWithUpgradeState = (*ProjectMembershipResource)(nil)
+var _ resource.ResourceWithValidateConfig = (*ProjectMembershipResource)(nil)
 
 func NewProjectMembershipResource() resource.Resource {
 	return &ProjectMembershipResource{}
@@ -31,6 +34,12 @@ func (r *ProjectMembershipResource) Metadata(ctx context.Context, req resource.M
 
 func (r *ProjectMembershipResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = resource_organization_project_membership.OrganizationProjectMembershipResourceSchema(ctx)
+}
+
+func (r *ProjectMembershipResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: compat.OrgIdStateUpgrader(),
+	}
 }
 
 func (r *ProjectMembershipResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -50,6 +59,10 @@ func (r *ProjectMembershipResource) Configure(_ context.Context, req resource.Co
 	}
 
 	r.client = client
+}
+
+func (r *ProjectMembershipResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	compat.ValidateOrgId(ctx, req.Config, resp)
 }
 
 // buildDataFromV3 populates the Terraform model from the v3 project membership list entry.
@@ -95,10 +108,13 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating ProjectMembership resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
+
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", orgId.ValueString()))
 
 	// Is the organization active?
-	org_response, err := r.client.GetOrganization(data.OrgId.ValueString())
+	org_response, err := r.client.GetOrganization(orgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -106,7 +122,7 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create ProjectMembership in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrgId.ValueString()))
+				orgId.ValueString()))
 		return
 	}
 
@@ -125,14 +141,14 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 		// Is the e-mail already a member?
 		email := data.Membership.UserMembership.User.Email.ValueString()
 
-		orgMember, err := r.client.GetOrgMembershipV3ByEmail(data.OrgId.ValueString(), email)
+		orgMember, err := r.client.GetOrgMembershipV3ByEmail(orgId.ValueString(), email)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				// Is the e-mail at least invited?
-				_, err := r.client.GetOrganizationInvitationByEmail(data.OrgId.ValueString(), email)
+				_, err := r.client.GetOrganizationInvitationByEmail(orgId.ValueString(), email)
 				if err != nil {
 					// Invite the e-mail
-					_, err := r.client.CreateOrganizationInvitation(data.OrgId.ValueString(), email, permissions)
+					_, err := r.client.CreateOrganizationInvitation(orgId.ValueString(), email, permissions)
 					if err != nil {
 						resp.Diagnostics.AddError("", err.Error())
 						return
@@ -141,7 +157,7 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 					// The email is invited, but has to be activated manually
 					resp.Diagnostics.AddError("InvitationNotAcceptedError",
 						fmt.Sprintf("Can not create ProjectMembership in project with id %s in organization with id %s as the user with the e-mail %s has not yet accepted the invitation. Invitation accepting is a manual step, please contact the invited user.",
-							data.OrgId.ValueString(), data.ProjectId.ValueString(), email))
+							orgId.ValueString(), data.ProjectId.ValueString(), email))
 					return
 				}
 			} else {
@@ -162,7 +178,7 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 		membershipType = data.Membership.ServiceAccountMembership.MembershipType.ValueString()
 
 		// Verify the service account exists in the org
-		_, err = r.client.GetOrgMembershipV3(data.OrgId.ValueString(), data.Membership.ServiceAccountMembership.ServiceAccount.Id.ValueString())
+		_, err = r.client.GetOrgMembershipV3(orgId.ValueString(), data.Membership.ServiceAccountMembership.ServiceAccount.Id.ValueString())
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -171,14 +187,13 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Write permissions via v3 endpoints
-	orgId := data.OrgId.ValueString()
 	projectId := data.ProjectId.ValueString()
 	memberId := data.Id.ValueString()
 
 	if membershipType == "user" {
-		_, err = r.client.PutUserProjectPermissions(orgId, projectId, memberId, permissions)
+		_, err = r.client.PutUserProjectPermissions(orgId.ValueString(), projectId, memberId, permissions)
 	} else if membershipType == "service_account" {
-		_, err = r.client.PutServiceAccountProjectPermissions(orgId, projectId, memberId, permissions)
+		_, err = r.client.PutServiceAccountProjectPermissions(orgId.ValueString(), projectId, memberId, permissions)
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -186,7 +201,7 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	// Read back to populate state
-	member, err := r.client.GetProjectMembershipV3(orgId, projectId, memberId)
+	member, err := r.client.GetProjectMembershipV3(orgId.ValueString(), projectId, memberId)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -195,6 +210,7 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 	// Data value setting
 	data.ProjectId = types.StringValue(projectId)
 	r.buildDataFromV3(&data, &member)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -212,7 +228,10 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 
 	// Read API call logic
 	tflog.Info(ctx, "Reading ProjectMembership resource.")
-	member, err := r.client.GetProjectMembershipV3(data.OrgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
+
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
+	member, err := r.client.GetProjectMembershipV3(orgId.ValueString(), data.ProjectId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -220,6 +239,7 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 
 	// Data value setting
 	r.buildDataFromV3(&data, &member)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -238,6 +258,8 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 
 	// Update API call logic
 	tflog.Info(ctx, "Updating ProjectMembership resource.")
+
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
 
 	var permissions []string
 	var membershipType string
@@ -258,15 +280,14 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Write permissions via v3 endpoints
-	orgId := data.OrgId.ValueString()
 	projectId := data.ProjectId.ValueString()
 	memberId := data.Id.ValueString()
 
 	var err error
 	if membershipType == "user" {
-		_, err = r.client.PutUserProjectPermissions(orgId, projectId, memberId, permissions)
+		_, err = r.client.PutUserProjectPermissions(orgId.ValueString(), projectId, memberId, permissions)
 	} else if membershipType == "service_account" {
-		_, err = r.client.PutServiceAccountProjectPermissions(orgId, projectId, memberId, permissions)
+		_, err = r.client.PutServiceAccountProjectPermissions(orgId.ValueString(), projectId, memberId, permissions)
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -274,7 +295,7 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	// Read back to populate state
-	member, err := r.client.GetProjectMembershipV3(orgId, projectId, memberId)
+	member, err := r.client.GetProjectMembershipV3(orgId.ValueString(), projectId, memberId)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -283,6 +304,7 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 	// Data value setting
 	data.ProjectId = types.StringValue(projectId)
 	r.buildDataFromV3(&data, &member)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -301,15 +323,16 @@ func (r *ProjectMembershipResource) Delete(ctx context.Context, req resource.Del
 	// Delete API call logic — PUT empty permissions
 	tflog.Info(ctx, "Deleting ProjectMembership resource.")
 
-	orgId := data.OrgId.ValueString()
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	projectId := data.ProjectId.ValueString()
 	memberId := data.Id.ValueString()
 
 	var err error
 	if data.Membership.UserMembership != nil {
-		_, err = r.client.PutUserProjectPermissions(orgId, projectId, memberId, []string{})
+		_, err = r.client.PutUserProjectPermissions(orgId.ValueString(), projectId, memberId, []string{})
 	} else if data.Membership.ServiceAccountMembership != nil {
-		_, err = r.client.PutServiceAccountProjectPermissions(orgId, projectId, memberId, []string{})
+		_, err = r.client.PutServiceAccountProjectPermissions(orgId.ValueString(), projectId, memberId, []string{})
 	}
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
@@ -341,7 +364,7 @@ func (r *ProjectMembershipResource) ImportState(ctx context.Context, req resourc
 
 	// Data value setting
 	data.ProjectId = types.StringValue(idParts[1])
-	data.OrgId = types.StringValue(idParts[0])
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(idParts[0])
 
 	// Fetch project to populate project_name (not included in membership response)
 	project, err := r.client.GetProject(idParts[0], idParts[1])

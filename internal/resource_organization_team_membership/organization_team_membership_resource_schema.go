@@ -8,19 +8,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema {
 	return schema.Schema{
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"team_id": schema.StringAttribute{
 				Required: true,
 			},
 			"org_id": schema.StringAttribute{
-				Required: true,
+				Optional: true,
+				Computed: true,
 			},
+			"organization_id": compat.DeprecatedOrganizationIdAttribute(),
 			"id": schema.StringAttribute{
 				Optional:    true,
 				Computed:    true,
@@ -92,7 +96,8 @@ type OrganizationTeamMembershipModel struct {
 	Id             types.String          `tfsdk:"id"`
 	Membership     basetypes.ObjectValue `tfsdk:"membership"`
 	MembershipType types.String          `tfsdk:"membership_type"`
-	OrganizationId types.String          `tfsdk:"org_id"`
+	OrgId          types.String          `tfsdk:"org_id"`
+	OrganizationId types.String          `tfsdk:"organization_id"`
 	TeamID         types.String          `tfsdk:"team_id"`
 	TeamName       types.String          `tfsdk:"team_name"`
 }

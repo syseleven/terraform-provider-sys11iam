@@ -9,11 +9,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_s3_user_key"
 )
 
 var _ resource.Resource = (*ProjectS3UserKeyResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectS3UserKeyResource)(nil)
+var _ resource.ResourceWithUpgradeState = (*ProjectS3UserKeyResource)(nil)
+var _ resource.ResourceWithValidateConfig = (*ProjectS3UserKeyResource)(nil)
 
 func NewProjectS3UserKeyResource() resource.Resource {
 	return &ProjectS3UserKeyResource{}
@@ -28,7 +31,13 @@ func (r *ProjectS3UserKeyResource) Metadata(ctx context.Context, req resource.Me
 }
 
 func (r *ProjectS3UserKeyResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyResourceSchema(ctx)
+	resp.Schema = resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyResourceSchemaFull(ctx)
+}
+
+func (r *ProjectS3UserKeyResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: compat.OrgIdStateUpgrader(),
+	}
 }
 
 func (r *ProjectS3UserKeyResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -50,8 +59,12 @@ func (r *ProjectS3UserKeyResource) Configure(_ context.Context, req resource.Con
 	r.client = client
 }
 
+func (r *ProjectS3UserKeyResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	compat.ValidateOrgId(ctx, req.Config, resp)
+}
+
 func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModelFull
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -60,11 +73,13 @@ func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Create the S3User key
 	tflog.Info(ctx, "Creating S3User key Resource")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrganizationId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", orgId.ValueString()))
 
-	org_response, err := r.client.GetOrganization(data.OrganizationId.ValueString())
+	org_response, err := r.client.GetOrganization(orgId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -72,11 +87,11 @@ func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.Crea
 	if !org_response.IsActive {
 		resp.Diagnostics.AddError("OrganizationNotActiveError",
 			fmt.Sprintf("Can not create ProjectS3User in organization with id %s as it is not active. Organization activation is a manual step, please contact an IAM administrator.",
-				data.OrganizationId.ValueString()))
+				orgId.ValueString()))
 		return
 	}
 
-	response, err := r.client.CreateProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString())
+	response, err := r.client.CreateProjectS3UserKey(orgId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -85,12 +100,13 @@ func (r *ProjectS3UserKeyResource) Create(ctx context.Context, req resource.Crea
 	accessKey := types.StringValue(response.AccessKey)
 	data.AccessKey = accessKey
 	data.SecretKey = types.StringValue(response.SecretKey)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *ProjectS3UserKeyResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModelFull
 
 	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -99,9 +115,11 @@ func (r *ProjectS3UserKeyResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Read API call logic
 	tflog.Info(ctx, "Reading ProjectS3User resource.")
-	response, err := r.client.GetProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
+	response, err := r.client.GetProjectS3UserKey(orgId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -110,6 +128,7 @@ func (r *ProjectS3UserKeyResource) Read(ctx context.Context, req resource.ReadRe
 	// Data value setting
 	data.AccessKey = types.StringValue(response.AccessKey)
 	data.SecretKey = types.StringValue(response.SecretKey)
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -134,9 +153,9 @@ func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource
 		return
 	}
 
-	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModelFull
 
-	data.OrganizationId = types.StringValue(idParts[0])
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(idParts[0])
 	data.ProjectId = types.StringValue(idParts[1])
 	data.S3UserId = types.StringValue(idParts[2])
 	data.AccessKey = types.StringValue(response.AccessKey)
@@ -146,7 +165,7 @@ func (r *ProjectS3UserKeyResource) ImportState(ctx context.Context, req resource
 }
 
 func (r *ProjectS3UserKeyResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModelFull
 
 	// Read Terraform state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
@@ -155,10 +174,12 @@ func (r *ProjectS3UserKeyResource) Delete(ctx context.Context, req resource.Dele
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Delete the S3User key
 	tflog.Info(ctx, "Deleting S3User key Resource")
 
-	err := r.client.DeleteProjectS3UserKey(data.OrganizationId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
+	err := r.client.DeleteProjectS3UserKey(orgId.ValueString(), data.ProjectId.ValueString(), data.S3UserId.ValueString(), data.AccessKey.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -166,7 +187,7 @@ func (r *ProjectS3UserKeyResource) Delete(ctx context.Context, req resource.Dele
 }
 
 func (r *ProjectS3UserKeyResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModel
+	var data resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModelFull
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -175,8 +196,12 @@ func (r *ProjectS3UserKeyResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Update API call logic
 	tflog.Info(ctx, "ProjectS3UserKey can't be updated. Passing in unchanged state.")
+
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

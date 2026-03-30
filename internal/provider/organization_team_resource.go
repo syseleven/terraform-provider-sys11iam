@@ -14,11 +14,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_team"
 )
 
 var _ resource.Resource = (*OrganizationTeamResource)(nil)
 var _ resource.ResourceWithConfigure = (*OrganizationTeamResource)(nil)
+var _ resource.ResourceWithUpgradeState = (*OrganizationTeamResource)(nil)
+var _ resource.ResourceWithValidateConfig = (*OrganizationTeamResource)(nil)
 
 var projectAttrType = map[string]attr.Type{
 	"id": types.StringType,
@@ -46,6 +49,12 @@ func (r *OrganizationTeamResource) Schema(ctx context.Context, req resource.Sche
 	resp.Schema = resource_organization_team.OrganizationTeamResourceSchemaFull(ctx)
 }
 
+func (r *OrganizationTeamResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: compat.OrgIdStateUpgrader(),
+	}
+}
+
 func (r *OrganizationTeamResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
@@ -63,6 +72,10 @@ func (r *OrganizationTeamResource) Configure(_ context.Context, req resource.Con
 	}
 
 	r.client = client
+}
+
+func (r *OrganizationTeamResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	compat.ValidateOrgId(ctx, req.Config, resp)
 }
 
 func (r *OrganizationTeamResource) processProjectPermissions(
@@ -226,9 +239,12 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
+	// Resolve org_id / organization_id
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Create API call logic
 	tflog.Info(ctx, "Creating OrganizationTeam resource.")
-	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", data.OrgId.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", orgId.ValueString()))
 
 	tags := make([]string, 0, len(data.Tags.Elements()))
 	diags := data.Tags.ElementsAs(ctx, &tags, false)
@@ -237,7 +253,7 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	response, err := r.client.CreateOrganizationTeam(data.OrgId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), tags)
+	response, err := r.client.CreateOrganizationTeam(orgId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), tags)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -255,7 +271,7 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 			return
 		}
 
-		orgPermissionsResponse, err := r.client.CreateOrganizationTeamPermission(data.OrgId.ValueString(), response.ID, orgPermissions)
+		orgPermissionsResponse, err := r.client.CreateOrganizationTeamPermission(orgId.ValueString(), response.ID, orgPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -280,7 +296,7 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		updatedProjects, errors := r.processProjectPermissions(
 			ctx,
 			projects,
-			data.OrgId.ValueString(),
+			orgId.ValueString(),
 			r.client.CreateProjectTeamPermissions,
 			response.ID,
 			MaxWorkers,
@@ -305,6 +321,9 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+
+	// Sync org_id and organization_id before saving state
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -350,22 +369,25 @@ func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
+	// Resolve org_id / organization_id
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Read API call logic
 	tflog.Info(ctx, "Reading OrganizationTeam resource.")
-	response, err := r.client.GetOrganizationTeam(data.OrgId.ValueString(), data.Id.ValueString())
+	response, err := r.client.GetOrganizationTeam(orgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 
-	orgPermissionsResponse, err := r.client.GetOrganizationTeamPermissions(data.OrgId.ValueString(), data.Id.ValueString())
+	orgPermissionsResponse, err := r.client.GetOrganizationTeamPermissions(orgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
 	orgPermissions := iam.FilterActiveDirectPermissions(orgPermissionsResponse)
 
-	teamProjectPermissionsResponse, err := r.readProjectPermissions(ctx, data.OrgId.ValueString(), data.Id.ValueString(), data.Projects)
+	teamProjectPermissionsResponse, err := r.readProjectPermissions(ctx, orgId.ValueString(), data.Id.ValueString(), data.Projects)
 	if err != nil {
 		resp.Diagnostics.AddError("", fmt.Sprintf("could not get TeamProjects: %s", err.Error()))
 		return
@@ -374,6 +396,9 @@ func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRe
 	// Data value setting
 	data, diags := r.buildData(ctx, data, &response, orgPermissions, teamProjectPermissionsResponse)
 	resp.Diagnostics.Append(diags...)
+
+	// Sync org_id and organization_id before saving state
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -390,6 +415,9 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
+	// Resolve org_id / organization_id
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeam resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
@@ -399,7 +427,7 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	response, err := r.client.UpdateOrganizationTeam(data.OrgId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
+	response, err := r.client.UpdateOrganizationTeam(orgId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -416,7 +444,7 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 			return
 		}
 
-		orgPermissionsResponse, err := r.client.UpdateOrganizationTeamPermission(data.OrgId.ValueString(), response.ID, orgPermissions)
+		orgPermissionsResponse, err := r.client.UpdateOrganizationTeamPermission(orgId.ValueString(), response.ID, orgPermissions)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
@@ -440,7 +468,7 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		updatedProjects, errors := r.processProjectPermissions(
 			ctx,
 			projects,
-			data.OrgId.ValueString(),
+			orgId.ValueString(),
 			r.client.UpdateProjectTeamPermissions,
 			response.ID,
 			MaxWorkers,
@@ -476,6 +504,9 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 	data.Description = types.StringValue(response.Description)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
+	// Sync org_id and organization_id before saving state
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
+
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -490,9 +521,12 @@ func (r *OrganizationTeamResource) Delete(ctx context.Context, req resource.Dele
 		return
 	}
 
+	// Resolve org_id / organization_id
+	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
+
 	// Delete API call logic
 	tflog.Info(ctx, "Deleting OrganizationTeam resource.")
-	err := r.client.DeleteOrganizationTeam(data.OrgId.ValueString(), data.Id.ValueString())
+	err := r.client.DeleteOrganizationTeam(orgId.ValueString(), data.Id.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
@@ -533,7 +567,7 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 	var data resource_organization_team.OrganizationTeamModelFull
 
 	// Data value setting
-	data.OrgId = types.StringValue(idParts[0])
+	data.OrgId, data.OrganizationId = compat.SyncOrgIds(idParts[0])
 	data, diags := r.buildData(ctx, data, &response, orgPermissions, teamProjectPermissionsResponse)
 	resp.Diagnostics.Append(diags...)
 

@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 )
 
 // OrganizationTeamResourceSchemaFull wraps the generated schema and adds
@@ -23,11 +24,17 @@ func OrganizationTeamResourceSchemaFull(ctx context.Context) schema.Schema {
 
 	// org_id must be required (generator marks path params as optional+computed)
 	s.Attributes["org_id"] = schema.StringAttribute{
-		Required: true,
+		Optional: true,
+		Computed: true,
 	}
 
 	// team_id is redundant with id — remove it
 	delete(s.Attributes, "team_id")
+
+	// Deprecated organization_id alias for backwards compatibility
+	s.Attributes["organization_id"] = compat.DeprecatedOrganizationIdAttribute()
+
+	s.Version = 1
 
 	// Organization-level team permissions (managed via /orgs/{org_id}/teams/{team_id}/permissions)
 	s.Attributes["organization_permissions"] = schema.ListAttribute{
@@ -83,6 +90,7 @@ type OrganizationTeamModelFull struct {
 	Id                      types.String        `tfsdk:"id"`
 	Name                    types.String        `tfsdk:"name"`
 	OrgId                   types.String        `tfsdk:"org_id"`
+	OrganizationId          types.String        `tfsdk:"organization_id"`
 	Tags                    types.List          `tfsdk:"tags"`
 	OrganizationPermissions types.List          `tfsdk:"organization_permissions"`
 	Projects                basetypes.ListValue `tfsdk:"projects"`
