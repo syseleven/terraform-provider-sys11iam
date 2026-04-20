@@ -76,11 +76,13 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := []string{}
+	if !data.Tags.IsNull() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 	response, err := r.client.CreateProject(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
@@ -147,11 +149,13 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// Update API call logic
 	tflog.Info(ctx, "Creating Project resource.")
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := []string{}
+	if !data.Tags.IsNull() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	_, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
