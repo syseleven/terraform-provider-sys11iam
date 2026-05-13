@@ -93,10 +93,9 @@ resource "sys11iam_organization_team" "testorganization_team" {
   organization_permissions = ["can_become_project_administrator_in_org"]
   org_id = data.sys11iam_organization.testorg.id
   
-  project = [
+  projects = [
     {
       id = sys11iam_organization_project.test_project[0].id
-      name = sys11iam_organization_project.test_project[0].name
       project_permissions = ["can_become_administrator_in_project"]
     }
   ]
@@ -125,7 +124,7 @@ resource "sys11iam_organization_team_membership" "testorganization_team_membersh
 }
 
 # Create an SysEleven IAM organization project S3User
-resource "sys11iam_organization_project_s3user" "test_project_s3user" {
+resource "sys11iam_organization_project_s3_user" "test_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "tests3user"
   description = "test s3user"
@@ -134,7 +133,7 @@ resource "sys11iam_organization_project_s3user" "test_project_s3user" {
 }
 
 # Create an SysEleven IAM organization project S3 User
-resource "sys11iam_organization_project_s3user" "test_terraform_project_s3user" {
+resource "sys11iam_organization_project_s3_user" "test_terraform_project_s3user" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   # count = 0
   name = "terraform-tests3user-new-name"
@@ -144,12 +143,11 @@ resource "sys11iam_organization_project_s3user" "test_terraform_project_s3user" 
 }
 
 # Create a SysEleven IAM organization project S3 User key
-resource "sys11iam_organization_project_s3user_key" "test_terraform_project_s3_user_key" {
+resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   # count = 0
-  s3_user_id = sys11iam_organization_project_s3user.test_terraform_project_s3user[0].id
+  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_project_s3user[0].id
   org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.test_project[0].id
 }
-
 

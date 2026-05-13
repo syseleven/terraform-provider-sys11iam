@@ -17,6 +17,7 @@ import (
 
 var _ resource.Resource = (*ProjectMembershipResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectMembershipResource)(nil)
+var _ resource.ResourceWithMoveState = (*ProjectMembershipResource)(nil)
 var _ resource.ResourceWithUpgradeState = (*ProjectMembershipResource)(nil)
 var _ resource.ResourceWithValidateConfig = (*ProjectMembershipResource)(nil)
 
@@ -39,6 +40,69 @@ func (r *ProjectMembershipResource) Schema(ctx context.Context, req resource.Sch
 func (r *ProjectMembershipResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	return map[int64]resource.StateUpgrader{
 		0: compat.OrgIdStateUpgrader(),
+	}
+}
+
+func (r *ProjectMembershipResource) MoveState(ctx context.Context) []resource.StateMover {
+	return []resource.StateMover{
+		compat.RawStateMover("sys11iam_project_membership", func(ctx context.Context, rawState compat.RawState, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+			orgId, organizationId, err := compat.RawOrgIDs(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read organization identifier: "+err.Error())
+				return
+			}
+
+			id, err := compat.RawString(rawState, "id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project membership id: "+err.Error())
+				return
+			}
+
+			email, err := compat.RawString(rawState, "email")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project membership email: "+err.Error())
+				return
+			}
+			if email.IsNull() || email.ValueString() == "" {
+				resp.Diagnostics.AddError(
+					"Unsupported project membership state",
+					"Cannot safely migrate sys11iam_project_membership state without an email value. This is likely a service account membership; import it as sys11iam_organization_project_membership instead.",
+				)
+				return
+			}
+
+			permissions, err := compat.RawStringList(ctx, rawState, "permissions")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project membership permissions: "+err.Error())
+				return
+			}
+
+			projectId, err := compat.RawString(rawState, "project_id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project id: "+err.Error())
+				return
+			}
+
+			data := resource_organization_project_membership.OrganizationProjectMembershipModel{
+				Id:             id,
+				OrgId:          orgId,
+				OrganizationId: organizationId,
+				ProjectId:      projectId,
+				ProjectName:    types.StringNull(),
+				Membership: &resource_organization_project_membership.MembershipValue{
+					UserMembership: &resource_organization_project_membership.UserMembershipValue{
+						MembershipType: types.StringValue("user"),
+						Permissions:    permissions,
+						User: &resource_organization_project_membership.UserValue{
+							Email: email,
+							Id:    id,
+						},
+					},
+				},
+			}
+
+			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
+		}),
 	}
 }
 
