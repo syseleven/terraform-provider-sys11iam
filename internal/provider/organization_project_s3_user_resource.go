@@ -16,6 +16,7 @@ import (
 
 var _ resource.Resource = (*ProjectS3UserResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectS3UserResource)(nil)
+var _ resource.ResourceWithMoveState = (*ProjectS3UserResource)(nil)
 var _ resource.ResourceWithUpgradeState = (*ProjectS3UserResource)(nil)
 
 func NewProjectS3UserResource() resource.Resource {
@@ -37,6 +38,59 @@ func (r *ProjectS3UserResource) Schema(ctx context.Context, req resource.SchemaR
 func (r *ProjectS3UserResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	return map[int64]resource.StateUpgrader{
 		0: compat.OrgIdStateUpgrader(),
+	}
+}
+
+func (r *ProjectS3UserResource) MoveState(ctx context.Context) []resource.StateMover {
+	return []resource.StateMover{
+		compat.RawStateMover("sys11iam_project_s3user", func(ctx context.Context, rawState compat.RawState, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+			orgId, organizationId, err := compat.RawOrgIDs(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read organization identifier: "+err.Error())
+				return
+			}
+
+			id, err := compat.RawString(rawState, "id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read S3 user id: "+err.Error())
+				return
+			}
+
+			description, err := compat.RawString(rawState, "description")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read S3 user description: "+err.Error())
+				return
+			}
+
+			name, err := compat.RawString(rawState, "name")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read S3 user name: "+err.Error())
+				return
+			}
+
+			projectId, err := compat.RawString(rawState, "project_id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project id: "+err.Error())
+				return
+			}
+
+			data := resource_organization_project_s3_user.OrganizationProjectS3UserModelFull{
+				Description: description,
+				Id:          id,
+				Keys: types.ListNull(resource_organization_project_s3_user.KeysType{
+					ObjectType: types.ObjectType{
+						AttrTypes: resource_organization_project_s3_user.KeysValue{}.AttributeTypes(ctx),
+					},
+				}),
+				Name:           name,
+				OrgId:          orgId,
+				OrganizationId: organizationId,
+				ProjectId:      projectId,
+				S3UserId:       id,
+			}
+
+			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
+		}),
 	}
 }
 

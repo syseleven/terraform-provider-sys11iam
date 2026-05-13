@@ -16,6 +16,7 @@ import (
 
 var _ resource.Resource = (*ProjectResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectResource)(nil)
+var _ resource.ResourceWithMoveState = (*ProjectResource)(nil)
 var _ resource.ResourceWithUpgradeState = (*ProjectResource)(nil)
 
 func NewProjectResource() resource.Resource {
@@ -37,6 +38,57 @@ func (r *ProjectResource) Schema(ctx context.Context, req resource.SchemaRequest
 func (r *ProjectResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	return map[int64]resource.StateUpgrader{
 		0: compat.OrgIdStateUpgrader(),
+	}
+}
+
+func (r *ProjectResource) MoveState(ctx context.Context) []resource.StateMover {
+	return []resource.StateMover{
+		compat.RawStateMover("sys11iam_project", func(ctx context.Context, rawState compat.RawState, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+			orgId, organizationId, err := compat.RawOrgIDs(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read organization identifier: "+err.Error())
+				return
+			}
+
+			id, err := compat.RawString(rawState, "id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project id: "+err.Error())
+				return
+			}
+
+			description, err := compat.RawString(rawState, "description")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project description: "+err.Error())
+				return
+			}
+
+			name, err := compat.RawString(rawState, "name")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project name: "+err.Error())
+				return
+			}
+
+			tags, err := compat.RawStringList(ctx, rawState, "tags")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project tags: "+err.Error())
+				return
+			}
+
+			data := resource_organization_project.OrganizationProjectModelFull{
+				CreatedAt:      types.StringNull(),
+				Description:    description,
+				Id:             id,
+				Name:           name,
+				OrgId:          orgId,
+				OrganizationId: organizationId,
+				ProjectId:      id,
+				Status:         types.StringNull(),
+				Tags:           tags,
+				UpdatedAt:      types.StringNull(),
+			}
+
+			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
+		}),
 	}
 }
 

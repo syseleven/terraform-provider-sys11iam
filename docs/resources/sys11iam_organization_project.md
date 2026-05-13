@@ -5,7 +5,7 @@ The Project Resource manages a SysEleven IAM project in an Organization.
 ## Example Usage
 
 ```hcl
-resource "sys11iam_project" "test_project" {
+resource "sys11iam_organization_project" "test_project" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "testproject"
   description = "testdescription"
@@ -16,7 +16,7 @@ resource "sys11iam_project" "test_project" {
 
 ## Argument Reference
 
-The following arguments are supported for the resource "sys11iam_project":
+The following arguments are supported for the resource "sys11iam_organization_project":
 
 * **`name`** - The name of the project.
 * **`description`** - The description of the project.
@@ -29,7 +29,7 @@ The following arguments are supported for the resource "sys11iam_project":
 To import an organization project, your configuration would look like the following:
 
 ```hcl
-resource "sys11iam_project" "test_project" {
+resource "sys11iam_organization_project" "test_project" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "<project name>"
   description = "<description>"
@@ -42,7 +42,7 @@ resource "sys11iam_project" "test_project" {
 Then you execute:
 
 ```bash
-terraform import sys11iam_project.test_project[0] <org_id,project_id>
+terraform import sys11iam_organization_project.test_project[0] <org_id,project_id>
 ```
 
 Where `org_id` is the ID of the organization and `project_id` is the ID of the project you want to import.
@@ -51,11 +51,11 @@ A programmatic alternative involves using the [import block](https://developer.h
 
 ```hcl
 import {
-    to = sys11iam_project.test_project[0] 
+    to = sys11iam_organization_project.test_project[0]
     id = <org_id,project_id>
 }
 
-resource "sys11iam_project" "test_project" {
+resource "sys11iam_organization_project" "test_project" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   name = "<project name>"
   description = "<description>"

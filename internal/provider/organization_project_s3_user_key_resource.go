@@ -15,6 +15,7 @@ import (
 
 var _ resource.Resource = (*ProjectS3UserKeyResource)(nil)
 var _ resource.ResourceWithConfigure = (*ProjectS3UserKeyResource)(nil)
+var _ resource.ResourceWithMoveState = (*ProjectS3UserKeyResource)(nil)
 var _ resource.ResourceWithUpgradeState = (*ProjectS3UserKeyResource)(nil)
 var _ resource.ResourceWithValidateConfig = (*ProjectS3UserKeyResource)(nil)
 
@@ -37,6 +38,53 @@ func (r *ProjectS3UserKeyResource) Schema(ctx context.Context, req resource.Sche
 func (r *ProjectS3UserKeyResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	return map[int64]resource.StateUpgrader{
 		0: compat.OrgIdStateUpgrader(),
+	}
+}
+
+func (r *ProjectS3UserKeyResource) MoveState(ctx context.Context) []resource.StateMover {
+	return []resource.StateMover{
+		compat.RawStateMover("sys11iam_project_s3user_key", func(ctx context.Context, rawState compat.RawState, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+			orgId, organizationId, err := compat.RawOrgIDs(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read organization identifier: "+err.Error())
+				return
+			}
+
+			accessKey, err := compat.RawStringFallback(rawState, "access_key", "s3_access_key")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read S3 access key: "+err.Error())
+				return
+			}
+
+			projectId, err := compat.RawString(rawState, "project_id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project id: "+err.Error())
+				return
+			}
+
+			s3UserId, err := compat.RawString(rawState, "s3_user_id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read S3 user id: "+err.Error())
+				return
+			}
+
+			secretKey, err := compat.RawString(rawState, "secret_key")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read S3 secret key: "+err.Error())
+				return
+			}
+
+			data := resource_organization_project_s3_user_key.OrganizationProjectS3UserKeyModelFull{
+				AccessKey:      accessKey,
+				OrgId:          orgId,
+				OrganizationId: organizationId,
+				ProjectId:      projectId,
+				S3UserId:       s3UserId,
+				SecretKey:      secretKey,
+			}
+
+			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
+		}),
 	}
 }
 

@@ -11,7 +11,7 @@ data "sys11iam_organization" "testorg" {
 }
 
 # now the data source can be used with any resource
-resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
+resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   org_id = data.sys11iam_organization.testorg.id
   # ...
@@ -23,4 +23,3 @@ resource "sys11iam_project_s3user_key" "test_terraform_project_s3_user_key" {
 The following arguments are supported for the data source "sys11iam_organization":
 * **`name`** - A unique name for the organization.
 * **`id`** - The UUID of the organization.
-
