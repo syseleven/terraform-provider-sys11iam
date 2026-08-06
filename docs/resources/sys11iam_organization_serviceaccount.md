@@ -18,8 +18,12 @@ resource "sys11iam_organization_serviceaccount" "test_serviceaccount" {
 The following arguments are supported for the resource "sys11iam_organization_serviceaccount":
 
 * **`name`** - The name of the service account.
-* **`description`** - The description of the service account.
+* **`description`** - The description of the service account. Can be hardcoded or (recommended) passed in via the organization data source.
 * **`org_id`** - The UUID of the organization. Can be hardcoded or (recommended) passed in via the organization data source.
+* **`service_account_id`** - The UUID of the service account (computed, may be used to reference this service account from other resources).
+* **`id`** - The UUID of the organization service account. (computed, read-only)
+* **`created_at`** - The timestamp when the service account was created. (computed)
+* **`updated_at`** - The timestamp of the last update to the service account. (computed)
 
 ## Importing Organization Service Accounts
 
@@ -47,7 +51,7 @@ A programmatic alternative involves using the [import block](https://developer.h
 
 ```hcl
 import {
-    to = sys11iam_organization_serviceaccount.test_serviceaccount[0] 
+    to = sys11iam_organization_serviceaccount.test_serviceaccount[0]
     id = "<org_id,service_account_id>"
 }
 

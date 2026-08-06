@@ -5,9 +5,9 @@ The Project S3 User Key Resource manages an S3 Key for an S3 User. The access an
 ## Example Usage
 
 ```hcl
-resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_user_key" {
+resource "sys11iam_organization_project_s3_user_key" "test_terraform_organization_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_project_s3user[0].id
+  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_organization_project_s3user[0].id
   org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.terraform_test_project.id
 }
@@ -20,15 +20,17 @@ The following arguments are supported for the resource "sys11iam_organization_pr
 * **`org_id`** - The UUID of the organization.
 * **`project_id`** - The UUID of the project.
 * **`s3_user_id`** - The UUID of the S3 User.
+* **`access_key`** - The S3 access key (read-only)
+* **`secret_key`** - The S3 secret key (read-only)
 
 ## Importing Organization Project S3 User Keys
 
 To import an organization project S3 User key, your configuration would look like the following:
 
 ```hcl
-resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_user_key" {
+resource "sys11iam_organization_project_s3_user_key" "test_terraform_organization_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_project_s3user[0].id
+  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_organization_project_s3user[0].id
   org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.terraform_test_project.id
 }
@@ -46,13 +48,13 @@ A programmatic alternative involves using the [import block](https://developer.h
 
 ```hcl
 import {
-    to = sys11iam_organization_project_s3_user_key.test_terraform_project_s3_user_key[0]
+    to = sys11iam_organization_project_s3_user_key.test_terraform_organization_project_s3_user_key[0]
     id = "<org_id,project_id,s3_user_id,access_key>"
 }
 
-resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_user_key" {
+resource "sys11iam_organization_project_s3_user_key" "test_terraform_organization_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
-  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_project_s3user[0].id
+  s3_user_id = sys11iam_organization_project_s3_user.test_terraform_organization_project_s3user[0].id
   org_id = data.sys11iam_organization.testorg.id
   project_id = sys11iam_organization_project.terraform_test_project.id
 }

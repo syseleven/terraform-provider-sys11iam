@@ -70,8 +70,8 @@ The `membership` block must contain either a `user_membership` or `service_accou
     * `can_create_teams_in_org`
     * `can_create_service_accounts_in_org`
 * **`user_membership.membership_type`** - The type of the membership. (Default: "user")
-* **`user_membership.user.email`** - The email address of the user.
-* **`user_membership.user.id`** - The UUID of the user.
+* **`user_membership.email`** - The email address of the user.
+* **`user_membership.id`** - The UUID of the user.
 
 #### Service Account Membership Block
 

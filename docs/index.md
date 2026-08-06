@@ -1,6 +1,6 @@
 # sys11iam Provider
 
-The sys11iam provider is used to interact with the SysEleven IAM. The provider needs to be configured with the proper credentials (a service account) before it can be used.
+The sys11iam provider is used to interact with the SysEleven IAM. The provider needs to be configured with the proper credentials before it can be used.
 
 ## Example Usage
 
@@ -31,7 +31,7 @@ The following arguments are supported for the provider "sys11iam":
 
 * **`iam_url`** - The url to the IAM service for creating organization, project, organization membership and project membership resources.
   If omitted, the `SYS11IAM_IAM_URL` environment variable is used.
-* **`serviceaccount_secret`** - The secret of an service account to authenticate with. If omitted, the `SYS11IAM_SERVICEACCOUNT_SECRET` environment variable is used.
+* **`serviceaccount_secret`** - The secret of a service account to authenticate with. If omitted, the `SYS11IAM_SERVICEACCOUNT_SECRET` environment variable is used.
 
 ## Upgrading project resources to v3
 
