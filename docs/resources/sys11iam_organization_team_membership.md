@@ -50,6 +50,7 @@ The following arguments are supported for the resource "sys11iam_organization_te
 * **`org_id`** - The UUID of the organization. (Required)
 * **`membership_type`** - The type of the membership.
 * **`membership`** - The membership configuration block. (Required)
+* **`team_name`** - Name of the team (read-only)
 
 ### Membership Block
 
@@ -57,10 +58,8 @@ The `membership` block must contain either a `user_team_membership` or `service_
 
 #### User Team Membership Block
 
-* **`user_team_membership.membership_type`** - The type of the membership. (Default: "user")
-* **`user_team_membership.team_permissions`** - The team permissions the user has in the team.
-* **`user_team_membership.user.email`** - The email address of the user.
-* **`user_team_membership.user.id`** - The UUID of the user.
+* **`user_team_permissions.team_permissions`** - The team permissions the user has in the team.
+* **`user_team_permissions.user.email`** - The email address of the user.
 
 #### Service Account Team Membership Block
 
@@ -79,7 +78,6 @@ resource "sys11iam_organization_team_membership" "test_membership" {
 
   membership = {
     user_team_membership = {
-      membership_type = "user"
       user = {
         email = "user@example.com"
       }
@@ -113,7 +111,6 @@ resource "sys11iam_organization_team_membership" "test_membership" {
 
   membership = {
     user_team_membership = {
-      membership_type = "user"
       user = {
         email = "user@example.com"
       }

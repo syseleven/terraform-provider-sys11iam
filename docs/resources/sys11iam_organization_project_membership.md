@@ -52,6 +52,7 @@ The following arguments are supported for the resource "sys11iam_organization_pr
 * **`project_id`** - The UUID of the project.
 * **`id`** - The unique identifier of the member (user or service account) in the project.
 * **`membership`** - The membership configuration block.
+* **`project_name`** - The name of the project (read-only)
 
 ### Membership Block
 

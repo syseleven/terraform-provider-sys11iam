@@ -20,7 +20,7 @@ resource "sys11iam_organization_contact" "testorganization_contact" {
 
 ## Argument Reference
 
-The following arguments are supported:
+The following arguments are supported for the resource "sys11iam_organization_contact":
 
 * **`first_name`** - The first name of the organization contact.
 * **`last_name`** - The last name of the organization contact.
