@@ -17,8 +17,8 @@ const OrgIdDeprecatedMessage = "Use org_id instead. This field will be removed i
 // DeprecatedOrganizationIdAttribute returns the deprecated organization_id schema attribute.
 func DeprecatedOrganizationIdAttribute() schema.StringAttribute {
 	return schema.StringAttribute{
-		Optional:          true,
-		Computed:          true,
+		Optional:           true,
+		Computed:           true,
 		DeprecationMessage: OrgIdDeprecatedMessage,
 	}
 }
@@ -88,6 +88,62 @@ func OrgIdStateUpgrader() resource.StateUpgrader {
 					rawState["org_id"] = orgIdRaw
 				}
 			}
+
+			upgradedState, err := json.Marshal(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Error writing upgraded state",
+					"Could not marshal upgraded state data: "+err.Error(),
+				)
+				return
+			}
+
+			resp.DynamicValue = &tfprotov6.DynamicValue{
+				JSON: upgradedState,
+			}
+		},
+	}
+}
+
+// TeamStateUpgrader returns a StateUpgrader for the organization team resource.
+// In addition to the organization_id to org_id migration performed by
+// OrgIdStateUpgrader, it copies the legacy editable_permissions value into
+// organization_permissions when organization_permissions is not already
+// present, and removes the legacy editable_permissions key.
+func TeamStateUpgrader() resource.StateUpgrader {
+	return resource.StateUpgrader{
+		StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+			if req.RawState == nil || len(req.RawState.JSON) == 0 {
+				resp.Diagnostics.AddError(
+					"Error reading prior state",
+					"No prior state data available for migration.",
+				)
+				return
+			}
+
+			var rawState map[string]json.RawMessage
+			if err := json.Unmarshal(req.RawState.JSON, &rawState); err != nil {
+				resp.Diagnostics.AddError(
+					"Error reading prior state",
+					"Could not unmarshal prior state data: "+err.Error(),
+				)
+				return
+			}
+
+			// Copy organization_id to org_id if org_id is absent
+			if _, hasOrgId := rawState["org_id"]; !hasOrgId {
+				if orgIdRaw, ok := rawState["organization_id"]; ok {
+					rawState["org_id"] = orgIdRaw
+				}
+			}
+
+			// Copy editable_permissions to organization_permissions if the latter is absent
+			if _, hasOrgPermissions := rawState["organization_permissions"]; !hasOrgPermissions {
+				if permissionsRaw, ok := rawState["editable_permissions"]; ok {
+					rawState["organization_permissions"] = permissionsRaw
+				}
+			}
+			delete(rawState, "editable_permissions")
 
 			upgradedState, err := json.Marshal(rawState)
 			if err != nil {
