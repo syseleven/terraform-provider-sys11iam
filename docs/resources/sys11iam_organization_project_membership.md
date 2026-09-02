@@ -49,28 +49,28 @@ resource "sys11iam_organization_project_membership" "test_service_account_member
 The following arguments are supported for the resource "sys11iam_organization_project_membership":
 
 * **`org_id`** - The UUID of the organization. (Required)
-* **`project_id`** - The UUID of the project.
-* **`id`** - The unique identifier of the member (user or service account) in the project.
-* **`membership`** - The membership configuration block.
-* **`project_name`** - The name of the project (read-only)
+* **`project_id`** - The UUID of the project. (Required)
+* **`id`** - The unique identifier of the member (user or service account) in the project. (Optional, Computed)
+* **`membership`** - The membership configuration block. (Required)
+* **`project_name`** - The name of the project (Optional, Computed)
 
 ### Membership Block
 
-The `membership` block must contain either a `user_membership` or `service_account_membership` block, but not both.
+The `membership` block must contain either a `user_membership` or a `service_account_membership` block, but not both.
 
 #### User Membership Block
 
 * **`user_membership.permissions`** - The editable permissions of the user in the project. (Required)
 * **`user_membership.membership_type`** - The type of the membership. (Default: "user")
-* **`user_membership.user.email`** - The email address of the user.
-* **`user_membership.user.id`** - The UUID of the user.
+* **`user_membership.user.email`** - The email address of the user. (Required, forces replacement if changed)
+* **`user_membership.user.id`** - The UUID of the user. (Computed)
 
 #### Service Account Membership Block
 
 * **`service_account_membership.permissions`** - The editable permissions of the service account in the project. (Required)
 * **`service_account_membership.membership_type`** - The type of the membership. (Default: "service_account")
-* **`service_account_membership.service_account.id`** - The UUID of the service account.
-* **`service_account_membership.service_account.name`** - The unique name of the service account.
+* **`service_account_membership.service_account.id`** - The UUID of the service account. (Required, forces replacement if changed)
+* **`service_account_membership.service_account.name`** - The unique name of the service account. (Computed)
 
 ## Importing Organization Project Memberships
 

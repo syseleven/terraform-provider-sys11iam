@@ -20,15 +20,15 @@ func OrganizationProjectResourceSchemaFull(ctx context.Context) schema.Schema {
 // OrganizationProjectModelFull extends the generated model with the
 // deprecated organization_id field.
 type OrganizationProjectModelFull struct {
-	CreatedAt      types.String  `tfsdk:"created_at"`
-	Description    types.String  `tfsdk:"description"`
-	Id             types.String  `tfsdk:"id"`
-	IsManagedByS11 types.Bool    `tfsdk:"is_managed_by_s11"`
-	Name           types.String  `tfsdk:"name"`
-	OrgId          types.String  `tfsdk:"org_id"`
-	OrganizationId types.String  `tfsdk:"organization_id"`
-	ProjectId      types.String  `tfsdk:"project_id"`
-	Status         types.String  `tfsdk:"status"`
-	Tags           types.List    `tfsdk:"tags"`
-	UpdatedAt      types.String  `tfsdk:"updated_at"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	Description    types.String `tfsdk:"description"`
+	Id             types.String `tfsdk:"id"`
+	IsManagedByS11 types.Bool   `tfsdk:"is_managed_by_s11"`
+	Name           types.String `tfsdk:"name"`
+	OrgId          types.String `tfsdk:"org_id"`
+	OrganizationId types.String `tfsdk:"organization_id"`
+	ProjectId      types.String `tfsdk:"project_id"`
+	Status         types.String `tfsdk:"status"`
+	Tags           types.List   `tfsdk:"tags"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
 }

@@ -7,6 +7,7 @@ import (
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/require"
@@ -136,15 +137,27 @@ func TestProjectMembershipResourceMoveStateFromProjectMembership(t *testing.T) {
 	require.Equal(t, "user-1", data.Id.ValueString())
 	require.Equal(t, "org-1", data.OrgId.ValueString())
 	require.Equal(t, "project-1", data.ProjectId.ValueString())
-	require.NotNil(t, data.Membership)
-	require.NotNil(t, data.Membership.UserMembership)
-	require.Nil(t, data.Membership.ServiceAccountMembership)
-	require.Equal(t, "user", data.Membership.UserMembership.MembershipType.ValueString())
-	require.Equal(t, "user@example.com", data.Membership.UserMembership.User.Email.ValueString())
-	require.Equal(t, "user-1", data.Membership.UserMembership.User.Id.ValueString())
+	require.False(t, data.Membership.IsNull())
+
+	var membership resource_organization_project_membership.MembershipValue
+	diags = data.Membership.As(context.Background(), &membership, basetypes.ObjectAsOptions{})
+	require.False(t, diags.HasError(), diags)
+	require.False(t, membership.UserMembership.IsNull())
+	require.True(t, membership.ServiceAccountMembership.IsNull())
+
+	var userMembership resource_organization_project_membership.UserMembershipValue
+	diags = membership.UserMembership.As(context.Background(), &userMembership, basetypes.ObjectAsOptions{})
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, "user", userMembership.MembershipType.ValueString())
+
+	var user resource_organization_project_membership.UserValue
+	diags = userMembership.User.As(context.Background(), &user, basetypes.ObjectAsOptions{})
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, "user@example.com", user.Email.ValueString())
+	require.Equal(t, "user-1", user.Id.ValueString())
 
 	var permissions []string
-	diags = data.Membership.UserMembership.Permissions.ElementsAs(context.Background(), &permissions, false)
+	diags = userMembership.Permissions.ElementsAs(context.Background(), &permissions, false)
 	require.False(t, diags.HasError(), diags)
 	require.Equal(t, []string{"can_read", "can_write"}, permissions)
 }
