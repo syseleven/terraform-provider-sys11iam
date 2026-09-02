@@ -4,12 +4,12 @@ package resource_organization_project
 
 import (
 	"context"
-	"regexp"
-
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"regexp"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
@@ -35,6 +35,12 @@ func OrganizationProjectResourceSchema(ctx context.Context) schema.Schema {
 				Computed:            true,
 				Description:         "The unique identifier of the project, as inherited from OpenStack",
 				MarkdownDescription: "The unique identifier of the project, as inherited from OpenStack",
+			},
+			"is_managed_by_s11": schema.BoolAttribute{
+				Computed:            true,
+				Description:         "Whether the project is managed by S11 or not. This is used to determine if the project is accessed by a S11 management team.",
+				MarkdownDescription: "Whether the project is managed by S11 or not. This is used to determine if the project is accessed by a S11 management team.",
+				Default:             booldefault.StaticBool(false),
 			},
 			"name": schema.StringAttribute{
 				Required:            true,
@@ -74,13 +80,14 @@ func OrganizationProjectResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type OrganizationProjectModel struct {
-	CreatedAt   types.String `tfsdk:"created_at"`
-	Description types.String `tfsdk:"description"`
-	Id          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	OrgId       types.String `tfsdk:"org_id"`
-	ProjectId   types.String `tfsdk:"project_id"`
-	Status      types.String `tfsdk:"status"`
-	Tags        types.List   `tfsdk:"tags"`
-	UpdatedAt   types.String `tfsdk:"updated_at"`
+	CreatedAt      types.String `tfsdk:"created_at"`
+	Description    types.String `tfsdk:"description"`
+	Id             types.String `tfsdk:"id"`
+	IsManagedByS11 types.Bool   `tfsdk:"is_managed_by_s11"`
+	Name           types.String `tfsdk:"name"`
+	OrgId          types.String `tfsdk:"org_id"`
+	ProjectId      types.String `tfsdk:"project_id"`
+	Status         types.String `tfsdk:"status"`
+	Tags           types.List   `tfsdk:"tags"`
+	UpdatedAt      types.String `tfsdk:"updated_at"`
 }
