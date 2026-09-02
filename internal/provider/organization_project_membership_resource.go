@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
@@ -83,22 +85,41 @@ func (r *ProjectMembershipResource) MoveState(ctx context.Context) []resource.St
 				return
 			}
 
+			user, diags := basetypes.NewObjectValue(resource_organization_project_membership.UserAttrTypes(), map[string]attr.Value{
+				"email": email,
+				"id":    id,
+			})
+			if diags.HasError() {
+				resp.Diagnostics.Append(diags...)
+				return
+			}
+
+			userMembership, diags := basetypes.NewObjectValue(resource_organization_project_membership.UserMembershipAttrTypes(), map[string]attr.Value{
+				"membership_type": types.StringValue("user"),
+				"permissions":     permissions,
+				"user":            user,
+			})
+			if diags.HasError() {
+				resp.Diagnostics.Append(diags...)
+				return
+			}
+
+			membership, diags := basetypes.NewObjectValue(resource_organization_project_membership.MembershipAttrTypes(), map[string]attr.Value{
+				"user_membership":            userMembership,
+				"service_account_membership": basetypes.NewObjectNull(resource_organization_project_membership.ServiceAccountMembershipAttrTypes()),
+			})
+			if diags.HasError() {
+				resp.Diagnostics.Append(diags...)
+				return
+			}
+
 			data := resource_organization_project_membership.OrganizationProjectMembershipModel{
 				Id:             id,
 				OrgId:          orgId,
 				OrganizationId: organizationId,
 				ProjectId:      projectId,
 				ProjectName:    types.StringNull(),
-				Membership: &resource_organization_project_membership.MembershipValue{
-					UserMembership: &resource_organization_project_membership.UserMembershipValue{
-						MembershipType: types.StringValue("user"),
-						Permissions:    permissions,
-						User: &resource_organization_project_membership.UserValue{
-							Email: email,
-							Id:    id,
-						},
-					},
-				},
+				Membership:     membership,
 			}
 
 			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
@@ -129,35 +150,82 @@ func (r *ProjectMembershipResource) ValidateConfig(ctx context.Context, req reso
 	compat.ValidateOrgId(ctx, req.Config, resp)
 }
 
+// permissionsAttrList converts a slice of permission names into a types.List.
+func permissionsAttrList(permissions []string) types.List {
+	return types.ListValueMust(types.StringType, convertSliceToAttrValues(permissions, func(s string) attr.Value {
+		return types.StringValue(s)
+	}))
+}
+
+// fetchProjectName returns the project name for state population. Failures
+// degrade to a null name instead of failing the whole operation.
+func (r *ProjectMembershipResource) fetchProjectName(ctx context.Context, orgId string, projectId string) types.String {
+	project, err := r.client.GetProject(orgId, projectId)
+	if err != nil {
+		tflog.Error(ctx, "Could not fetch project for project_name", map[string]any{
+			"project_id": projectId,
+			"error":      err.Error(),
+		})
+		return types.StringNull()
+	}
+	return types.StringValue(project.Name)
+}
+
 // buildDataFromV3 populates the Terraform model from the v3 project membership list entry.
-func (r *ProjectMembershipResource) buildDataFromV3(data *resource_organization_project_membership.OrganizationProjectMembershipModel, member *iam.IAMProjectMembershipV3) {
-	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
+// The provided permissions value is stored verbatim: Read passes the API read-back while
+// Create and Update pass the planned (configured) permissions so state matches the config.
+func (r *ProjectMembershipResource) buildDataFromV3(ctx context.Context, data *resource_organization_project_membership.OrganizationProjectMembershipModel, member *iam.IAMProjectMembershipV3, projectName types.String, permissions types.List) diag.Diagnostics {
+	var diags diag.Diagnostics
+
+	userMembershipAttrTypes := resource_organization_project_membership.UserMembershipAttrTypes()
+	serviceAccountMembershipAttrTypes := resource_organization_project_membership.ServiceAccountMembershipAttrTypes()
+	membershipAttrTypes := resource_organization_project_membership.MembershipAttrTypes()
 
 	if member.Type == "service_account" {
-		data.Id = types.StringValue(member.ID)
-		data.Membership.ServiceAccountMembership = &resource_organization_project_membership.ServiceAccountMembershipValue{
-			MembershipType: types.StringValue(member.Type),
-			Permissions: types.ListValueMust(types.StringType, convertSliceToAttrValues(permissions, func(s string) attr.Value {
-				return types.StringValue(s)
-			})),
-			ServiceAccount: &resource_organization_project_membership.ServiceAccountValue{
-				Id:   types.StringValue(member.ID),
-				Name: types.StringValue(member.DisplayName),
-			},
-		}
+		serviceAccount, d := basetypes.NewObjectValue(resource_organization_project_membership.ServiceAccountAttrTypes(), map[string]attr.Value{
+			"id":   types.StringValue(member.ID),
+			"name": types.StringValue(member.DisplayName),
+		})
+		diags.Append(d...)
+
+		serviceAccountMembership, d := basetypes.NewObjectValue(serviceAccountMembershipAttrTypes, map[string]attr.Value{
+			"membership_type": types.StringValue(member.Type),
+			"permissions":     permissions,
+			"service_account": serviceAccount,
+		})
+		diags.Append(d...)
+
+		data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+			"user_membership":            basetypes.NewObjectNull(userMembershipAttrTypes),
+			"service_account_membership": serviceAccountMembership,
+		})
 	} else if member.Type == "user" {
-		data.Id = types.StringValue(member.ID)
-		data.Membership.UserMembership = &resource_organization_project_membership.UserMembershipValue{
-			MembershipType: types.StringValue(member.Type),
-			Permissions: types.ListValueMust(types.StringType, convertSliceToAttrValues(permissions, func(s string) attr.Value {
-				return types.StringValue(s)
-			})),
-			User: &resource_organization_project_membership.UserValue{
-				Email: types.StringValue(member.DisplayName),
-				Id:    types.StringValue(member.ID),
-			},
-		}
+		user, d := basetypes.NewObjectValue(resource_organization_project_membership.UserAttrTypes(), map[string]attr.Value{
+			"email": types.StringValue(member.DisplayName),
+			"id":    types.StringValue(member.ID),
+		})
+		diags.Append(d...)
+
+		userMembership, d := basetypes.NewObjectValue(userMembershipAttrTypes, map[string]attr.Value{
+			"membership_type": types.StringValue(member.Type),
+			"permissions":     permissions,
+			"user":            user,
+		})
+		diags.Append(d...)
+
+		data.Membership = basetypes.NewObjectValueMust(membershipAttrTypes, map[string]attr.Value{
+			"user_membership":            userMembership,
+			"service_account_membership": basetypes.NewObjectNull(serviceAccountMembershipAttrTypes),
+		})
 	}
+
+	if diags.HasError() {
+		return diags
+	}
+
+	data.Id = types.StringValue(member.ID)
+	data.ProjectName = projectName
+	return diags
 }
 
 func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -190,20 +258,56 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
+	var membership resource_organization_project_membership.MembershipValue
+	resp.Diagnostics.Append(data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	var permissions []string
 	var membershipType string
+	var memberId string
 
-	if data.Membership.UserMembership != nil {
-		diags := data.Membership.UserMembership.Permissions.ElementsAs(ctx, &permissions, false)
-		resp.Diagnostics.Append(diags...)
+	if !membership.UserMembership.IsNull() && !membership.UserMembership.IsUnknown() {
+		var userMembership resource_organization_project_membership.UserMembershipValue
+		resp.Diagnostics.Append(membership.UserMembership.As(ctx, &userMembership, basetypes.ObjectAsOptions{})...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		membershipType = data.Membership.UserMembership.MembershipType.ValueString()
+		resp.Diagnostics.Append(userMembership.Permissions.ElementsAs(ctx, &permissions, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		membershipType = userMembership.MembershipType.ValueString()
+
+		if userMembership.User.IsNull() || userMembership.User.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("membership").AtName("user_membership").AtName("user"),
+				"Missing user",
+				"The user block within user_membership is required to create a project membership.",
+			)
+			return
+		}
+
+		var user resource_organization_project_membership.UserValue
+		resp.Diagnostics.Append(userMembership.User.As(ctx, &user, basetypes.ObjectAsOptions{})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if user.Email.IsNull() || user.Email.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("membership").AtName("user_membership").AtName("user").AtName("email"),
+				"Missing user email",
+				"The email address of the user within user_membership.user is required to create a project membership.",
+			)
+			return
+		}
 
 		// Is the e-mail already a member?
-		email := data.Membership.UserMembership.User.Email.ValueString()
+		email := user.Email.ValueString()
 
 		orgMember, err := r.client.GetOrgMembershipV3ByEmail(orgId.ValueString(), email)
 		if err != nil {
@@ -230,29 +334,80 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 			}
 		}
 
-		data.Id = types.StringValue(orgMember.ID)
-
-	} else if data.Membership.ServiceAccountMembership != nil {
-		diags := data.Membership.ServiceAccountMembership.Permissions.ElementsAs(ctx, &permissions, false)
-		resp.Diagnostics.Append(diags...)
+		if !data.Id.IsNull() && !data.Id.IsUnknown() && data.Id.ValueString() != "" && data.Id.ValueString() != orgMember.ID {
+			resp.Diagnostics.AddError("MismatchedMemberId",
+				fmt.Sprintf("The configured id %s does not match the organization membership id %s for the user with the e-mail %s.",
+					data.Id.ValueString(), orgMember.ID, email))
+			return
+		}
+		if data.Id.IsNull() || data.Id.IsUnknown() || data.Id.ValueString() == "" {
+			data.Id = types.StringValue(orgMember.ID)
+		}
+		memberId = data.Id.ValueString()
+	} else if !membership.ServiceAccountMembership.IsNull() && !membership.ServiceAccountMembership.IsUnknown() {
+		var serviceAccountMembership resource_organization_project_membership.ServiceAccountMembershipValue
+		resp.Diagnostics.Append(membership.ServiceAccountMembership.As(ctx, &serviceAccountMembership, basetypes.ObjectAsOptions{})...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
 
-		membershipType = data.Membership.ServiceAccountMembership.MembershipType.ValueString()
+		resp.Diagnostics.Append(serviceAccountMembership.Permissions.ElementsAs(ctx, &permissions, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		membershipType = serviceAccountMembership.MembershipType.ValueString()
+
+		if serviceAccountMembership.ServiceAccount.IsNull() || serviceAccountMembership.ServiceAccount.IsUnknown() {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("membership").AtName("service_account_membership").AtName("service_account"),
+				"Missing service account",
+				"The service_account block within service_account_membership is required to create a project membership.",
+			)
+			return
+		}
+
+		var serviceAccount resource_organization_project_membership.ServiceAccountValue
+		resp.Diagnostics.Append(serviceAccountMembership.ServiceAccount.As(ctx, &serviceAccount, basetypes.ObjectAsOptions{})...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if serviceAccount.Id.IsNull() || serviceAccount.Id.IsUnknown() || serviceAccount.Id.ValueString() == "" {
+			resp.Diagnostics.AddAttributeError(
+				path.Root("membership").AtName("service_account_membership").AtName("service_account").AtName("id"),
+				"Missing service account id",
+				"The service account UUID within service_account_membership.service_account is required to create a project membership.",
+			)
+			return
+		}
+
+		memberId = serviceAccount.Id.ValueString()
 
 		// Verify the service account exists in the org
-		_, err = r.client.GetOrgMembershipV3(orgId.ValueString(), data.Membership.ServiceAccountMembership.ServiceAccount.Id.ValueString())
+		_, err = r.client.GetOrgMembershipV3(orgId.ValueString(), memberId)
 		if err != nil {
 			resp.Diagnostics.AddError("", err.Error())
 			return
 		}
-		data.Id = types.StringValue(data.Membership.ServiceAccountMembership.ServiceAccount.Id.ValueString())
+
+		if !data.Id.IsNull() && !data.Id.IsUnknown() && data.Id.ValueString() != "" && data.Id.ValueString() != memberId {
+			resp.Diagnostics.AddError("MismatchedMemberId",
+				fmt.Sprintf("The configured id %s does not match the service account id %s.",
+					data.Id.ValueString(), memberId))
+			return
+		}
+		if data.Id.IsNull() || data.Id.IsUnknown() || data.Id.ValueString() == "" {
+			data.Id = types.StringValue(memberId)
+		}
+	} else {
+		resp.Diagnostics.AddError("MissingMembership",
+			"The membership block must contain either a user_membership or a service_account_membership block.")
+		return
 	}
 
 	// Write permissions via v3 endpoints
 	projectId := data.ProjectId.ValueString()
-	memberId := data.Id.ValueString()
 
 	if membershipType == "user" {
 		_, err = r.client.PutUserProjectPermissions(orgId.ValueString(), projectId, memberId, permissions)
@@ -271,9 +426,12 @@ func (r *ProjectMembershipResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	// Data value setting
+	// Data value setting — the configured permissions win over the API read-back
 	data.ProjectId = types.StringValue(projectId)
-	r.buildDataFromV3(&data, &member)
+	resp.Diagnostics.Append(r.buildDataFromV3(ctx, &data, &member, r.fetchProjectName(ctx, orgId.ValueString(), projectId), permissionsAttrList(permissions))...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save data into Terraform state
@@ -301,8 +459,14 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
+	// The API read-back is the source of truth during refresh
+	apiPermissions := permissionsAttrList(iam.FilterActiveDirectPermissions(member.Permissions))
+
 	// Data value setting
-	r.buildDataFromV3(&data, &member)
+	resp.Diagnostics.Append(r.buildDataFromV3(ctx, &data, &member, r.fetchProjectName(ctx, orgId.ValueString(), data.ProjectId.ValueString()), apiPermissions)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
@@ -311,9 +475,11 @@ func (r *ProjectMembershipResource) Read(ctx context.Context, req resource.ReadR
 
 func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data resource_organization_project_membership.OrganizationProjectMembershipModel
+	var stateData resource_organization_project_membership.OrganizationProjectMembershipModel
 
-	// Read Terraform plan data into the model
+	// Read Terraform plan data and prior state into the models
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &stateData)...)
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
 
 	if resp.Diagnostics.HasError() {
@@ -325,22 +491,63 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 
 	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
 
+	var stateMembership resource_organization_project_membership.MembershipValue
+	resp.Diagnostics.Append(stateData.Membership.As(ctx, &stateMembership, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	var planMembership resource_organization_project_membership.MembershipValue
+	resp.Diagnostics.Append(data.Membership.As(ctx, &planMembership, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	var permissions []string
 	var membershipType string
-	if data.Membership.UserMembership != nil && len(data.Membership.UserMembership.Permissions.Elements()) > 0 {
-		diags := data.Membership.UserMembership.Permissions.ElementsAs(ctx, &permissions, false)
-		resp.Diagnostics.Append(diags...)
+
+	// The member identity cannot change in place; it is taken from the prior
+	// state while the new permissions are taken from the plan.
+	switch {
+	case !stateMembership.UserMembership.IsNull() && !stateMembership.UserMembership.IsUnknown():
+		membershipType = "user"
+
+		if planMembership.UserMembership.IsNull() || planMembership.UserMembership.IsUnknown() {
+			resp.Diagnostics.AddError("MembershipTypeChanged",
+				"The member type of a project membership cannot be changed in place. Remove the resource and create a new membership for the other member type.")
+			return
+		}
+
+		var userMembership resource_organization_project_membership.UserMembershipValue
+		resp.Diagnostics.Append(planMembership.UserMembership.As(ctx, &userMembership, basetypes.ObjectAsOptions{})...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		membershipType = data.Membership.UserMembership.MembershipType.ValueString()
-	} else if data.Membership.ServiceAccountMembership != nil && len(data.Membership.ServiceAccountMembership.Permissions.Elements()) > 0 {
-		diags := data.Membership.ServiceAccountMembership.Permissions.ElementsAs(ctx, &permissions, false)
-		resp.Diagnostics.Append(diags...)
+
+		resp.Diagnostics.Append(userMembership.Permissions.ElementsAs(ctx, &permissions, false)...)
+	case !stateMembership.ServiceAccountMembership.IsNull() && !stateMembership.ServiceAccountMembership.IsUnknown():
+		membershipType = "service_account"
+
+		if planMembership.ServiceAccountMembership.IsNull() || planMembership.ServiceAccountMembership.IsUnknown() {
+			resp.Diagnostics.AddError("MembershipTypeChanged",
+				"The member type of a project membership cannot be changed in place. Remove the resource and create a new membership for the other member type.")
+			return
+		}
+
+		var serviceAccountMembership resource_organization_project_membership.ServiceAccountMembershipValue
+		resp.Diagnostics.Append(planMembership.ServiceAccountMembership.As(ctx, &serviceAccountMembership, basetypes.ObjectAsOptions{})...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		membershipType = data.Membership.ServiceAccountMembership.MembershipType.ValueString()
+
+		resp.Diagnostics.Append(serviceAccountMembership.Permissions.ElementsAs(ctx, &permissions, false)...)
+	default:
+		resp.Diagnostics.AddError("MissingMembership",
+			"The prior state of the project membership does not contain a user or service account membership; nothing to update.")
+		return
+	}
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Write permissions via v3 endpoints
@@ -365,9 +572,12 @@ func (r *ProjectMembershipResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	// Data value setting
+	// Data value setting — the configured permissions win over the API read-back
 	data.ProjectId = types.StringValue(projectId)
-	r.buildDataFromV3(&data, &member)
+	resp.Diagnostics.Append(r.buildDataFromV3(ctx, &data, &member, r.fetchProjectName(ctx, orgId.ValueString(), projectId), permissionsAttrList(permissions))...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
 	// Save updated data into Terraform state
@@ -389,13 +599,19 @@ func (r *ProjectMembershipResource) Delete(ctx context.Context, req resource.Del
 
 	orgId := compat.ResolveOrgId(data.OrgId, data.OrganizationId)
 
+	var membership resource_organization_project_membership.MembershipValue
+	resp.Diagnostics.Append(data.Membership.As(ctx, &membership, basetypes.ObjectAsOptions{})...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	projectId := data.ProjectId.ValueString()
 	memberId := data.Id.ValueString()
 
 	var err error
-	if data.Membership.UserMembership != nil {
+	if !membership.UserMembership.IsNull() && !membership.UserMembership.IsUnknown() {
 		_, err = r.client.PutUserProjectPermissions(orgId.ValueString(), projectId, memberId, []string{})
-	} else if data.Membership.ServiceAccountMembership != nil {
+	} else if !membership.ServiceAccountMembership.IsNull() && !membership.ServiceAccountMembership.IsUnknown() {
 		_, err = r.client.PutServiceAccountProjectPermissions(orgId.ValueString(), projectId, memberId, []string{})
 	}
 	if err != nil {
@@ -424,7 +640,7 @@ func (r *ProjectMembershipResource) ImportState(ctx context.Context, req resourc
 	}
 
 	var data resource_organization_project_membership.OrganizationProjectMembershipModel
-	data.Membership = &resource_organization_project_membership.MembershipValue{}
+	data.Membership = basetypes.NewObjectNull(resource_organization_project_membership.MembershipAttrTypes())
 
 	// Data value setting
 	data.ProjectId = types.StringValue(idParts[1])
@@ -438,7 +654,12 @@ func (r *ProjectMembershipResource) ImportState(ctx context.Context, req resourc
 	}
 	data.ProjectName = types.StringValue(project.Name)
 
-	r.buildDataFromV3(&data, &member)
+	apiPermissions := permissionsAttrList(iam.FilterActiveDirectPermissions(member.Permissions))
+
+	resp.Diagnostics.Append(r.buildDataFromV3(ctx, &data, &member, data.ProjectName, apiPermissions)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

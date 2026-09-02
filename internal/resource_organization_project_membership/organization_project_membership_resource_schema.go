@@ -7,10 +7,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -22,6 +26,8 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown(), stringplanmodifier.RequiresReplace()},
 				Description:         "The unique identifier of the member(user, service account) in the project.",
 				MarkdownDescription: "The unique identifier of the member(user, service account) in the project.",
 			},
@@ -65,21 +71,21 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 								},
 							},
 							"service_account": schema.SingleNestedAttribute{
-								Optional: true,
+								Required: true,
 								Attributes: map[string]schema.Attribute{
 									"id": schema.StringAttribute{
-										Computed:            true,
-										Optional:            true,
+										Required:            true,
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 										Description:         "The UUID of the service account.",
 										MarkdownDescription: "The UUID of the service account.",
 									},
 									"name": schema.StringAttribute{
 										Computed:            true,
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 										Description:         "The unique name of the service account.",
 										MarkdownDescription: "The unique name of the service account.",
 									},
 								},
-								Computed: true,
 							},
 						},
 						Optional: true,
@@ -103,21 +109,21 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 								},
 							},
 							"user": schema.SingleNestedAttribute{
-								Optional: true,
+								Required: true,
 								Attributes: map[string]schema.Attribute{
 									"email": schema.StringAttribute{
-										Computed:            true,
-										Optional:            true,
+										Required:            true,
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 										Description:         "The email address of the user.",
 										MarkdownDescription: "The email address of the user.",
 									},
 									"id": schema.StringAttribute{
 										Computed:            true,
+										PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 										Description:         "The UUID of the user.",
 										MarkdownDescription: "The UUID of the user.",
 									},
 								},
-								Computed: true,
 							},
 						},
 						Optional: true,
@@ -128,34 +134,79 @@ func OrganizationProjectMembershipResourceSchema(ctx context.Context) schema.Sch
 	}
 }
 
-type OrganizationProjectMembershipModel struct {
-	Id             types.String     `tfsdk:"id"`
-	OrgId          types.String     `tfsdk:"org_id"`
-	OrganizationId types.String     `tfsdk:"organization_id"`
-	ProjectId      types.String     `tfsdk:"project_id"`
-	ProjectName    types.String     `tfsdk:"project_name"`
-	Membership     *MembershipValue `tfsdk:"membership"`
+func UserAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"email": types.StringType,
+		"id":    types.StringType,
+	}
 }
 
+func UserMembershipAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"membership_type": types.StringType,
+		"permissions":     types.ListType{ElemType: types.StringType},
+		"user":            basetypes.ObjectType{AttrTypes: UserAttrTypes()},
+	}
+}
+
+func ServiceAccountAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"id":   types.StringType,
+		"name": types.StringType,
+	}
+}
+
+func ServiceAccountMembershipAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"membership_type": types.StringType,
+		"permissions":     types.ListType{ElemType: types.StringType},
+		"service_account": basetypes.ObjectType{AttrTypes: ServiceAccountAttrTypes()},
+	}
+}
+
+// MembershipAttrTypes returns the attribute types of the membership object.
+func MembershipAttrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"service_account_membership": basetypes.ObjectType{AttrTypes: ServiceAccountMembershipAttrTypes()},
+		"user_membership":            basetypes.ObjectType{AttrTypes: UserMembershipAttrTypes()},
+	}
+}
+
+type OrganizationProjectMembershipModel struct {
+	Id             types.String          `tfsdk:"id"`
+	OrgId          types.String          `tfsdk:"org_id"`
+	OrganizationId types.String          `tfsdk:"organization_id"`
+	ProjectId      types.String          `tfsdk:"project_id"`
+	ProjectName    types.String          `tfsdk:"project_name"`
+	Membership     basetypes.ObjectValue `tfsdk:"membership"`
+}
+
+// MembershipValue is the decoded representation of the membership object.
+// The nested blocks are ObjectValue so that partially unknown plans (for
+// example a computed user.id that is "known after apply") can be decoded
+// without a Value Conversion Error.
 type MembershipValue struct {
-	ServiceAccountMembership *ServiceAccountMembershipValue `tfsdk:"service_account_membership"`
-	UserMembership           *UserMembershipValue           `tfsdk:"user_membership"`
+	ServiceAccountMembership basetypes.ObjectValue `tfsdk:"service_account_membership"`
+	UserMembership           basetypes.ObjectValue `tfsdk:"user_membership"`
 }
 
 type ServiceAccountMembershipValue struct {
-	MembershipType types.String         `tfsdk:"membership_type"`
-	Permissions    types.List           `tfsdk:"permissions"`
-	ServiceAccount *ServiceAccountValue `tfsdk:"service_account"`
+	MembershipType types.String          `tfsdk:"membership_type"`
+	Permissions    types.List            `tfsdk:"permissions"`
+	ServiceAccount basetypes.ObjectValue `tfsdk:"service_account"`
 }
+
 type ServiceAccountValue struct {
 	Id   types.String `tfsdk:"id"`
 	Name types.String `tfsdk:"name"`
 }
+
 type UserMembershipValue struct {
-	MembershipType types.String `tfsdk:"membership_type"`
-	Permissions    types.List   `tfsdk:"permissions"`
-	User           *UserValue   `tfsdk:"user"`
+	MembershipType types.String          `tfsdk:"membership_type"`
+	Permissions    types.List            `tfsdk:"permissions"`
+	User           basetypes.ObjectValue `tfsdk:"user"`
 }
+
 type UserValue struct {
 	Email types.String `tfsdk:"email"`
 	Id    types.String `tfsdk:"id"`
