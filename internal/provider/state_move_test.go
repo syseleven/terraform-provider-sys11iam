@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
@@ -13,6 +14,7 @@ import (
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_membership"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_s3_user"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_s3_user_key"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_team"
 )
 
 type resourceWithMoveAndSchema interface {
@@ -321,4 +323,227 @@ func moveStateWithProviderAddressForTest(t *testing.T, target resourceWithMoveAn
 
 	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
 	return resp.TargetState
+}
+
+// moveAllStateForTest runs every state mover of the target resource, like
+// Terraform does, and is used for resources that register multiple movers.
+func moveAllStateForTest(t *testing.T, target resourceWithMoveAndSchema, sourceTypeName string, rawJSON string) tfsdk.State {
+	t.Helper()
+
+	ctx := context.Background()
+
+	var schemaResp fwresource.SchemaResponse
+	target.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError())
+
+	state := tfsdk.State{
+		Schema: schemaResp.Schema,
+		Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+	}
+
+	resp := fwresource.MoveStateResponse{
+		TargetState: state,
+	}
+
+	movers := target.MoveState(ctx)
+	require.NotEmpty(t, movers)
+
+	for _, mover := range movers {
+		mover.StateMover(ctx, fwresource.MoveStateRequest{
+			SourceProviderAddress: "sys11iam",
+			SourceRawState:        &tfprotov6.RawState{JSON: []byte(rawJSON)},
+			SourceSchemaVersion:   0,
+			SourceTypeName:        sourceTypeName,
+		}, &resp)
+	}
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	return resp.TargetState
+}
+
+func TestOrganizationTeamResourceMoveStateFromOrganizationTeam(t *testing.T) {
+	state := moveAllStateForTest(t, &OrganizationTeamResource{}, "sys11iam_organization_team", `{
+		"description": "test team",
+		"editable_permissions": ["can_become_project_administrator_in_org"],
+		"id": "team-1",
+		"name": "testteam",
+		"organization_id": "org-1",
+		"tags": ["testing2"]
+	}`)
+
+	var data resource_organization_team.OrganizationTeamModelFull
+	diags := state.Get(context.Background(), &data)
+	require.False(t, diags.HasError(), diags)
+
+	require.Equal(t, "team-1", data.Id.ValueString())
+	require.Equal(t, "org-1", data.OrgId.ValueString())
+	require.Equal(t, "org-1", data.OrganizationId.ValueString())
+	require.Equal(t, "testteam", data.Name.ValueString())
+	require.Equal(t, "test team", data.Description.ValueString())
+
+	var tags []string
+	diags = data.Tags.ElementsAs(context.Background(), &tags, false)
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, []string{"testing2"}, tags)
+
+	var permissions []string
+	diags = data.OrganizationPermissions.ElementsAs(context.Background(), &permissions, false)
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, []string{"can_become_project_administrator_in_org"}, permissions)
+	require.True(t, data.Projects.IsNull())
+}
+
+func TestOrganizationTeamResourceMoveStateFromProjectTeam(t *testing.T) {
+	state := moveAllStateForTest(t, &OrganizationTeamResource{}, "sys11iam_project_team", `{
+		"editable_permissions": ["can_become_administrator_in_project"],
+		"organization_id": "org-1",
+		"project_id": "project-1",
+		"team_id": "team-1"
+	}`)
+
+	var data resource_organization_team.OrganizationTeamModelFull
+	diags := state.Get(context.Background(), &data)
+	require.False(t, diags.HasError(), diags)
+
+	require.Equal(t, "team-1", data.Id.ValueString())
+	require.Equal(t, "org-1", data.OrgId.ValueString())
+	require.Equal(t, "org-1", data.OrganizationId.ValueString())
+	require.True(t, data.Name.IsNull())
+	require.True(t, data.Description.IsNull())
+	require.True(t, data.Tags.IsNull())
+	require.True(t, data.OrganizationPermissions.IsNull())
+
+	var projects []*resource_organization_team.ProjectValue
+	diags = data.Projects.ElementsAs(context.Background(), &projects, false)
+	require.False(t, diags.HasError(), diags)
+	require.Len(t, projects, 1)
+	require.Equal(t, "project-1", projects[0].Id.ValueString())
+
+	var permissions []string
+	diags = projects[0].ProjectPermissions.ElementsAs(context.Background(), &permissions, false)
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, []string{"can_become_administrator_in_project"}, permissions)
+}
+
+func TestOrganizationTeamMoveStateRejectsProjectTeamWithoutTeamID(t *testing.T) {
+	ctx := context.Background()
+	target := &OrganizationTeamResource{}
+
+	var schemaResp fwresource.SchemaResponse
+	target.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError())
+
+	resp := fwresource.MoveStateResponse{
+		TargetState: tfsdk.State{
+			Schema: schemaResp.Schema,
+			Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+		},
+	}
+
+	for _, mover := range target.MoveState(ctx) {
+		mover.StateMover(ctx, fwresource.MoveStateRequest{
+			SourceProviderAddress: "registry.terraform.io/syseleven/sys11iam",
+			SourceRawState: &tfprotov6.RawState{JSON: []byte(`{
+				"editable_permissions": ["can_become_administrator_in_project"],
+				"organization_id": "org-1",
+				"project_id": "project-1"
+			}`)},
+			SourceSchemaVersion: 0,
+			SourceTypeName:      "sys11iam_project_team",
+		}, &resp)
+	}
+
+	require.True(t, resp.Diagnostics.HasError())
+}
+
+func TestOrganizationTeamMoveStateSkipsUnknownSourceType(t *testing.T) {
+	ctx := context.Background()
+	target := &OrganizationTeamResource{}
+
+	var schemaResp fwresource.SchemaResponse
+	target.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError())
+
+	nullState := tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil)
+	resp := fwresource.MoveStateResponse{
+		TargetState: tfsdk.State{
+			Schema: schemaResp.Schema,
+			Raw:    nullState,
+		},
+	}
+
+	for _, mover := range target.MoveState(ctx) {
+		mover.StateMover(ctx, fwresource.MoveStateRequest{
+			SourceProviderAddress: "registry.terraform.io/syseleven/sys11iam",
+			SourceRawState:        &tfprotov6.RawState{JSON: []byte(`{"id":"team-1"}`)},
+			SourceSchemaVersion:   0,
+			SourceTypeName:        "sys11iam_unknown",
+		}, &resp)
+	}
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	require.True(t, resp.TargetState.Raw.Equal(nullState))
+}
+
+func TestOrganizationTeamResourceUpgradeStateFromLegacyTeamState(t *testing.T) {
+	ctx := context.Background()
+	target := &OrganizationTeamResource{}
+
+	upgraders := target.UpgradeState(ctx)
+	require.Contains(t, upgraders, int64(0))
+
+	resp := fwresource.UpgradeStateResponse{}
+	upgraders[0].StateUpgrader(ctx, fwresource.UpgradeStateRequest{
+		RawState: &tfprotov6.RawState{JSON: []byte(`{
+			"description": "test team",
+			"editable_permissions": ["can_become_project_administrator_in_org"],
+			"id": "team-1",
+			"name": "testteam",
+			"organization_id": "org-1",
+			"tags": ["testing2"]
+		}`)},
+	}, &resp)
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	require.NotNil(t, resp.DynamicValue)
+
+	var upgraded map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(resp.DynamicValue.JSON, &upgraded))
+
+	require.Equal(t, `"org-1"`, string(upgraded["org_id"]))
+	require.Equal(t, `"org-1"`, string(upgraded["organization_id"]))
+	require.Equal(t, `["can_become_project_administrator_in_org"]`, string(upgraded["organization_permissions"]))
+	_, hasLegacyPermissions := upgraded["editable_permissions"]
+	require.False(t, hasLegacyPermissions)
+}
+
+func TestOrganizationTeamResourceUpgradeStateKeepsExistingOrgIDAndPermissions(t *testing.T) {
+	ctx := context.Background()
+	target := &OrganizationTeamResource{}
+
+	upgraders := target.UpgradeState(ctx)
+	require.Contains(t, upgraders, int64(0))
+
+	resp := fwresource.UpgradeStateResponse{}
+	upgraders[0].StateUpgrader(ctx, fwresource.UpgradeStateRequest{
+		RawState: &tfprotov6.RawState{JSON: []byte(`{
+			"id": "team-1",
+			"name": "testteam",
+			"org_id": "org-new",
+			"organization_id": "org-old",
+			"organization_permissions": ["can_invite_members_in_org"],
+			"editable_permissions": ["can_become_project_administrator_in_org"]
+		}`)},
+	}, &resp)
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+	require.NotNil(t, resp.DynamicValue)
+
+	var upgraded map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(resp.DynamicValue.JSON, &upgraded))
+
+	require.Equal(t, `"org-new"`, string(upgraded["org_id"]))
+	require.Equal(t, `["can_invite_members_in_org"]`, string(upgraded["organization_permissions"]))
+	_, hasLegacyPermissions := upgraded["editable_permissions"]
+	require.False(t, hasLegacyPermissions)
 }

@@ -20,6 +20,7 @@ import (
 
 var _ resource.Resource = (*OrganizationTeamResource)(nil)
 var _ resource.ResourceWithConfigure = (*OrganizationTeamResource)(nil)
+var _ resource.ResourceWithMoveState = (*OrganizationTeamResource)(nil)
 var _ resource.ResourceWithUpgradeState = (*OrganizationTeamResource)(nil)
 var _ resource.ResourceWithValidateConfig = (*OrganizationTeamResource)(nil)
 
@@ -51,7 +52,114 @@ func (r *OrganizationTeamResource) Schema(ctx context.Context, req resource.Sche
 
 func (r *OrganizationTeamResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	return map[int64]resource.StateUpgrader{
-		0: compat.OrgIdStateUpgrader(),
+		0: compat.TeamStateUpgrader(),
+	}
+}
+
+func (r *OrganizationTeamResource) MoveState(ctx context.Context) []resource.StateMover {
+	return []resource.StateMover{
+		compat.RawStateMover("sys11iam_organization_team", func(ctx context.Context, rawState compat.RawState, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+			orgId, organizationId, err := compat.RawOrgIDs(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read organization identifier: "+err.Error())
+				return
+			}
+
+			id, err := compat.RawString(rawState, "id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read team id: "+err.Error())
+				return
+			}
+
+			description, err := compat.RawString(rawState, "description")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read team description: "+err.Error())
+				return
+			}
+
+			name, err := compat.RawString(rawState, "name")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read team name: "+err.Error())
+				return
+			}
+
+			tags, err := compat.RawStringList(ctx, rawState, "tags")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read team tags: "+err.Error())
+				return
+			}
+
+			organizationPermissions, err := compat.RawStringList(ctx, rawState, "editable_permissions")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read team permissions: "+err.Error())
+				return
+			}
+
+			data := resource_organization_team.OrganizationTeamModelFull{
+				Description:             description,
+				Id:                      id,
+				Name:                    name,
+				OrgId:                   orgId,
+				OrganizationId:          organizationId,
+				OrganizationPermissions: organizationPermissions,
+				Projects:                types.ListNull(projectObjectType),
+				Tags:                    tags,
+			}
+
+			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
+		}),
+		compat.RawStateMover("sys11iam_project_team", func(ctx context.Context, rawState compat.RawState, req resource.MoveStateRequest, resp *resource.MoveStateResponse) {
+			orgId, organizationId, err := compat.RawOrgIDs(rawState)
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read organization identifier: "+err.Error())
+				return
+			}
+
+			teamId, err := compat.RawString(rawState, "team_id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read team id: "+err.Error())
+				return
+			}
+			if teamId.IsNull() || teamId.ValueString() == "" {
+				resp.Diagnostics.AddError(
+					"Unsupported project team state",
+					"Cannot safely migrate sys11iam_project_team state without a team_id value. Import the team as sys11iam_organization_team instead.",
+				)
+				return
+			}
+
+			projectId, err := compat.RawString(rawState, "project_id")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project id: "+err.Error())
+				return
+			}
+
+			projectPermissions, err := compat.RawStringList(ctx, rawState, "editable_permissions")
+			if err != nil {
+				resp.Diagnostics.AddError("Error reading prior state", "Could not read project team permissions: "+err.Error())
+				return
+			}
+
+			projects := basetypes.NewListValueMust(projectObjectType, []attr.Value{
+				basetypes.NewObjectValueMust(projectObjectType.AttrTypes, map[string]attr.Value{
+					"id":                  projectId,
+					"project_permissions": projectPermissions,
+				}),
+			})
+
+			data := resource_organization_team.OrganizationTeamModelFull{
+				Description:             types.StringNull(),
+				Id:                      teamId,
+				Name:                    types.StringNull(),
+				OrgId:                   orgId,
+				OrganizationId:          organizationId,
+				OrganizationPermissions: types.ListNull(types.StringType),
+				Projects:                projects,
+				Tags:                    types.ListNull(types.StringType),
+			}
+
+			resp.Diagnostics.Append(resp.TargetState.Set(ctx, &data)...)
+		}),
 	}
 }
 

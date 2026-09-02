@@ -246,7 +246,7 @@ The provider's state upgrader automatically copies `organization_id` → `org_id
 
 ---
 
-## 3. Removed Resources (Manual Migration)
+## 3. Removed Resources
 
 ### 3.1 `sys11iam_project_team` → `sys11iam_organization_team.projects`
 
@@ -287,12 +287,30 @@ resource "sys11iam_organization_team" "my_team" {
 }
 ```
 
-**Migration steps:**
-1. For each `sys11iam_project_team`, note the `project_id`, `team_id`, and `editable_permissions`
-2. Remove from state: `terraform state rm sys11iam_project_team.<name>`
+**Automatic migration (one `sys11iam_project_team` per team):**
+
+The provider supports a state move that adopts the team through the old `project_team` state and folds its `editable_permissions` into a single `projects` entry (`id` = `team_id`, so `terraform state rm` the team from state first if the target address already has state). The team's name, description, tags and organization permissions are re-read from the API on the first refresh:
+
+```hcl
+moved {
+  from = sys11iam_project_team.team_project_1
+  to   = sys11iam_organization_team.my_team
+}
+```
+
+```bash
+terraform state rm sys11iam_organization_team.my_team
+```
+
+**Manual migration (multiple `sys11iam_project_team` per team):**
+
+Terraform does not allow several `moved` blocks targeting the same resource, so teams that had more than one old `sys11iam_project_team` resource must be migrated manually:
+
+1. For each `sys11iam_project_team`, note the `project_id` and `editable_permissions`
+2. Remove all of them from state: `terraform state rm sys11iam_project_team.<name>`
 3. Remove the `sys11iam_project_team` resources from your configuration
-4. Update your `sys11iam_organization_team` resource with the `projects` block
-5. Also rename `project = []` to `projects = []` in the team config
+4. Update your `sys11iam_organization_team` resource with a `projects` block containing one entry per old project-team resource
+5. Rename `editable_permissions` to `organization_permissions` and `organization_id` to `org_id` in the team config
 6. `terraform apply`
 
 ---
@@ -313,13 +331,16 @@ The `sys11iam_project_team_membership` resource is no longer available. Team mem
 
 ## 4. Additional Schema Changes
 
-### `sys11iam_organization_team` — `project` → `projects`
+### `sys11iam_organization_team` — `editable_permissions` → `organization_permissions`
 
-The attribute changed from singular to plural:
+The v1.5.4 attribute `editable_permissions` (the team's organization-level permissions) is now `organization_permissions`. The in-place state upgrade (no `moved` block needed, the type name is unchanged) copies the old value over automatically:
+
 ```diff
--  project = []
-+  projects = []
+-  editable_permissions = ["can_become_project_administrator_in_org"]
++  organization_permissions = ["can_become_project_administrator_in_org"]
 ```
+
+The v1.5.4 `sys11iam_project_team` resources are now represented by the `projects` block of the team resource (see Section 3.1).
 
 ### `sys11iam_organization_project_s3_user` — new `keys` attribute
 
@@ -338,9 +359,9 @@ Computed list of key objects with `access_key`, `created_at`, `created_by`, `sec
 1. **Update the provider** — point `required_providers` to the new version.
 2. **Add `moved` blocks** — for Section 1 renamed resources.
 3. **Rename resources** — update resource type names.
-4. **Rename attributes** — `organization_id` → `org_id`, `s3_access_key` → `access_key`, `project` → `projects`.
+4. **Rename attributes** — `organization_id` → `org_id`, `s3_access_key` → `access_key`, `editable_permissions` → `organization_permissions` (teams).
 5. **Restructure project membership** — flat attributes into nested `membership` block.
-6. **Handle removed resources** — manual steps for `project_team` and `project_team_membership` (Section 3).
+6. **Handle removed resources** — `moved` block for a single `sys11iam_project_team` per team, manual otherwise; `sys11iam_project_team_membership` remains manual (Section 3).
 7. **`terraform plan`** — verify; expect state migration output and read operations.
 8. **`terraform apply`** — apply.
 
@@ -354,5 +375,5 @@ Computed list of key objects with `access_key`, `created_at`, `created_by`, `sec
 | `sys11iam_project_membership` | `sys11iam_organization_project_membership` | ✅ user (email in state); ❌ service account (manual) |
 | `sys11iam_project_s3user` | `sys11iam_organization_project_s3_user` | ✅ `moved` block |
 | `sys11iam_project_s3user_key` | `sys11iam_organization_project_s3_user_key` | ✅ `moved` block |
-| `sys11iam_project_team` | `sys11iam_organization_team.projects` | ❌ manual |
+| `sys11iam_project_team` | `sys11iam_organization_team.projects` | ✅ `moved` block (one per team); ❌ manual if the team had multiple project-team resources |
 | `sys11iam_project_team_membership` | `sys11iam_organization_team_membership` | ❌ manual |
