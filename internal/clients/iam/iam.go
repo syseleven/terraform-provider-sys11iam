@@ -138,6 +138,9 @@ type IAMProject struct {
 	// project description
 	Description string `json:"description"`
 
+	// project managed
+	IsManagedByS11 bool `json:"is_managed_by_s11"`
+
 	// project tags
 	Tags []string `json:"tags"`
 

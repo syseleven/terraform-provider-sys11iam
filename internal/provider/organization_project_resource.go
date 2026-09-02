@@ -78,6 +78,7 @@ func (r *ProjectResource) MoveState(ctx context.Context) []resource.StateMover {
 				CreatedAt:      types.StringNull(),
 				Description:    description,
 				Id:             id,
+				IsManagedByS11: types.BoolNull(),
 				Name:           name,
 				OrgId:          orgId,
 				OrganizationId: organizationId,
