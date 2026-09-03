@@ -1,8 +1,7 @@
 .PHONY: format unit-test tf-generate tf-generate-check
 
 terraform-provider-sys11iam:
-	# go build -ldflags "-X github.com/syseleven/terraform-provider-sys11iam/tmp_main.Version=$(shell git describe --tags --always)"
-	go build -ldflags "-X github.com/syseleven/terraform-provider-sys11iam/tmp_main.Version=v3.0.0-pre"
+	go build -ldflags "-X github.com/syseleven/terraform-provider-sys11iam/tmp_main.Version=$(shell git describe --tags --always)"
 
 dev:
 	$(MAKE) terraform-provider-sys11iam
