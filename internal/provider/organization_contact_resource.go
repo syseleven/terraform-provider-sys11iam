@@ -79,11 +79,13 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 		return
 	}
 
-	elements := make([]string, 0, len(data.Roles.Elements()))
-	diags := data.Roles.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Roles.IsNull() && !data.Roles.IsUnknown() {
+		diags := data.Roles.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	response, err := r.client.CreateOrganizationContact(data.OrganizationId.ValueString(), data.FirstName.ValueString(), data.LastName.ValueString(), data.Notes.ValueString(), data.Email.ValueString(), data.Phone.ValueString(), elements)
@@ -93,6 +95,9 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 	}
 
 	data.Id = types.StringValue(response.ID)
+	if response.Roles == nil {
+		response.Roles = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 
@@ -120,6 +125,9 @@ func (r *OrganizationContactResource) Read(ctx context.Context, req resource.Rea
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	if response.Roles == nil {
+		response.Roles = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 
@@ -140,11 +148,13 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationContact resource.")
-	elements := make([]string, 0, len(data.Roles.Elements()))
-	diags := data.Roles.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Roles.IsNull() && !data.Roles.IsUnknown() {
+		diags := data.Roles.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	response, err := r.client.UpdateOrganizationContact(data.OrganizationId.ValueString(), data.Id.ValueString(), data.FirstName.ValueString(), data.LastName.ValueString(), data.Notes.ValueString(), data.Email.ValueString(), data.Phone.ValueString(), elements)
@@ -160,6 +170,9 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 	data.Phone = types.StringValue(response.Phone)
 	data.Email = types.StringValue(response.Email)
 	data.Notes = types.StringValue(response.Notes)
+	if response.Roles == nil {
+		response.Roles = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 	// Save updated data into Terraform state
@@ -216,6 +229,9 @@ func (r *OrganizationContactResource) ImportState(ctx context.Context, req resou
 	data.Phone = types.StringValue(response.Phone)
 	data.Email = types.StringValue(response.Email)
 	data.Notes = types.StringValue(response.Notes)
+	if response.Roles == nil {
+		response.Roles = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Roles))
 	data.Roles, _ = types.ListValueFrom(ctx, types.StringType, response.Roles)
 	data.OrganizationId = types.StringValue(idParts[0])
