@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	_ datasource.DataSource = &organizationDataSource{}
+	_ datasource.DataSourceWithValidateConfig = &organizationDataSource{}
 )
 
 func NewOrganizationDataSource() datasource.DataSource {
@@ -28,7 +28,31 @@ func (r *organizationDataSource) Metadata(ctx context.Context, req datasource.Me
 }
 
 func (r *organizationDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = datasource_organization.OrganizationDataSourceSchema(ctx)
+	resp.Schema = datasource_organization.OrganizationDataSourceSchemaFull(ctx)
+}
+
+func (r *organizationDataSource) ValidateConfig(ctx context.Context, req datasource.ValidateConfigRequest, resp *datasource.ValidateConfigResponse) {
+	var data datasource_organization.OrganizationModelFull
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	idConfigured := !data.Id.IsNull()
+	nameConfigured := !data.Name.IsNull()
+	if !idConfigured && !nameConfigured {
+		resp.Diagnostics.AddError(
+			"Invalid organization lookup",
+			"At least one of id or name must be configured.",
+		)
+		return
+	}
+	if idConfigured && nameConfigured {
+		resp.Diagnostics.AddWarning(
+			"Both organization lookup attributes are configured",
+			"Both id and name are currently accepted for compatibility. Configure only one because providing both may be deprecated in a future version.",
+		)
+	}
 }
 
 func (r *organizationDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
@@ -51,46 +75,72 @@ func (r *organizationDataSource) Configure(_ context.Context, req datasource.Con
 }
 
 func (r *organizationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data datasource_organization.OrganizationModel
+	var data datasource_organization.OrganizationModelFull
 
-	// Read Terraform prior state data into the model
+	// Read Terraform configuration into the model.
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Read API call logic
-	tflog.Info(ctx, "Reading organization resource.")
-	response, err := r.client.GetOrganizationByName(data.Name.ValueString())
+	var (
+		response iam.IAMOrganization
+		err      error
+	)
+
+	switch {
+	case !data.Id.IsNull() && !data.Id.IsUnknown():
+		tflog.Info(ctx, "Reading organization by ID.")
+		response, err = r.client.GetOrganization(data.Id.ValueString())
+	case !data.Name.IsNull() && !data.Name.IsUnknown():
+		tflog.Info(ctx, "Reading organization by name.")
+		response, err = r.client.GetOrganizationByName(data.Name.ValueString())
+	default:
+		resp.Diagnostics.AddError(
+			"Invalid organization lookup",
+			"At least one of id or name must be configured with a known value.",
+		)
+		return
+	}
 	if err != nil {
 		resp.Diagnostics.AddError("", err.Error())
 		return
 	}
-	if response.Name != data.Name.ValueString() {
-		response, err = r.client.GetOrganization(data.Id.ValueString())
-		if err != nil {
-			resp.Diagnostics.AddError("", err.Error())
-			return
-		}
+	if response.ID == "" {
+		resp.Diagnostics.AddError(
+			"Organization not found",
+			"The organization lookup did not return an organization.",
+		)
+		return
 	}
 
-	// Data value setting
+	// Data value setting.
+	data.Id = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
+	data.CompanyInfoStreet = types.StringValue(response.CompanyInfo.Street)
+	data.CompanyInfoStreetNumber = types.StringValue(response.CompanyInfo.StreetNumber)
+	data.CompanyInfoZipCode = types.StringValue(response.CompanyInfo.ZipCode)
+	data.CompanyInfoCity = types.StringValue(response.CompanyInfo.City)
+	data.CompanyInfoCountry = types.StringValue(response.CompanyInfo.Country)
+	data.CompanyInfoVatID = types.StringValue(response.CompanyInfo.VatID)
+	data.CompanyInfoPreferredBillingMethod = types.StringValue(response.CompanyInfo.PreferredBillingMethod)
+	data.CompanyInfoPhone = types.StringValue(response.CompanyInfo.Phone)
+	data.CompanyInfoAcceptedTos = types.BoolValue(response.CompanyInfo.AcceptedTos)
+	data.CompanyInfoCompanyName = types.StringValue(response.CompanyInfo.CompanyName)
 
-	// Emit manual steps as warnings
+	// Emit manual steps as warnings.
 	if !data.IsActive.ValueBool() {
 		resp.Diagnostics.AddWarning("OrganizationNotActiveWarning",
 			fmt.Sprintf("Organization with id %s is not active. Organization activation is a manual step, please contact an IAM administrator.",
 				data.Id.ValueString()))
 	}
 
-	// Save updated data into Terraform state
+	// Save updated data into Terraform state.
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 

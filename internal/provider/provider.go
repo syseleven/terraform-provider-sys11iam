@@ -256,6 +256,7 @@ func (p *sys11IamProvider) Metadata(ctx context.Context, req provider.MetadataRe
 func (p *sys11IamProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewOrganizationDataSource,
+		NewProjectDataSource,
 	}
 }
 
