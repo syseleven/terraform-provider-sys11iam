@@ -24,6 +24,21 @@ func New() func() provider.Provider {
 
 type sys11IamProvider struct{}
 
+const defaultIAMURL = "https://iam.apis.syseleven.de"
+
+func iamURL(config types.String) string {
+	iamURL := os.Getenv("SYS11IAM_IAM_URL")
+	if iamURL == "" {
+		iamURL = defaultIAMURL
+	}
+
+	if !config.IsNull() {
+		iamURL = config.ValueString()
+	}
+
+	return iamURL
+}
+
 type sys11IamProviderModel struct {
 	OidcUrl              types.String `tfsdk:"oidc_url"`
 	IamUrl               types.String `tfsdk:"iam_url"`
@@ -130,10 +145,10 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 		return
 	}
 
-	// Default values to environment variables, but override
-	// with Terraform configuration value if set.
+	// Default values to environment variables, falling back to the
+	// production IAM URL when SYS11IAM_IAM_URL is unset.
 	oidcUrl := os.Getenv("SYS11IAM_OIDC_URL")
-	iamUrl := os.Getenv("SYS11IAM_IAM_URL")
+	iamUrl := iamURL(config.IamUrl)
 	oidcClientUsername := os.Getenv("SYS11IAM_OIDC_CLIENT_USERNAME")
 	oidcClientPassword := os.Getenv("SYS11IAM_OIDC_CLIENT_PASSWORD")
 	oidcClientSecret := os.Getenv("SYS11IAM_OIDC_CLIENT_SECRET")
@@ -165,25 +180,12 @@ func (p *sys11IamProvider) Configure(ctx context.Context, req provider.Configure
 		oidcClientScope = config.OidcClientScope.ValueString()
 	}
 
-	if !config.IamUrl.IsNull() {
-		iamUrl = config.IamUrl.ValueString()
-	}
-
 	if !config.ServiceAccountSecret.IsNull() {
 		serviceAccountSecret = config.ServiceAccountSecret.ValueString()
 	}
 
 	// If any of the expected configurations are missing, return
 	// errors with provider-specific guidance.
-
-	if iamUrl == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root("iam_url"),
-			"Unknown SysEleven IAM API Url.",
-			"The provider cannot create the IAM API client as there is an unknown configuration value for the IAM API url. "+
-				"Either target apply the source of the value first, set the value statically in the configuration, or use the SYS11IAM_IAM_URL environment variable.",
-		)
-	}
 
 	if serviceAccountSecret == "" {
 		if !(oidcUrl == "" || oidcClientSecret == "" || oidcClientUsername == "" || oidcClientPassword == "" || oidcClientId == "" || oidcClientScope == "") {
