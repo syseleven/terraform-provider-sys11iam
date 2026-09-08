@@ -14,9 +14,8 @@ echo "  Fixing regex patterns..."
 find "${REPO_ROOT}/internal/resource_"*/ -name '*_gen.go' -exec \
   sed -i 's/\\\\u0000/\\u0000/g' {} +
 
-# Format generated Go files
 echo "  Formatting generated code..."
-goimports -w "${REPO_ROOT}/internal/resource_"*/ 2>/dev/null || true
-go fmt "${REPO_ROOT}/internal/resource_"*/... 2>/dev/null || true
+goimports -w "${REPO_ROOT}/internal/resource_"*/ "${REPO_ROOT}/internal/datasource_"*/ 2>/dev/null || true
+go fmt "${REPO_ROOT}/internal/resource_"*/... "${REPO_ROOT}/internal/datasource_"*/... 2>/dev/null || true
 
 echo "Post-generation cleanup complete."

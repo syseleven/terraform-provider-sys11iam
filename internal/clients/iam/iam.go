@@ -67,8 +67,8 @@ const IAMUserProjectPermissionsEndpoint string = "/v3/orgs/%s/projects/%s/users/
 const IAMServiceAccountProjectPermissionsEndpoint string = "/v3/orgs/%s/projects/%s/service_accounts/%s/permissions" // org_id, project_id, service_account_id
 const IAMUserTeamPermissionsEndpoint string = "/v3/orgs/%s/teams/%s/users/%s/permissions"                            // org_id, team_id, user_id
 const IAMServiceAccountTeamPermissionsEndpoint string = "/v3/orgs/%s/teams/%s/service_accounts/%s/permissions"       // org_id, team_id, service_account_id
-const IAMUserTeamMemberEndpoint string = "/v3/orgs/%s/teams/%s/users/%s"                                            // org_id, team_id, user_id
-const IAMServiceAccountTeamMemberEndpoint string = "/v3/orgs/%s/teams/%s/service_accounts/%s"                       // org_id, team_id, service_account_id
+const IAMUserTeamMemberEndpoint string = "/v3/orgs/%s/teams/%s/users/%s"                                             // org_id, team_id, user_id
+const IAMServiceAccountTeamMemberEndpoint string = "/v3/orgs/%s/teams/%s/service_accounts/%s"                        // org_id, team_id, service_account_id
 
 type IAMOrganization struct {
 	// org id

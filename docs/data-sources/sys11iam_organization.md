@@ -1,16 +1,28 @@
 # sys11iam_organization
 
-Get an Organization by its ID and name.
+Get an Organization by its ID or unique name. At least one of `id` or `name` must be provided. Both are accepted for compatibility, but configuring only one is recommended.
 
 ## Example Usage
+
+Look up an organization by name:
+
+```hcl
+data "sys11iam_organization" "testorg" {
+  name = "test_org"
+}
+```
+
+Look up an organization by ID:
 
 ```hcl
 data "sys11iam_organization" "testorg" {
   id = "12345678-90ab-4cde-f123-4567890abcde"
-  name = "test_org"
 }
+```
 
-# now the data source can be used with any resource
+The data source can be used with any resource:
+
+```hcl
 resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_user_key" {
   count = data.sys11iam_organization.testorg.is_active ? 1 : 0
   org_id = data.sys11iam_organization.testorg.id
@@ -22,8 +34,8 @@ resource "sys11iam_organization_project_s3_user_key" "test_terraform_project_s3_
 
 The following arguments are supported:
 
-* **`name`** - A unique name for the organization.
-* **`id`** - The UUID of the organization.
+* **`id`** - The UUID of the organization. At least one of `id` or `name` must be provided; both are accepted for compatibility.
+* **`name`** - A unique name for the organization. At least one of `id` or `name` must be provided; both are accepted for compatibility.
 
 ## Attributes Reference
 

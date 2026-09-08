@@ -10,14 +10,15 @@ dev:
 tf-generate:
 	tfplugingen-openapi generate --config ./generator_config.yml --output ./provider-code-spec.json ./openapi.json
 	tfplugingen-framework generate resources --input ./provider-code-spec.json --output ./internal
+	tfplugingen-framework generate data-sources --input ./provider-code-spec.json --output ./internal
 	./scripts/post-generate.sh
 
 tf-generate-check:
 	@echo "Checking that generated code is up-to-date..."
 	$(MAKE) tf-generate
-	@if ! git diff --quiet internal/resource_*/ provider-code-spec.json; then \
+	@if ! git diff --quiet internal/resource_*/ internal/datasource_*/ provider-code-spec.json; then \
 		echo "ERROR: Generated code is out of sync. Run 'make tf-generate' and commit the result."; \
-		git --no-pager diff --stat internal/resource_*/ provider-code-spec.json; \
+		git --no-pager diff --stat internal/resource_*/ internal/datasource_*/ provider-code-spec.json; \
 		exit 1; \
 	fi
 	@echo "Generated code is up-to-date."

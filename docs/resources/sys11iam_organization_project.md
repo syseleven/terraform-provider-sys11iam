@@ -22,7 +22,7 @@ The following arguments are supported for the resource "sys11iam_organization_pr
 * **`description`** - The description of the project.
 * **`tags`** - The tags of the project.
 * **`org_id`** - The UUID of the organization.
-* **`id`** - The UUID of the project. (read-only)
+* **`id`** - The UUID of project in hex format.
 
 ## Importing Organization Projects
 

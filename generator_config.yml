@@ -1,5 +1,14 @@
 provider:
   name: sys11iam
+data_sources:
+  organization:
+    read:
+      path: /v3/orgs/{org_id}
+      method: GET
+  organization_project:
+    read:
+      path: /v3/orgs/{org_id}/projects/{project_id}
+      method: GET
 resources:
   organization:
     create:
