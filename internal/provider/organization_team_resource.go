@@ -79,11 +79,13 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	response, err := r.client.CreateOrganizationTeam(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
@@ -93,6 +95,9 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	data.Id = types.StringValue(response.ID)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
@@ -120,6 +125,9 @@ func (r *OrganizationTeamResource) Read(ctx context.Context, req resource.ReadRe
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
@@ -140,11 +148,13 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeam resource.")
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	response, err := r.client.UpdateOrganizationTeam(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
@@ -155,6 +165,9 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
@@ -213,6 +226,9 @@ func (r *OrganizationTeamResource) ImportState(ctx context.Context, req resource
 	data.Name = types.StringValue(response.Name)
 	data.OrganizationId = types.StringValue(idParts[0])
 	data.Description = types.StringValue(response.Description)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	sort.Sort(sort.StringSlice(response.Tags))
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 	data.EditablePermissions, _ = types.ListValueFrom(ctx, types.StringType, response_permissions.TeamPermissions)

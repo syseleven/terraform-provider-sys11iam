@@ -63,11 +63,13 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 
 	// Create API call logic
 	tflog.Info(ctx, "Creating organization resource.")
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	if data.Id.ValueString() != "" {
@@ -83,6 +85,9 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 		data.CreatedAt = types.StringValue(response.CreatedAt)
 		data.UpdatedAt = types.StringValue(response.UpdatedAt)
 		data.IsActive = types.BoolValue(response.IsActive)
+		if response.Tags == nil {
+			response.Tags = []string{}
+		}
 		data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 	} else {
 		iAMOrganization := iam.IAMOrganization{
@@ -112,6 +117,9 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 		data.CreatedAt = types.StringValue(response.CreatedAt)
 		data.UpdatedAt = types.StringValue(response.UpdatedAt)
 		data.IsActive = types.BoolValue(response.IsActive)
+		if response.Tags == nil {
+			response.Tags = []string{}
+		}
 		data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 	}
 
@@ -162,6 +170,9 @@ func (r *organizationResource) Read(ctx context.Context, req resource.ReadReques
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Emit manual steps as warnings
@@ -189,11 +200,13 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 
 	// Update API call logic
 	tflog.Info(ctx, "Updating organization resource.")
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	iAMOrganization := iam.IAMOrganization{
@@ -213,6 +226,9 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save updated data into Terraform state
@@ -265,6 +281,9 @@ func (r *organizationResource) ImportState(ctx context.Context, req resource.Imp
 	data.CreatedAt = types.StringValue(response.CreatedAt)
 	data.UpdatedAt = types.StringValue(response.UpdatedAt)
 	data.IsActive = types.BoolValue(response.IsActive)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Emit manual steps as warnings

@@ -76,11 +76,13 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 	response, err := r.client.CreateProject(data.OrganizationId.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
 	if err != nil {
@@ -92,6 +94,9 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	data.Id = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save data into Terraform state
@@ -119,6 +124,9 @@ func (r *ProjectResource) Read(ctx context.Context, req resource.ReadRequest, re
 	// Data value setting
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save updated data into Terraform state
@@ -137,8 +145,11 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 	if data.Description.IsNull() {
 		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("description"), &data.Description)...)
 	}
-	if data.Tags.IsNull() {
+	if data.Tags.IsNull() || data.Tags.IsUnknown() {
 		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("tags"), &data.Tags)...)
+	}
+	if data.Tags.IsNull() {
+		data.Tags, _ = types.ListValueFrom(ctx, types.StringType, []string{})
 	}
 
 	if resp.Diagnostics.HasError() {
@@ -147,11 +158,13 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	// Update API call logic
 	tflog.Info(ctx, "Creating Project resource.")
-	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	elements := make([]string, 0)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		diags := data.Tags.ElementsAs(ctx, &elements, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	_, err := r.client.UpdateProject(data.OrganizationId.ValueString(), data.Id.ValueString(), data.Name.ValueString(), data.Description.ValueString(), elements)
@@ -211,6 +224,9 @@ func (r *ProjectResource) ImportState(ctx context.Context, req resource.ImportSt
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.OrganizationId = types.StringValue(idParts[0])
+	if response.Tags == nil {
+		response.Tags = []string{}
+	}
 	data.Tags, _ = types.ListValueFrom(ctx, types.StringType, response.Tags)
 
 	// Save updated data into Terraform state
