@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
@@ -26,6 +27,14 @@ func testAccPreCheck(t *testing.T) {
 	// function.
 
 	t.Setenv("TF_LOG", "DEBUG")
+}
+
+func TestIAMURLDefaultsToProductionEndpoint(t *testing.T) {
+	t.Setenv("SYS11IAM_IAM_URL", "")
+
+	if got := iamURL(types.StringNull()); got != defaultIAMURL {
+		t.Fatalf("iamURL() = %q, want %q", got, defaultIAMURL)
+	}
 }
 
 func mustParseTemplate(name, text string) *template.Template {
