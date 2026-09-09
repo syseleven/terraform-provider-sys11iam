@@ -1,6 +1,6 @@
-# Project Resource
+# Organization Project Resource
 
-The Project Resource manages a SysEleven IAM project in an Organization.
+The Organization Project Resource manages a SysEleven IAM project in an Organization.
 
 ## Example Usage
 
