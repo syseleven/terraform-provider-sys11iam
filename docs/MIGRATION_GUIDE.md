@@ -1,6 +1,6 @@
-# Migration Guide: terraform-provider-sys11iam v1.5.4 → v3 (unreleased)
+# Migration Guide: terraform-provider-sys11iam v1.5.4 → v3
 
-This guide covers the breaking changes when migrating from the last released version (v1.5.4) to the unreleased v3 on the `glue-v3` branch.
+This guide covers the breaking changes when migrating from the last released v1.x version (v1.5.4) to v3.
 
 ---
 
@@ -351,6 +351,17 @@ Computed list of key objects with `access_key`, `created_at`, `created_by`, `sec
 - `team_name` — computed, name of the team
 - `membership_type` — derived from membership data
 - Nested `membership` block with `user_team_membership` / `service_account_team_membership`
+
+### `sys11iam_organization_project` — new `is_managed_by_s11` attribute
+
+Computed boolean attribute indicating whether the project is managed by SysEleven. It is populated on read; no
+configuration change is required.
+
+### Data sources
+
+The `sys11iam_organization` data source can now look up an organization by its `id` **or** its unique `name`.
+Providing both still works but prints a deprecation warning. A new `sys11iam_organization_project` data source
+looks up a project by its `id` within an organization.
 
 ---
 
