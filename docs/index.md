@@ -33,9 +33,11 @@ The following arguments are supported for the provider "sys11iam":
   If omitted, the `SYS11IAM_IAM_URL` environment variable is used; otherwise, it defaults to `https://iam.apis.syseleven.de`.
 * **`serviceaccount_secret`** - The secret of a service account to authenticate with. If omitted, the `SYS11IAM_SERVICEACCOUNT_SECRET` environment variable is used.
 
-## Upgrading project resources to v3
+## Upgrading to v3
 
-Version 3 renames the old project-scoped resource types so they are grouped under their organization:
+Version 3 renames the project-scoped resource types so they are grouped under their organization. Add `moved`
+blocks to your configuration before switching to the new type names and the provider will migrate the state
+(including the `organization_id` state attribute to `org_id`):
 
 ```hcl
 moved {
@@ -59,21 +61,11 @@ moved {
 }
 ```
 
-The provider supports state moves for these direct renames and migrates `organization_id` state to `org_id`.
+In addition, `organization_id` is renamed to `org_id` everywhere (the old name is still accepted with a
+deprecation warning), and two resource types were removed:
 
-## Upgrading organization team resources to v3
+* `sys11iam_project_team` — replaced by the `projects` block of `sys11iam_organization_team`
+* `sys11iam_project_team_membership` — replaced by `sys11iam_organization_team_membership`
 
-`sys11iam_organization_team` keeps its type name in v3, so no `moved` block is needed for the team itself. On the first plan/apply with the v3 provider the state is upgraded in place: `organization_id` becomes `org_id` and `editable_permissions` becomes `organization_permissions`.
-
-If a team has exactly one old `sys11iam_project_team` resource, its project permissions can be folded into the team's new `projects` block automatically:
-
-```hcl
-moved {
-  from = sys11iam_project_team.example
-  to   = sys11iam_organization_team.example
-}
-```
-
-Because the state move adopts the team through the old `project_team` state, the target address must not already have state: run `terraform state rm sys11iam_organization_team.example` before applying the move. The team's name, description, tags and organization permissions are re-read from the API. Teams with multiple old `sys11iam_project_team` resources cannot be moved this way (Terraform does not allow several `moved` blocks to the same target); combine their `editable_permissions` into the team's `projects` block manually and remove the old resources from state.
-
-The old `sys11iam_project_team_membership` state also does not contain enough information to safely infer the v3 nested membership shape in all cases. Migrate those resources by updating configuration to the v3 shape and importing the resulting resources instead of using a `moved` block.
+Both removed types require a manual migration. See the [migration guide](MIGRATION_GUIDE.md) for the complete,
+step-by-step procedure, including the attribute renames, the new membership schema, and resource name mapping.
