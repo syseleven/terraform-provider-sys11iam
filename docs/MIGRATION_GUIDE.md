@@ -13,6 +13,7 @@ Three categories of changes affect your Terraform configuration:
 | 1 | **Resource renames** | 4 resource types | Automatic via `moved` blocks |
 | 2 | **Attribute renames** | All resources | `organization_id` → `org_id` |
 | 3 | **Removed resources** | 2 resource types | Manual migration required |
+| 4 | **In-place schema changes** | `sys11iam_organization_membership`, `sys11iam_organization` | Automatic state upgrade, config restructure required |
 
 ---
 
@@ -331,6 +332,90 @@ The `sys11iam_project_team_membership` resource is no longer available. Team mem
 
 ## 4. Additional Schema Changes
 
+### `sys11iam_organization_membership` — flat attributes to nested `membership` block
+
+The v1.5.4 attributes `email`, `affiliation` and `editable_permissions` are now inside a nested `membership`
+block. The in-place state upgrade (no `moved` block needed, the type name is unchanged) converts the old state
+automatically:
+
+| Old attribute | New location |
+|---|---|
+| `email` | `membership.user_membership.email` |
+| `affiliation` | `membership.user_membership.affiliation` |
+| `editable_permissions` | `membership.user_membership.permissions` |
+| `organization_id` | `org_id` (deprecated `organization_id` preserved) |
+| `id` | `id` |
+| `is_active` | *(removed)* |
+| *(new)* | `membership.user_membership.membership_type` set to `"user"` |
+
+**Migration:**
+```diff
+-  email                = "test@example.com"
+-  affiliation          = "member"
+-  editable_permissions = ["can_become_project_administrator_in_org"]
+-  organization_id      = data.sys11iam_organization.testorg.id
++  org_id = data.sys11iam_organization.testorg.id
++  membership = {
++    user_membership = {
++      email             = "test@example.com"
++      affiliation       = "member"
++      permissions       = ["can_become_project_administrator_in_org"]
++      membership_type   = "user"
++    }
++  }
+```
+
+> If the old state has no `email` value, the state upgrade is rejected with an error. Remove the resource from
+> state and import it instead: `terraform import sys11iam_organization_membership.<name> <org_id>,<member_id>`
+
+### `sys11iam_organization` — flat `company_info_*` attributes to nested `company_info` block
+
+The v1.5.4 flat `company_info_*` attributes are now a nested `company_info` block. The in-place state upgrade
+converts the old values automatically:
+
+| Old attribute | New location |
+|---|---|
+| `company_info_street` | `company_info.street` |
+| `company_info_street_number` | `company_info.street_number` |
+| `company_info_zip_code` | `company_info.zip_code` |
+| `company_info_city` | `company_info.city` |
+| `company_info_country` | `company_info.country` |
+| `company_info_vat_id` | `company_info.vat_id` |
+| `company_info_preferred_billing_method` | `company_info.preferred_billing_method` |
+| `company_info_phone` | `company_info.phone_number` |
+| `company_info_accepted_tos` | `company_info.accepted_tos` |
+| `company_info_company_name` | `company_info.company_name` |
+
+All other attributes (`id`, `name`, `description`, `is_active`, `tags`, `created_at`, `updated_at`) are
+unchanged. If the old state contained no company information, `company_info` is upgraded to null and the
+(required) `company_info` block must be added to your configuration.
+
+**Migration:**
+```diff
+-  company_info_street                   = "Examplestreet"
+-  company_info_street_number            = "1"
+-  company_info_zip_code                 = "80331"
+-  company_info_city                     = "Munich"
+-  company_info_country                  = "Germany"
+-  company_info_vat_id                   = "DE123456789"
+-  company_info_preferred_billing_method = "invoice"
+-  company_info_phone                    = "+49 89 123456"
+-  company_info_accepted_tos             = true
+-  company_info_company_name             = "SysEleven GmbH"
++  company_info = {
++    street                   = "Examplestreet"
++    street_number            = "1"
++    zip_code                 = "80331"
++    city                     = "Munich"
++    country                  = "Germany"
++    vat_id                   = "DE123456789"
++    preferred_billing_method = "invoice"
++    phone_number             = "+49 89 123456"
++    accepted_tos             = true
++    company_name             = "SysEleven GmbH"
++  }
+```
+
 ### `sys11iam_organization_team` — `editable_permissions` → `organization_permissions`
 
 The v1.5.4 attribute `editable_permissions` (the team's organization-level permissions) is now `organization_permissions`. The in-place state upgrade (no `moved` block needed, the type name is unchanged) copies the old value over automatically:
@@ -371,7 +456,9 @@ looks up a project by its `id` within an organization.
 2. **Add `moved` blocks** — for Section 1 renamed resources.
 3. **Rename resources** — update resource type names.
 4. **Rename attributes** — `organization_id` → `org_id`, `s3_access_key` → `access_key`, `editable_permissions` → `organization_permissions` (teams).
-5. **Restructure project membership** — flat attributes into nested `membership` block.
+5. **Restructure membership and organization** — flat attributes into nested `membership` block
+   (`sys11iam_organization_membership`, `sys11iam_organization_project_membership`) and flat `company_info_*`
+   attributes into the `company_info` block (`sys11iam_organization`).
 6. **Handle removed resources** — `moved` block for a single `sys11iam_project_team` per team, manual otherwise; `sys11iam_project_team_membership` remains manual (Section 3).
 7. **`terraform plan`** — verify; expect state migration output and read operations.
 8. **`terraform apply`** — apply.

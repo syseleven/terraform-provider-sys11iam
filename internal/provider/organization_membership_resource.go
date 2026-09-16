@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -39,8 +40,115 @@ func (r *OrganizationMembershipResource) Schema(ctx context.Context, req resourc
 
 func (r *OrganizationMembershipResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
 	return map[int64]resource.StateUpgrader{
-		0: compat.OrgIdStateUpgrader(),
+		0: {
+			StateUpgrader: upgradeOrganizationMembershipStateV0,
+		},
 	}
+}
+
+// legacyOrganizationMembershipState is the flat state shape written by
+// provider versions <= v1.5.x (schema version 0).
+type legacyOrganizationMembershipState struct {
+	Id                  *string  `json:"id"`
+	OrgId               *string  `json:"org_id"`
+	OrganizationId      *string  `json:"organization_id"`
+	Email               *string  `json:"email"`
+	Affiliation         *string  `json:"affiliation"`
+	EditablePermissions []string `json:"editable_permissions"`
+}
+
+// upgradeOrganizationMembershipStateV0 migrates the legacy flat state shape
+// (id, email, affiliation, editable_permissions, organization_id, is_active)
+// into the current nested membership structure. is_active has no counterpart
+// in the current schema and is dropped.
+func upgradeOrganizationMembershipStateV0(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+	if req.RawState == nil || len(req.RawState.JSON) == 0 {
+		resp.Diagnostics.AddError(
+			"Error reading prior state",
+			"No prior state data available for migration.",
+		)
+		return
+	}
+
+	var legacy legacyOrganizationMembershipState
+	if err := json.Unmarshal(req.RawState.JSON, &legacy); err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading prior state",
+			"Could not unmarshal prior state data: "+err.Error(),
+		)
+		return
+	}
+
+	if legacy.Email == nil || *legacy.Email == "" {
+		resp.Diagnostics.AddError(
+			"Unsupported organization membership state",
+			"Cannot safely migrate legacy sys11iam_organization_membership state without an email value. Remove the resource from state and import it as sys11iam_organization_membership instead.",
+		)
+		return
+	}
+
+	orgId := ""
+	if legacy.OrgId != nil && *legacy.OrgId != "" {
+		orgId = *legacy.OrgId
+	} else if legacy.OrganizationId != nil {
+		orgId = *legacy.OrganizationId
+	}
+
+	var id types.String
+	if legacy.Id != nil && *legacy.Id != "" {
+		id = types.StringValue(*legacy.Id)
+	} else {
+		id = types.StringNull()
+	}
+
+	var affiliation types.String
+	if legacy.Affiliation != nil {
+		affiliation = types.StringValue(*legacy.Affiliation)
+	} else {
+		affiliation = types.StringNull()
+	}
+
+	permissions := []attr.Value{}
+	for _, p := range legacy.EditablePermissions {
+		permissions = append(permissions, types.StringValue(p))
+	}
+
+	userMembership, diags := basetypes.NewObjectValue(getUserMembershipAttrTypes(), map[string]attr.Value{
+		"id":              id,
+		"email":           types.StringValue(*legacy.Email),
+		"affiliation":     affiliation,
+		"membership_type": types.StringValue("user"),
+		"permissions":     types.ListValueMust(types.StringType, permissions),
+	})
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+
+	membership, diags := basetypes.NewObjectValue(getMembershipAttrTypes(), map[string]attr.Value{
+		"service_account_membership": basetypes.NewObjectNull(getServiceAccountMembershipAttrTypes()),
+		"user_membership":            userMembership,
+	})
+	if diags.HasError() {
+		resp.Diagnostics.Append(diags...)
+		return
+	}
+
+	var orgIdValue types.String
+	if orgId != "" {
+		orgIdValue = types.StringValue(orgId)
+	} else {
+		orgIdValue = types.StringNull()
+	}
+
+	data := resource_organization_membership.OrganizationMembershipModel{
+		Id:             id,
+		OrgId:          orgIdValue,
+		OrganizationId: orgIdValue,
+		Membership:     membership,
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *OrganizationMembershipResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

@@ -2,12 +2,16 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization"
@@ -15,6 +19,7 @@ import (
 
 var _ resource.Resource = (*organizationResource)(nil)
 var _ resource.ResourceWithConfigure = (*organizationResource)(nil)
+var _ resource.ResourceWithUpgradeState = (*organizationResource)(nil)
 
 func NewOrganizationResource() resource.Resource {
 	return &organizationResource{}
@@ -30,6 +35,140 @@ func (r *organizationResource) Metadata(ctx context.Context, req resource.Metada
 
 func (r *organizationResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = resource_organization.OrganizationResourceSchema(ctx)
+}
+
+func (r *organizationResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			StateUpgrader: upgradeOrganizationStateV0,
+		},
+	}
+}
+
+// legacyOrganizationState is the state shape written by provider versions
+// <= v1.5.x (schema version 0), where company info was stored as flat
+// company_info_* attributes.
+type legacyOrganizationState struct {
+	Id                                *string  `json:"id"`
+	Name                              *string  `json:"name"`
+	Description                       *string  `json:"description"`
+	IsActive                          *bool    `json:"is_active"`
+	Tags                              []string `json:"tags"`
+	CreatedAt                         *string  `json:"created_at"`
+	UpdatedAt                         *string  `json:"updated_at"`
+	CompanyInfoStreet                 *string  `json:"company_info_street"`
+	CompanyInfoStreetNumber           *string  `json:"company_info_street_number"`
+	CompanyInfoZipCode                *string  `json:"company_info_zip_code"`
+	CompanyInfoCity                   *string  `json:"company_info_city"`
+	CompanyInfoCountry                *string  `json:"company_info_country"`
+	CompanyInfoVatId                  *string  `json:"company_info_vat_id"`
+	CompanyInfoPreferredBillingMethod *string  `json:"company_info_preferred_billing_method"`
+	CompanyInfoPhone                  *string  `json:"company_info_phone"`
+	CompanyInfoAcceptedTos            *bool    `json:"company_info_accepted_tos"`
+	CompanyInfoCompanyName            *string  `json:"company_info_company_name"`
+}
+
+// upgradeOrganizationStateV0 migrates the flat company_info_* attributes into
+// the current nested company_info object.
+func upgradeOrganizationStateV0(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+	if req.RawState == nil || len(req.RawState.JSON) == 0 {
+		resp.Diagnostics.AddError(
+			"Error reading prior state",
+			"No prior state data available for migration.",
+		)
+		return
+	}
+
+	var legacy legacyOrganizationState
+	if err := json.Unmarshal(req.RawState.JSON, &legacy); err != nil {
+		resp.Diagnostics.AddError(
+			"Error reading prior state",
+			"Could not unmarshal prior state data: "+err.Error(),
+		)
+		return
+	}
+
+	attrTypes := resource_organization.CompanyInfoValue{}.AttributeTypes(ctx)
+	companyInfoAttrs := map[string]attr.Value{
+		"accepted_tos":             basetypes.NewBoolNull(),
+		"city":                     basetypes.NewStringNull(),
+		"company_name":             basetypes.NewStringNull(),
+		"country":                  basetypes.NewStringNull(),
+		"phone_number":             basetypes.NewStringNull(),
+		"preferred_billing_method": basetypes.NewStringNull(),
+		"street":                   basetypes.NewStringNull(),
+		"street_number":            basetypes.NewStringNull(),
+		"vat_id":                   basetypes.NewStringNull(),
+		"zip_code":                 basetypes.NewStringNull(),
+	}
+
+	hasCompanyInfo := false
+	setString := func(name string, value *string) {
+		if value != nil && *value != "" {
+			companyInfoAttrs[name] = basetypes.NewStringValue(*value)
+			hasCompanyInfo = true
+		}
+	}
+	setBool := func(name string, value *bool) {
+		if value != nil {
+			companyInfoAttrs[name] = basetypes.NewBoolValue(*value)
+			hasCompanyInfo = true
+		}
+	}
+
+	setString("street", legacy.CompanyInfoStreet)
+	setString("street_number", legacy.CompanyInfoStreetNumber)
+	setString("zip_code", legacy.CompanyInfoZipCode)
+	setString("city", legacy.CompanyInfoCity)
+	setString("country", legacy.CompanyInfoCountry)
+	setString("vat_id", legacy.CompanyInfoVatId)
+	setString("preferred_billing_method", legacy.CompanyInfoPreferredBillingMethod)
+	setString("phone_number", legacy.CompanyInfoPhone)
+	setBool("accepted_tos", legacy.CompanyInfoAcceptedTos)
+	setString("company_name", legacy.CompanyInfoCompanyName)
+
+	var companyInfo resource_organization.CompanyInfoValue
+	if hasCompanyInfo {
+		var diags diag.Diagnostics
+		companyInfo, diags = resource_organization.NewCompanyInfoValue(attrTypes, companyInfoAttrs)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	} else {
+		companyInfo = resource_organization.NewCompanyInfoValueNull()
+	}
+
+	tags := []attr.Value{}
+	for _, tag := range legacy.Tags {
+		tags = append(tags, types.StringValue(tag))
+	}
+
+	data := resource_organization.OrganizationModel{
+		CompanyInfo: companyInfo,
+		Id:          stringOrNull(legacy.Id),
+		Name:        stringOrNull(legacy.Name),
+		Description: stringOrNull(legacy.Description),
+		IsActive:    basetypes.NewBoolNull(),
+		Tags:        types.ListValueMust(types.StringType, tags),
+		CreatedAt:   stringOrNull(legacy.CreatedAt),
+		UpdatedAt:   stringOrNull(legacy.UpdatedAt),
+		OrgId:       types.StringNull(),
+	}
+	if legacy.IsActive != nil {
+		data.IsActive = basetypes.NewBoolValue(*legacy.IsActive)
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+// stringOrNull converts a legacy *string state field into a types.String,
+// mapping absent/empty values to null.
+func stringOrNull(value *string) types.String {
+	if value == nil || *value == "" {
+		return types.StringNull()
+	}
+	return types.StringValue(*value)
 }
 
 func (r *organizationResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {

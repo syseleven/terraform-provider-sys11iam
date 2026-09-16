@@ -11,6 +11,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/require"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_membership"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_membership"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_project_s3_user"
@@ -559,4 +561,159 @@ func TestOrganizationTeamResourceUpgradeStateKeepsExistingOrgIDAndPermissions(t 
 	require.Equal(t, `["can_invite_members_in_org"]`, string(upgraded["organization_permissions"]))
 	_, hasLegacyPermissions := upgraded["editable_permissions"]
 	require.False(t, hasLegacyPermissions)
+}
+
+type resourceWithUpgradeStateAndSchema interface {
+	fwresource.ResourceWithUpgradeState
+	Schema(context.Context, fwresource.SchemaRequest, *fwresource.SchemaResponse)
+}
+
+func upgradeStateForTest(t *testing.T, target resourceWithUpgradeStateAndSchema, rawJSON string) fwresource.UpgradeStateResponse {
+	t.Helper()
+
+	ctx := context.Background()
+
+	var schemaResp fwresource.SchemaResponse
+	target.Schema(ctx, fwresource.SchemaRequest{}, &schemaResp)
+	require.False(t, schemaResp.Diagnostics.HasError())
+
+	upgraders := target.UpgradeState(ctx)
+	require.Contains(t, upgraders, int64(0))
+
+	resp := fwresource.UpgradeStateResponse{
+		State: tfsdk.State{
+			Schema: schemaResp.Schema,
+		},
+	}
+
+	upgraders[0].StateUpgrader(ctx, fwresource.UpgradeStateRequest{
+		RawState: &tfprotov6.RawState{JSON: []byte(rawJSON)},
+	}, &resp)
+
+	return resp
+}
+
+func TestOrganizationMembershipResourceUpgradeStateFromLegacyState(t *testing.T) {
+	resp := upgradeStateForTest(t, &OrganizationMembershipResource{}, `{
+		"affiliation": "member",
+		"editable_permissions": ["can_become_project_administrator_in_org", "can_invite_members_in_org"],
+		"email": "test@example.com",
+		"id": "membership-1",
+		"is_active": true,
+		"organization_id": "org-1"
+	}`)
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+
+	ctx := context.Background()
+	var data resource_organization_membership.OrganizationMembershipModel
+	diags := resp.State.Get(ctx, &data)
+	require.False(t, diags.HasError(), diags)
+
+	require.Equal(t, "membership-1", data.Id.ValueString())
+	require.Equal(t, "org-1", data.OrgId.ValueString())
+	require.Equal(t, "org-1", data.OrganizationId.ValueString())
+	require.False(t, data.Membership.IsNull())
+
+	var userMembership resource_organization_membership.UserMembershipValue
+	diags = data.Membership.Attributes()["user_membership"].(basetypes.ObjectValue).As(ctx, &userMembership, basetypes.ObjectAsOptions{})
+	require.False(t, diags.HasError(), diags)
+
+	require.Equal(t, "membership-1", userMembership.Id.ValueString())
+	require.Equal(t, "test@example.com", userMembership.Email.ValueString())
+	require.Equal(t, "member", userMembership.Affiliation.ValueString())
+	require.Equal(t, "user", userMembership.MembershipType.ValueString())
+
+	var permissions []string
+	diags = userMembership.Permissions.ElementsAs(ctx, &permissions, false)
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, []string{"can_become_project_administrator_in_org", "can_invite_members_in_org"}, permissions)
+
+	require.True(t, data.Membership.Attributes()["service_account_membership"].IsNull())
+}
+
+func TestOrganizationMembershipResourceUpgradeStateMissingEmail(t *testing.T) {
+	resp := upgradeStateForTest(t, &OrganizationMembershipResource{}, `{
+		"affiliation": "member",
+		"editable_permissions": [],
+		"id": "membership-1",
+		"is_active": false,
+		"organization_id": "org-1"
+	}`)
+
+	require.True(t, resp.Diagnostics.HasError())
+}
+
+func TestOrganizationResourceUpgradeStateFromLegacyState(t *testing.T) {
+	resp := upgradeStateForTest(t, &organizationResource{}, `{
+		"company_info_accepted_tos": true,
+		"company_info_city": "Munich",
+		"company_info_company_name": "SysEleven GmbH",
+		"company_info_country": "DE",
+		"company_info_phone": "+49 89 123456",
+		"company_info_preferred_billing_method": "invoice",
+		"company_info_street": "Example Street",
+		"company_info_street_number": "1",
+		"company_info_vat_id": "DE123456789",
+		"company_info_zip_code": "80000",
+		"created_at": "2024-01-01T00:00:00Z",
+		"description": "test org",
+		"id": "org-1",
+		"is_active": true,
+		"name": "testorg",
+		"tags": ["one", "two"],
+		"updated_at": "2024-01-02T00:00:00Z"
+	}`)
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+
+	ctx := context.Background()
+	var data resource_organization.OrganizationModel
+	diags := resp.State.Get(ctx, &data)
+	require.False(t, diags.HasError(), diags)
+
+	require.Equal(t, "org-1", data.Id.ValueString())
+	require.Equal(t, "testorg", data.Name.ValueString())
+	require.Equal(t, "test org", data.Description.ValueString())
+	require.True(t, data.IsActive.ValueBool())
+	require.Equal(t, "2024-01-01T00:00:00Z", data.CreatedAt.ValueString())
+	require.Equal(t, "2024-01-02T00:00:00Z", data.UpdatedAt.ValueString())
+	require.True(t, data.OrgId.IsNull())
+
+	var tags []string
+	diags = data.Tags.ElementsAs(ctx, &tags, false)
+	require.False(t, diags.HasError(), diags)
+	require.Equal(t, []string{"one", "two"}, tags)
+
+	require.False(t, data.CompanyInfo.IsNull())
+	require.Equal(t, "Example Street", data.CompanyInfo.Street.ValueString())
+	require.Equal(t, "1", data.CompanyInfo.StreetNumber.ValueString())
+	require.Equal(t, "80000", data.CompanyInfo.ZipCode.ValueString())
+	require.Equal(t, "Munich", data.CompanyInfo.City.ValueString())
+	require.Equal(t, "DE", data.CompanyInfo.Country.ValueString())
+	require.Equal(t, "DE123456789", data.CompanyInfo.VatId.ValueString())
+	require.Equal(t, "invoice", data.CompanyInfo.PreferredBillingMethod.ValueString())
+	require.Equal(t, "+49 89 123456", data.CompanyInfo.PhoneNumber.ValueString())
+	require.True(t, data.CompanyInfo.AcceptedTos.ValueBool())
+	require.Equal(t, "SysEleven GmbH", data.CompanyInfo.CompanyName.ValueString())
+}
+
+func TestOrganizationResourceUpgradeStateWithoutCompanyInfo(t *testing.T) {
+	resp := upgradeStateForTest(t, &organizationResource{}, `{
+		"created_at": "2024-01-01T00:00:00Z",
+		"description": "test org",
+		"id": "org-1",
+		"is_active": true,
+		"name": "testorg",
+		"tags": [],
+		"updated_at": "2024-01-02T00:00:00Z"
+	}`)
+
+	require.False(t, resp.Diagnostics.HasError(), resp.Diagnostics)
+
+	var data resource_organization.OrganizationModel
+	diags := resp.State.Get(context.Background(), &data)
+	require.False(t, diags.HasError(), diags)
+
+	require.True(t, data.CompanyInfo.IsNull())
 }
