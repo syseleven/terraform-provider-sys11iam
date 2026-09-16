@@ -13,6 +13,13 @@ import (
 func OrganizationProjectS3UserResourceSchemaFull(ctx context.Context) schema.Schema {
 	s := OrganizationProjectS3UserResourceSchema(ctx)
 	s.Attributes["organization_id"] = compat.DeprecatedOrganizationIdAttribute()
+	if keysAttr, ok := s.Attributes["keys"].(schema.ListNestedAttribute); ok {
+		if secretKey, ok := keysAttr.NestedObject.Attributes["secret_key"].(schema.StringAttribute); ok {
+			secretKey.Sensitive = true
+			keysAttr.NestedObject.Attributes["secret_key"] = secretKey
+		}
+		s.Attributes["keys"] = keysAttr
+	}
 	s.Version = 1
 	return s
 }
