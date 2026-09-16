@@ -19,6 +19,12 @@ func OrganizationProjectS3UserKeyResourceSchemaFull(ctx context.Context) schema.
 		Optional: true,
 		Computed: true,
 	}
+	s.Attributes["secret_key"] = schema.StringAttribute{
+		Computed:            true,
+		Sensitive:           true,
+		Description:         "The user's secret key.",
+		MarkdownDescription: "The user's secret key.",
+	}
 	s.Version = 1
 	return s
 }

@@ -21,7 +21,7 @@ The following arguments are supported for the resource "sys11iam_organization_pr
 * **`project_id`** - The UUID of the project.
 * **`s3_user_id`** - The UUID of the S3 User.
 * **`access_key`** - The S3 access key (read-only)
-* **`secret_key`** - The S3 secret key (read-only)
+* **`secret_key`** - The S3 secret key (read-only, sensitive)
 
 ## Importing Organization Project S3 User Keys
 

@@ -21,7 +21,7 @@ The following arguments are supported for the resource "sys11iam_organization_pr
 * **`description`** - The description of the S3 User.
 * **`org_id`** - The UUID of the organization.
 * **`project_id`** - The UUID of the project.
-* **`keys`** - List of key pairs for the S3 user (read-only)
+* **`keys`** - List of key pairs for the S3 user (read-only; `secret_key` is sensitive)
 * **`s3_user_id`** - The S3 user ID (read-only)
 * **`id`** - The UUID of the S3 user (read-only)
 * **`created_at`** - The time the S3 user was created (read-only)
