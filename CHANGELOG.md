@@ -50,6 +50,8 @@ before upgrading.
 * Fixed broken user state after state moves caused by a computed/non-computed field mismatch.
 * Fixed `iam_url` not falling back to `https://iam.apis.syseleven.de` when no custom URL was configured (#10).
 * Added the missing `is_managed_by_s11` attribute to the project resource and data source schemas.
+* Migrated v1.x state of `sys11iam_organization` instead of silently dropping it: the legacy flat
+  `company_info_*` attributes are now converted into the nested `company_info` block.
 
 ### CI
 
