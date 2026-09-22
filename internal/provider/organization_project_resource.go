@@ -152,7 +152,7 @@ func (r *ProjectResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	if len(data.Tags.Elements()) > 0 {
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
 		diags := data.Tags.ElementsAs(ctx, &elements, false)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -211,7 +211,7 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 	if data.Description.IsNull() {
 		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("description"), &data.Description)...)
 	}
-	if data.Tags.IsNull() {
+	if data.Tags.IsNull() || data.Tags.IsUnknown() {
 		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("tags"), &data.Tags)...)
 	}
 
@@ -224,7 +224,7 @@ func (r *ProjectResource) Update(ctx context.Context, req resource.UpdateRequest
 	// Update API call logic
 	tflog.Info(ctx, "Updating Project resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	if len(data.Tags.Elements()) > 0 {
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
 		diags := data.Tags.ElementsAs(ctx, &elements, false)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {

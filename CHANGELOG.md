@@ -28,6 +28,8 @@ before upgrading.
 * The membership resources (`sys11iam_organization_membership`, `sys11iam_organization_project_membership`,
   `sys11iam_organization_team_membership`) now use a nested `membership` block instead of the previous flat
   attributes.
+* Permission lists must be explicitly configured on teams and within selected membership blocks. Use `[]`
+  for no direct permissions. Team memberships require exactly one user or service-account membership block.
 
 ### Features
 
@@ -52,6 +54,9 @@ before upgrading.
 * Added the missing `is_managed_by_s11` attribute to the project resource and data source schemas.
 * Migrated v1.x state of `sys11iam_organization` instead of silently dropping it: the legacy flat
   `company_info_*` attributes are now converted into the nested `company_info` block.
+* Fixed unknown-list conversion errors when tags are omitted on organizations and teams; unrelated updates
+  now preserve existing tags on organizations, projects, and teams.
+* Explicitly empty team organization permissions now revoke existing grants instead of skipping the update.
 
 ### CI
 

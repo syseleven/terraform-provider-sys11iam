@@ -98,10 +98,9 @@ func OrganizationMembershipResourceSchema(ctx context.Context) schema.Schema {
 							},
 							"permissions": schema.ListAttribute{
 								ElementType:         types.StringType,
-								Optional:            true,
-								Computed:            true,
-								Description:         "The editable permissions of the user",
-								MarkdownDescription: "The editable permissions of the user",
+								Required:            true,
+								Description:         "The editable permissions of the user.",
+								MarkdownDescription: "The editable permissions of the user.",
 								Validators: []validator.List{
 									listvalidator.UniqueValues(),
 								},
