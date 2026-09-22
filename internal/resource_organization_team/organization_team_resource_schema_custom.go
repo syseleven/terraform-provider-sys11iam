@@ -39,8 +39,7 @@ func OrganizationTeamResourceSchemaFull(ctx context.Context) schema.Schema {
 	// Organization-level team permissions (managed via /orgs/{org_id}/teams/{team_id}/permissions)
 	s.Attributes["organization_permissions"] = schema.ListAttribute{
 		ElementType:         types.StringType,
-		Optional:            true,
-		Computed:            true,
+		Required:            true,
 		Description:         "The organization-level permissions for this team.",
 		MarkdownDescription: "The organization-level permissions for this team.",
 		Validators: []validator.List{
@@ -68,10 +67,9 @@ func OrganizationTeamResourceSchemaFull(ctx context.Context) schema.Schema {
 				},
 				"project_permissions": schema.ListAttribute{
 					ElementType:         types.StringType,
-					Optional:            true,
-					Computed:            true,
-					Description:         "The permissions of the project",
-					MarkdownDescription: "The permissions of the project",
+					Required:            true,
+					Description:         "The permissions of the project.",
+					MarkdownDescription: "The permissions of the project.",
 					Validators: []validator.List{
 						listvalidator.UniqueValues(),
 					},

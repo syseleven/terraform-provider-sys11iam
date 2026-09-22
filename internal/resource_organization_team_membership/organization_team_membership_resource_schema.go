@@ -4,8 +4,9 @@ package resource_organization_team_membership
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework-validators/objectvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
@@ -40,21 +41,18 @@ func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema
 				MarkdownDescription: "The type of the membership.",
 			},
 			"membership": schema.SingleNestedAttribute{
-				// Validators: []validator.Object{
-				// 	objectvalidator.ExactlyOneOf(path.MatchRelative().AtName("user_team_membership"), path.MatchRelative().AtName("service_account_team_membership")),
-				// },
-				Optional: true,
-				Computed: true,
+				Required: true,
 				Attributes: map[string]schema.Attribute{
 					"user_team_membership": schema.SingleNestedAttribute{
+						Validators: []validator.Object{
+							objectvalidator.ExactlyOneOf(path.MatchRelative().AtParent().AtName("service_account_team_membership")),
+						},
 						Attributes: map[string]schema.Attribute{
 							"team_permissions": schema.ListAttribute{
 								ElementType:         types.StringType,
-								Optional:            true,
-								Computed:            true,
-								Default:             listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
-								Description:         "The team permissions the user has in the team",
-								MarkdownDescription: "The team permissions the user has in the team",
+								Required:            true,
+								Description:         "The direct team permissions of the user.",
+								MarkdownDescription: "The direct team permissions of the user.",
 							},
 							"user": schema.SingleNestedAttribute{
 								Attributes: map[string]schema.Attribute{
@@ -70,21 +68,17 @@ func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema
 							},
 						},
 						Optional: true,
-						Computed: true,
 					},
 					"service_account_team_membership": schema.SingleNestedAttribute{
 						Attributes: map[string]schema.Attribute{
 							"team_permissions": schema.ListAttribute{
 								ElementType:         types.StringType,
-								Optional:            true,
-								Computed:            true,
-								Description:         "The team permissions the user has in the team",
-								MarkdownDescription: "The team permissions the user has in the team",
-								Default:             listdefault.StaticValue(types.ListValueMust(types.StringType, []attr.Value{})),
+								Required:            true,
+								Description:         "The direct team permissions of the service account.",
+								MarkdownDescription: "The direct team permissions of the service account.",
 							},
 						},
 						Optional: true,
-						Computed: true,
 					},
 				},
 			},

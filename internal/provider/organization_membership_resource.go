@@ -345,8 +345,7 @@ func (r *OrganizationMembershipResource) Create(ctx context.Context, req resourc
 			return
 		}
 
-		diags := userMembership.Permissions.ElementsAs(ctx, &permissions, false)
-		resp.Diagnostics.Append(diags...)
+		resp.Diagnostics.Append(userMembership.Permissions.ElementsAs(ctx, &permissions, false)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
@@ -536,8 +535,7 @@ func (r *OrganizationMembershipResource) Update(ctx context.Context, req resourc
 			return
 		}
 
-		diags := userMembership.Permissions.ElementsAs(ctx, &permissions, false)
-		resp.Diagnostics.Append(diags...)
+		resp.Diagnostics.Append(userMembership.Permissions.ElementsAs(ctx, &permissions, false)...)
 		if resp.Diagnostics.HasError() {
 			return
 		}

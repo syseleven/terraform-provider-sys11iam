@@ -203,10 +203,11 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 	// Create API call logic
 	tflog.Info(ctx, "Creating organization resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	if !data.Tags.IsUnknown() && !data.Tags.IsNull() {
+		resp.Diagnostics.Append(data.Tags.ElementsAs(ctx, &elements, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	if data.Id.ValueString() != "" {
@@ -321,6 +322,9 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("is_active"), &data.IsActive)...)
+	if data.Tags.IsUnknown() {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("tags"), &data.Tags)...)
+	}
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -329,10 +333,11 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 	// Update API call logic
 	tflog.Info(ctx, "Updating organization resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	if !data.Tags.IsUnknown() && !data.Tags.IsNull() {
+		resp.Diagnostics.Append(data.Tags.ElementsAs(ctx, &elements, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 	}
 
 	iAMOrganization := iam.IAMOrganization{

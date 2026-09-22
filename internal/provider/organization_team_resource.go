@@ -224,11 +224,10 @@ func (r *OrganizationTeamResource) processProjectPermissions(
 				diags := project.ProjectPermissions.ElementsAs(ctx, &projectPermissions, false)
 				if diags.HasError() {
 					mu.Lock()
-					errors = append(errors, fmt.Errorf("failed to extract project permissions for project %s", project.Id.ValueString()))
+					errors = append(errors, fmt.Errorf("failed to extract project permissions for project %s: %v", project.Id.ValueString(), diags))
 					mu.Unlock()
 					continue
 				}
-
 				response, err := projectPermissionsClientRequest(organizationId, project.Id.ValueString(), teamId, projectPermissions)
 				if err != nil {
 					mu.Lock()
@@ -355,8 +354,15 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 	tflog.Info(ctx, fmt.Sprintf("Checking if organization with id %s is active.", orgId.ValueString()))
 
 	tags := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &tags, false)
-	resp.Diagnostics.Append(diags...)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		resp.Diagnostics.Append(data.Tags.ElementsAs(ctx, &tags, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	orgPermissions := make([]string, 0, len(data.OrganizationPermissions.Elements()))
+	resp.Diagnostics.Append(data.OrganizationPermissions.ElementsAs(ctx, &orgPermissions, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -367,28 +373,14 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	// Create org permissions for the team if set in plan data.
-	if len(data.OrganizationPermissions.Elements()) > 0 {
-		tflog.Info(ctx, "Creating OrganizationTeam permissions.")
-
-		orgPermissions := make([]string, 0, len(data.OrganizationPermissions.Elements()))
-
-		diags = data.OrganizationPermissions.ElementsAs(ctx, &orgPermissions, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		orgPermissionsResponse, err := r.client.CreateOrganizationTeamPermission(orgId.ValueString(), response.ID, orgPermissions)
-		if err != nil {
-			resp.Diagnostics.AddError("", err.Error())
-			return
-		}
-
-		data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(iam.FilterActiveDirectPermissions(orgPermissionsResponse), func(perm string) attr.Value {
-			return types.StringValue(perm)
-		}))
+	// Apply the required permissions, including an explicitly empty list.
+	orgPermissionsResponse, err := r.client.CreateOrganizationTeamPermission(orgId.ValueString(), response.ID, orgPermissions)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
 	}
+
+	data.OrganizationPermissions = permissionsAttrList(iam.FilterActiveDirectPermissions(orgPermissionsResponse))
 
 	// Create project permissions for the team to a project if set in plan data.
 	if len(data.Projects.Elements()) > 0 {
@@ -423,6 +415,8 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 				"project_permissions": project.ProjectPermissions,
 			})
 		}))
+	} else if data.Projects.IsNull() || data.Projects.IsUnknown() {
+		data.Projects = types.ListValueMust(projectObjectType, []attr.Value{})
 	}
 
 	data.Id = types.StringValue(response.ID)
@@ -518,6 +512,13 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 	resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("id"), &data.Id)...)
+	if data.Tags.IsUnknown() {
+		// Unconfigured computed tags must not be cleared by an unrelated update.
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("tags"), &data.Tags)...)
+	}
+	if data.Projects.IsUnknown() {
+		resp.Diagnostics.Append(req.State.GetAttribute(ctx, path.Root("projects"), &data.Projects)...)
+	}
 
 	if resp.Diagnostics.HasError() {
 		return
@@ -529,8 +530,15 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 	// Update API call logic
 	tflog.Info(ctx, "Updating OrganizationTeam resource.")
 	elements := make([]string, 0, len(data.Tags.Elements()))
-	diags := data.Tags.ElementsAs(ctx, &elements, false)
-	resp.Diagnostics.Append(diags...)
+	if !data.Tags.IsNull() && !data.Tags.IsUnknown() {
+		resp.Diagnostics.Append(data.Tags.ElementsAs(ctx, &elements, false)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	orgPermissions := make([]string, 0, len(data.OrganizationPermissions.Elements()))
+	resp.Diagnostics.Append(data.OrganizationPermissions.ElementsAs(ctx, &orgPermissions, false)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -541,27 +549,14 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	if len(data.OrganizationPermissions.Elements()) > 0 {
-		tflog.Info(ctx, "Updating OrganizationTeam permissions.")
-
-		orgPermissions := make([]string, 0, len(data.OrganizationPermissions.Elements()))
-
-		diags = data.OrganizationPermissions.ElementsAs(ctx, &orgPermissions, false)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
-
-		orgPermissionsResponse, err := r.client.UpdateOrganizationTeamPermission(orgId.ValueString(), response.ID, orgPermissions)
-		if err != nil {
-			resp.Diagnostics.AddError("", err.Error())
-			return
-		}
-
-		data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(iam.FilterActiveDirectPermissions(orgPermissionsResponse), func(perm string) attr.Value {
-			return types.StringValue(perm)
-		}))
+	// An empty list revokes grants instead of leaving remote permissions intact.
+	orgPermissionsResponse, err := r.client.UpdateOrganizationTeamPermission(orgId.ValueString(), response.ID, orgPermissions)
+	if err != nil {
+		resp.Diagnostics.AddError("", err.Error())
+		return
 	}
+
+	data.OrganizationPermissions = permissionsAttrList(iam.FilterActiveDirectPermissions(orgPermissionsResponse))
 
 	if len(data.Projects.Elements()) > 0 {
 		tflog.Info(ctx, "Updating OrganizationTeam project permissions.")
@@ -604,6 +599,8 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 				"project_permissions": project.ProjectPermissions,
 			})
 		}))
+	} else if data.Projects.IsNull() || data.Projects.IsUnknown() {
+		data.Projects = types.ListValueMust(projectObjectType, []attr.Value{})
 	}
 
 	// Data value setting
