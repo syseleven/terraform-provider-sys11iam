@@ -2,6 +2,9 @@ coverage.out
 cov.xml
 test-report.xml
 main.tf
+.terraform/
+.terraform.lock.hcl
+.terraformrc
 terraform-provider-sys11iam
 terraform.tfstate
 terraform.tfstate.backup

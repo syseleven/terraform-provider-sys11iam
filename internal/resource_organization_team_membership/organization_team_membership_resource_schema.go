@@ -12,6 +12,8 @@ import (
 	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 )
 
 func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema {
@@ -33,6 +35,12 @@ func OrganizationTeamMembershipResourceSchema(ctx context.Context) schema.Schema
 			},
 			"team_name": schema.StringAttribute{
 				Computed: true,
+				// The team name is not managed by this resource; keep the
+				// prior state value so in-place updates do not plan it as
+				// unknown (it is refreshed on the next read).
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"membership_type": schema.StringAttribute{
 				Computed:            true,

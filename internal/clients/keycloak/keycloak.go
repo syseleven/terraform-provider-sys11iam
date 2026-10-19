@@ -16,6 +16,7 @@ type AuthResponse struct {
 	TokenType         string `json:"token_type,omitempty"`
 	NotBeforePolicy   int    `json:"not-before-policy,omitempty"`
 	Scope             string `json:"scope,omitempty"`
+	IdToken           string `json:"id_token,omitempty"`
 }
 
 func (c *Client) Login() (string, error) {
@@ -46,6 +47,13 @@ func (c *Client) Login() (string, error) {
 			body = "unable to parse body"
 		}
 		return "", fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
+	}
+
+	// The SysEleven IAM API validates the token audience against the OIDC client id,
+	// which the Keycloak realm only sets on the id_token. Fall back to the access
+	// token for Keycloak setups that do not return an id_token.
+	if authResponse.IdToken != "" {
+		return authResponse.IdToken, nil
 	}
 
 	return authResponse.AuthToken, nil

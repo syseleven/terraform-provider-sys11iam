@@ -350,8 +350,9 @@ func (r *OrganizationTeamMembershipResource) Create(ctx context.Context, req res
 	}
 	data.TeamName = types.StringValue(team.Name)
 
-	// Data value setting
-	data = r.buildDataFromV3(data, &member, permissions)
+	// Data value setting — keep the configured permission order where the
+	// remote set is unchanged (the API returns permission sets in sorted order).
+	data = r.buildDataFromV3(data, &member, orderedPermissions(teamPermissions, permissions))
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -384,12 +385,10 @@ func (r *OrganizationTeamMembershipResource) Read(ctx context.Context, req resou
 		resp.Diagnostics.Append(diag...)
 		return
 	}
-	teamPermissions = MergeSlices(teamPermissions, permissions, func(p string) string {
-		return p
-	})
 
-	// Data value setting
-	data = r.buildDataFromV3(data, &member, teamPermissions)
+	// Preserve the state's permission order where the remote set is unchanged
+	// (the API returns permission sets in sorted order).
+	data = r.buildDataFromV3(data, &member, orderedPermissions(teamPermissions, permissions))
 
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
@@ -447,8 +446,9 @@ func (r *OrganizationTeamMembershipResource) Update(ctx context.Context, req res
 
 	permissions := iam.FilterActiveDirectPermissions(member.Permissions)
 
-	// Data value setting
-	data = r.buildDataFromV3(data, &member, permissions)
+	// Data value setting — keep the configured permission order where the
+	// remote set is unchanged (the API returns permission sets in sorted order).
+	data = r.buildDataFromV3(data, &member, orderedPermissions(teamPermissions, permissions))
 
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
 
