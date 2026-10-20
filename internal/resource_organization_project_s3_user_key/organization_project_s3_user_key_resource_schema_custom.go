@@ -25,6 +25,11 @@ func OrganizationProjectS3UserKeyResourceSchemaFull(ctx context.Context) schema.
 		Description:         "The user's secret key.",
 		MarkdownDescription: "The user's secret key.",
 	}
+	// The key material is confidential; keep it out of plan output and logs.
+	if accessKey, ok := s.Attributes["access_key"].(schema.StringAttribute); ok {
+		accessKey.Sensitive = true
+		s.Attributes["access_key"] = accessKey
+	}
 	s.Version = 1
 	return s
 }
