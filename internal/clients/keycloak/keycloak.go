@@ -49,12 +49,10 @@ func (c *Client) Login() (string, error) {
 		return "", fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
 	}
 
-	// The SysEleven IAM API validates the token audience against the OIDC client id,
-	// which the Keycloak realm only sets on the id_token. Fall back to the access
-	// token for Keycloak setups that do not return an id_token.
-	if authResponse.IdToken != "" {
-		return authResponse.IdToken, nil
+	// prioritize access token over id token.
+	if authResponse.AuthToken != "" {
+		return authResponse.AuthToken, nil
 	}
 
-	return authResponse.AuthToken, nil
+	return authResponse.IdToken, nil
 }
