@@ -278,9 +278,13 @@ func (r *OrganizationTeamResource) buildData(ctx context.Context, data resource_
 		data.Tags = tagsList
 	}
 
-	data.OrganizationPermissions = types.ListValueMust(types.StringType, convertSliceToAttrValues(orgPermissionsResponse, func(perm string) attr.Value {
-		return types.StringValue(perm)
-	}))
+	// Preserve the state's permission order where the remote set is unchanged
+	// (the API returns permission sets in sorted order).
+	var stateOrgPermissions []string
+	if !data.OrganizationPermissions.IsNull() && !data.OrganizationPermissions.IsUnknown() {
+		_ = data.OrganizationPermissions.ElementsAs(ctx, &stateOrgPermissions, false)
+	}
+	data.OrganizationPermissions = permissionsAttrList(orderedPermissions(stateOrgPermissions, orgPermissionsResponse))
 
 	var stateProjects []*resource_organization_team.ProjectValue
 	if !data.Projects.IsNull() && !data.Projects.IsUnknown() && len(data.Projects.Elements()) > 0 {
@@ -305,6 +309,10 @@ func (r *OrganizationTeamResource) buildData(ctx context.Context, data resource_
 					})),
 				}
 			})
+
+		// Preserve the state's per-project permission order where the remote
+		// set is unchanged (the API returns permission sets in sorted order).
+		preserveProjectPermissionOrder(ctx, orderedProjects, stateProjects)
 
 		data.Projects = basetypes.NewListValueMust(projectObjectType, convertSliceToAttrValues(orderedProjects, func(project *resource_organization_team.ProjectValue) attr.Value {
 			return basetypes.NewObjectValueMust(projectObjectType.AttrTypes, map[string]attr.Value{
@@ -380,7 +388,9 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 		return
 	}
 
-	data.OrganizationPermissions = permissionsAttrList(iam.FilterActiveDirectPermissions(orgPermissionsResponse))
+	// Keep the configured permission order where the remote set is unchanged
+	// (the API returns permission sets in sorted order).
+	data.OrganizationPermissions = permissionsAttrList(orderedPermissions(orgPermissions, iam.FilterActiveDirectPermissions(orgPermissionsResponse)))
 
 	// Create project permissions for the team to a project if set in plan data.
 	if len(data.Projects.Elements()) > 0 {
@@ -408,6 +418,10 @@ func (r *OrganizationTeamResource) Create(ctx context.Context, req resource.Crea
 			}
 			return
 		}
+
+		// Keep the configured per-project permission order where the remote
+		// set is unchanged (the API returns permission sets in sorted order).
+		preserveProjectPermissionOrder(ctx, updatedProjects, projects)
 
 		data.Projects = types.ListValueMust(projectObjectType, convertSliceToAttrValues(updatedProjects, func(project *resource_organization_team.ProjectValue) attr.Value {
 			return types.ObjectValueMust(projectAttrType, map[string]attr.Value{
@@ -556,7 +570,9 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		return
 	}
 
-	data.OrganizationPermissions = permissionsAttrList(iam.FilterActiveDirectPermissions(orgPermissionsResponse))
+	// Keep the configured permission order where the remote set is unchanged
+	// (the API returns permission sets in sorted order).
+	data.OrganizationPermissions = permissionsAttrList(orderedPermissions(orgPermissions, iam.FilterActiveDirectPermissions(orgPermissionsResponse)))
 
 	if len(data.Projects.Elements()) > 0 {
 		tflog.Info(ctx, "Updating OrganizationTeam project permissions.")
@@ -592,6 +608,10 @@ func (r *OrganizationTeamResource) Update(ctx context.Context, req resource.Upda
 		}, func(p *resource_organization_team.ProjectValue) *resource_organization_team.ProjectValue {
 			return p
 		})
+
+		// Keep the configured per-project permission order where the remote
+		// set is unchanged (the API returns permission sets in sorted order).
+		preserveProjectPermissionOrder(ctx, orderedProjects, projects)
 
 		data.Projects = types.ListValueMust(projectObjectType, convertSliceToAttrValues(orderedProjects, func(project *resource_organization_team.ProjectValue) attr.Value {
 			return types.ObjectValueMust(projectObjectType.AttrTypes, map[string]attr.Value{

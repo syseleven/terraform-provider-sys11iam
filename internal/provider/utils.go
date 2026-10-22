@@ -1,7 +1,10 @@
 package provider
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/syseleven/terraform-provider-sys11iam/internal/resource_organization_team"
 )
 
 const MaxWorkers int = 5
@@ -78,4 +81,59 @@ func MergeSlices[T any, U any](primary []T, updates []U, converter func(U) T) []
 	}
 
 	return result
+}
+
+// sameStringSet reports whether a and b contain the same elements, regardless of order.
+func sameStringSet(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	counts := make(map[string]int, len(a))
+	for _, s := range a {
+		counts[s]++
+	}
+	for _, s := range b {
+		counts[s]--
+		if counts[s] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// orderedPermissions returns configured when it holds the same permissions as
+// remote, preserving configured's order. The API returns permission sets in
+// sorted order, which would otherwise override the configured order and cause
+// inconsistent plan results. When the sets differ, remote is returned so that
+// drift is surfaced in state.
+func orderedPermissions(configured, remote []string) []string {
+	if sameStringSet(configured, remote) {
+		return configured
+	}
+	return remote
+}
+
+// preserveProjectPermissionOrder restores the configured permission order for
+// every project in projects that also appears in configured, where the remote
+// permission set is unchanged. Where the sets differ, the remote set is kept
+// so that drift is surfaced in state.
+func preserveProjectPermissionOrder(ctx context.Context, projects, configured []*resource_organization_team.ProjectValue) {
+	configuredPermissionsByProject := make(map[string][]string, len(configured))
+	for _, project := range configured {
+		var permissions []string
+		_ = project.ProjectPermissions.ElementsAs(ctx, &permissions, false)
+		configuredPermissionsByProject[project.Id.ValueString()] = permissions
+	}
+
+	for _, project := range projects {
+		configuredPermissions, ok := configuredPermissionsByProject[project.Id.ValueString()]
+		if !ok {
+			continue
+		}
+		var remotePermissions []string
+		if diags := project.ProjectPermissions.ElementsAs(ctx, &remotePermissions, false); diags.HasError() {
+			continue
+		}
+		project.ProjectPermissions = permissionsAttrList(orderedPermissions(configuredPermissions, remotePermissions))
+	}
 }

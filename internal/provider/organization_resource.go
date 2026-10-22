@@ -218,6 +218,7 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 		}
 		// Data value setting
 		data.Id = types.StringValue(response.ID)
+		data.OrgId = types.StringValue(response.ID)
 		data.Name = types.StringValue(response.Name)
 		data.Description = types.StringValue(response.Description)
 		data.CreatedAt = types.StringValue(response.CreatedAt)
@@ -247,6 +248,7 @@ func (r *organizationResource) Create(ctx context.Context, req resource.CreateRe
 		}
 		// Data value setting
 		data.Id = types.StringValue(response.ID)
+		data.OrgId = types.StringValue(response.ID)
 		data.Name = types.StringValue(response.Name)
 		data.Description = types.StringValue(response.Description)
 		data.CreatedAt = types.StringValue(response.CreatedAt)
@@ -352,6 +354,7 @@ func (r *organizationResource) Update(ctx context.Context, req resource.UpdateRe
 	}
 
 	// Data value setting
+	data.OrgId = types.StringValue(response.ID)
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)
@@ -404,6 +407,7 @@ func (r *organizationResource) ImportState(ctx context.Context, req resource.Imp
 	var data resource_organization.OrganizationModel
 	// Data value setting
 	data.Id = types.StringValue(idParts[0])
+	data.OrgId = types.StringValue(idParts[0])
 	data.Name = types.StringValue(response.Name)
 	data.Description = types.StringValue(response.Description)
 	data.CreatedAt = types.StringValue(response.CreatedAt)

@@ -14,9 +14,12 @@ func OrganizationProjectS3UserResourceSchemaFull(ctx context.Context) schema.Sch
 	s := OrganizationProjectS3UserResourceSchema(ctx)
 	s.Attributes["organization_id"] = compat.DeprecatedOrganizationIdAttribute()
 	if keysAttr, ok := s.Attributes["keys"].(schema.ListNestedAttribute); ok {
-		if secretKey, ok := keysAttr.NestedObject.Attributes["secret_key"].(schema.StringAttribute); ok {
-			secretKey.Sensitive = true
-			keysAttr.NestedObject.Attributes["secret_key"] = secretKey
+		// The key material is confidential; keep it out of plan output and logs.
+		for _, name := range []string{"access_key", "secret_key"} {
+			if str, ok := keysAttr.NestedObject.Attributes[name].(schema.StringAttribute); ok {
+				str.Sensitive = true
+				keysAttr.NestedObject.Attributes[name] = str
+			}
 		}
 		s.Attributes["keys"] = keysAttr
 	}

@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/clients/iam"
 	"github.com/syseleven/terraform-provider-sys11iam/internal/compat"
@@ -113,6 +116,34 @@ func (r *ProjectS3UserResource) Configure(_ context.Context, req resource.Config
 	r.client = client
 }
 
+// projectS3UserKeysValue converts API S3 user keys into the Terraform keys list value.
+func projectS3UserKeysValue(ctx context.Context, keys []iam.IAMProjectS3UserKey) (types.List, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	keysAttributeTypes := resource_organization_project_s3_user.KeysValue{}.AttributeTypes(ctx)
+	keysObjectValues := make([]basetypes.ObjectValue, 0, len(keys))
+	for _, key := range keys {
+		keyObjectValue, d := types.ObjectValue(
+			keysAttributeTypes,
+			map[string]attr.Value{
+				"access_key": types.StringValue(key.AccessKey),
+				"created_at": types.StringValue(key.CreatedAt),
+				"created_by": types.StringValue(key.CreatedBy),
+				"secret_key": types.StringValue(key.SecretKey),
+				"updated_at": types.StringValue(key.UpdatedAt),
+			},
+		)
+		diags.Append(d...)
+
+		keysObjectValues = append(keysObjectValues, keyObjectValue)
+	}
+
+	keysList, d := types.ListValueFrom(ctx, basetypes.ObjectType{AttrTypes: keysAttributeTypes}, keysObjectValues)
+	diags.Append(d...)
+
+	return keysList, diags
+}
+
 func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 
@@ -149,7 +180,17 @@ func (r *ProjectS3UserResource) Create(ctx context.Context, req resource.CreateR
 	}
 
 	data.Id = types.StringValue(response.ID)
+	data.S3UserId = types.StringValue(response.ID)
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
+
+	// The API returns the S3 key material in the create and update responses, so map it into state here.
+	keysList, diags := projectS3UserKeysValue(ctx, response.Keys)
+	resp.Diagnostics.Append(diags...)
+	data.Keys = keysList
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -207,7 +248,18 @@ func (r *ProjectS3UserResource) Update(ctx context.Context, req resource.UpdateR
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.S3UserId = types.StringValue(response.ID)
+	data.Name = types.StringValue(response.Name)
+	data.Description = types.StringValue(response.Description)
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(orgId.ValueString())
+
+	keysList, diags := projectS3UserKeysValue(ctx, response.Keys)
+	resp.Diagnostics.Append(diags...)
+	data.Keys = keysList
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -256,10 +308,17 @@ func (r *ProjectS3UserResource) ImportState(ctx context.Context, req resource.Im
 	var data resource_organization_project_s3_user.OrganizationProjectS3UserModelFull
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.S3UserId = types.StringValue(response.ID)
 	data.ProjectId = types.StringValue(idParts[1])
 	data.OrgId, data.OrganizationId = compat.SyncOrgIds(idParts[0])
 	data.Description = types.StringValue(response.Description)
 	data.Name = types.StringValue(response.Name)
+	// The list endpoint does not return key material, so keep keys null until a refresh that includes them.
+	data.Keys = types.ListNull(resource_organization_project_s3_user.KeysType{
+		ObjectType: types.ObjectType{
+			AttrTypes: resource_organization_project_s3_user.KeysValue{}.AttributeTypes(ctx),
+		},
+	})
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

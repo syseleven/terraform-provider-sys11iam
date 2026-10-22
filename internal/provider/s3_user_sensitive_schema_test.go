@@ -27,6 +27,14 @@ func TestProjectS3UserKeyResourceSecretKeyIsSensitive(t *testing.T) {
 	require.True(t, secretKey.Sensitive, "secret_key should be marked sensitive")
 }
 
+func TestProjectS3UserKeyResourceAccessKeyIsSensitive(t *testing.T) {
+	resp := schemaForTest(t, &ProjectS3UserKeyResource{})
+
+	accessKey, ok := resp.Schema.Attributes["access_key"].(resourceschema.StringAttribute)
+	require.True(t, ok, "access_key should be a StringAttribute")
+	require.True(t, accessKey.Sensitive, "access_key should be marked sensitive")
+}
+
 func TestProjectS3UserResourceNestedSecretKeyIsSensitive(t *testing.T) {
 	resp := schemaForTest(t, &ProjectS3UserResource{})
 
@@ -36,4 +44,15 @@ func TestProjectS3UserResourceNestedSecretKeyIsSensitive(t *testing.T) {
 	secretKey, ok := keys.NestedObject.Attributes["secret_key"].(resourceschema.StringAttribute)
 	require.True(t, ok, "keys.secret_key should be a StringAttribute")
 	require.True(t, secretKey.Sensitive, "keys.secret_key should be marked sensitive")
+}
+
+func TestProjectS3UserResourceNestedAccessKeyIsSensitive(t *testing.T) {
+	resp := schemaForTest(t, &ProjectS3UserResource{})
+
+	keys, ok := resp.Schema.Attributes["keys"].(resourceschema.ListNestedAttribute)
+	require.True(t, ok, "keys should be a ListNestedAttribute")
+
+	accessKey, ok := keys.NestedObject.Attributes["access_key"].(resourceschema.StringAttribute)
+	require.True(t, ok, "keys.access_key should be a StringAttribute")
+	require.True(t, accessKey.Sensitive, "keys.access_key should be marked sensitive")
 }

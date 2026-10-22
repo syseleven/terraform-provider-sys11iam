@@ -16,6 +16,7 @@ type AuthResponse struct {
 	TokenType         string `json:"token_type,omitempty"`
 	NotBeforePolicy   int    `json:"not-before-policy,omitempty"`
 	Scope             string `json:"scope,omitempty"`
+	IdToken           string `json:"id_token,omitempty"`
 }
 
 func (c *Client) Login() (string, error) {
@@ -48,5 +49,10 @@ func (c *Client) Login() (string, error) {
 		return "", fmt.Errorf("%s (code: %d, body: %s)", err.Error(), response.StatusCode, body)
 	}
 
-	return authResponse.AuthToken, nil
+	// prioritize access token over id token.
+	if authResponse.AuthToken != "" {
+		return authResponse.AuthToken, nil
+	}
+
+	return authResponse.IdToken, nil
 }

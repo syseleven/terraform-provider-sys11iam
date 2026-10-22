@@ -102,6 +102,7 @@ func (r *OrganizationContactResource) Create(ctx context.Context, req resource.C
 	}
 
 	data.Id = types.StringValue(response.ID)
+	data.ContactId = types.StringValue(response.ID)
 	data.FirstName = types.StringValue(response.FirstName)
 	data.LastName = types.StringValue(response.LastName)
 	data.Phone = types.StringValue(response.Phone)
@@ -138,6 +139,7 @@ func (r *OrganizationContactResource) Read(ctx context.Context, req resource.Rea
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.ContactId = types.StringValue(response.ID)
 	data.FirstName = types.StringValue(response.FirstName)
 	data.LastName = types.StringValue(response.LastName)
 	data.Phone = types.StringValue(response.Phone)
@@ -182,6 +184,7 @@ func (r *OrganizationContactResource) Update(ctx context.Context, req resource.U
 
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.ContactId = types.StringValue(response.ID)
 	data.FirstName = types.StringValue(response.FirstName)
 	data.LastName = types.StringValue(response.LastName)
 	data.Phone = types.StringValue(response.Phone)
@@ -242,6 +245,7 @@ func (r *OrganizationContactResource) ImportState(ctx context.Context, req resou
 	var data resource_organization_contact.OrganizationContactModelFull
 	// Data value setting
 	data.Id = types.StringValue(response.ID)
+	data.ContactId = types.StringValue(response.ID)
 	data.FirstName = types.StringValue(response.FirstName)
 	data.LastName = types.StringValue(response.LastName)
 	data.Phone = types.StringValue(response.Phone)
